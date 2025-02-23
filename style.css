@@ -15,9 +15,10 @@ body {
     overflow: hidden;
 }
 
-h1 {
+.logo {
     margin: 0;
-    font-size: 6vmin;
+    width: 50vmin;
+    filter: drop-shadow(5px 5px 10px #000000);
 }
 
 pre {
