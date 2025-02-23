@@ -1,5 +1,5 @@
 let currentMatrixFontColorIndex = 0;
-const matrixFontColors = ['#0f0', '#f00', '#00f'];
+const matrixFontColors = ['#0f0', '#f00', '#00f', '#fff'];
 
 let amountOfPokeballs = 0;
 let pokeballsFound = 0;
