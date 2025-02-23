@@ -66,7 +66,8 @@ function startMatrixBackdrop() {
 function matrixBackdropColor() {
     document.body.addEventListener('click', (event) => {
       if (event.target === canvas) {
-        currentMatrixFontColorIndex =  (currentMatrixFontColorIndex + 1) % matrixFontColors.length;
+        // loop through the indexes from `matrixFontColors` ensuring it resets via the remainder operator
+        currentMatrixFontColorIndex = (currentMatrixFontColorIndex + 1) % matrixFontColors.length;
 
         clearInterval(matrixIntervalID);
         startMatrixBackdrop();
