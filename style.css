@@ -225,3 +225,53 @@ pre {
 .popup.show {
     display: block;
 }
+
+#pokeballs-left {
+    display: none;
+
+    color: #555;
+    position: absolute;
+    top: 20px;
+    left: 50px;
+}
+
+#pokeballs-left.visible {
+    display: block;
+}
+
+.pokeball {
+    cursor: pointer;
+
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    display: block;
+    filter: drop-shadow(0px 0px 10px #000);
+    background-image: url(pokeball.png);
+    background-repeat: no-repeat;
+    background-size: unset;
+}
+
+.pokeball.found {
+    background-size: contain;
+}
+
+.pokeball-1 {
+    left: 3%;
+    bottom: 3%;
+}
+
+.pokeball-2 {
+    left: 10%;
+    top: 25%;
+}
+
+.pokeball-3 {
+    right: 20%;
+    top: 3%;
+}
+
+.pokeball-4 {
+    right: 10%;
+    bottom: 25%;
+}

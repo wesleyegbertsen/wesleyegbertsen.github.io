@@ -1,6 +1,9 @@
 let currentMatrixFontColorIndex = 0;
 const matrixFontColors = ['#0f0', '#f00', '#00f'];
 
+let amountOfPokeballs = 0;
+let pokeballsFound = 0;
+
 /** 
  * @type {HTMLCanvasElement}
  */
@@ -205,6 +208,59 @@ function toggleSkillsPopup(event) {
   }
 }
 
+function _CheckIfAllPokeballsFound(pokeballsLeftElement) {
+  if (amountOfPokeballs === pokeballsFound) {
+    let victoryAudio = null;
+
+    pokeballsLeftElement.innerText = 'Found all Poké Balls!';
+
+    setTimeout(function () {
+      // If there is an audio currently playing, stop it
+      if (victoryAudio) {
+        victoryAudio.pause();
+        victoryAudio.currentTime = 0;
+      }
+
+      victoryAudio = new Audio('victory.mp3');
+      victoryAudio.volume = 0.3;
+      victoryAudio.play();
+    }, 2000);
+  }
+}
+
+function pokeballs() {
+  const pokeballs = /** @type {HTMLCollectionOf<Element>} */ (document.getElementsByClassName('pokeball'));
+  const pokeballsLeftElement = /** @type {HTMLElement} */ (document.getElementById('pokeballs-left'));
+  const pokeballsCounterElement = /** @type {HTMLElement} */ (document.getElementById('pokeballs-counter'));
+
+  amountOfPokeballs = pokeballs.length;
+  let pokeballAudio = null;
+
+  Array.prototype.forEach.call(pokeballs, function(pokeball) {
+    pokeball.addEventListener('click', () => {
+      if (pokeball.classList.contains('found')) return;
+      if (!pokeballsLeftElement.classList.contains('visible')) pokeballsLeftElement.classList.add('visible');
+
+      pokeballsFound++;
+      pokeball.classList.add('found');
+      pokeballsCounterElement.innerText = (amountOfPokeballs - pokeballsFound).toString();
+
+      // If there is an audio currently playing, stop it
+      if (pokeballAudio) {
+        pokeballAudio.pause();
+        pokeballAudio.currentTime = 0.5;
+      }
+  
+      pokeballAudio = new Audio('pokeball.mp3');
+      pokeballAudio.currentTime = 0.5;
+      pokeballAudio.volume = 0.3;
+      pokeballAudio.play();
+
+      _CheckIfAllPokeballsFound(pokeballsLeftElement);
+    });
+  });
+}
+
 function init() {
     setupCanvas();
     setupResizeEventListener();
@@ -214,6 +270,7 @@ function init() {
 
     pikachu();
     gb();
+    pokeballs();
 }
 
 init();
