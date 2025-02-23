@@ -22,7 +22,15 @@ pre {
     font-weight: bold;
 
     cursor: pointer;
-    
+}
+
+#canvas-matrix {
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+.no-select {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -32,15 +40,10 @@ pre {
     user-select: none;
 }
 
-pre:focus {
+.no-select:focus {
     outline: none !important;
 }
 
-#canvas-matrix {
-    position: fixed;
-    top: 0;
-    left: 0;
-}
 
 .container {
     display: flex;
@@ -71,4 +74,16 @@ pre:focus {
     100% {
         color: black;
     }
+}
+
+#console-gb {
+    z-index: 1;
+
+    width: 64px;
+
+    position: absolute;
+    bottom: 10px;
+    right: 0;
+
+    cursor: pointer;
 }

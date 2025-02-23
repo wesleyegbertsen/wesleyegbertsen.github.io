@@ -12,7 +12,7 @@
         <h1>wesleyegbertsen.nl</h1>
     </div>
     <div>
-        <pre id="pikachu-container">
+        <pre id="pikachu-container" class="no-select">
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -46,6 +46,7 @@
     </div>
 </div>
 
+<img id="console-gb" src="gb.png" class="no-select" />
 
 <script type ="text/javascript">
     //https://stackoverflow.com/a/67136393/2811166
@@ -91,30 +92,48 @@
 </script>
 
 <script>
-    let audio = null;
+    let pikachuAudio = null;
 
     const pikachuContainer = document.getElementById('pikachu-container');
 
     pikachuContainer.addEventListener('click', () => {
       // If there is an audio currently playing, stop it
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
+      if (pikachuAudio) {
+        pikachuAudio.pause();
+        pikachuAudio.currentTime = 0;
         pikachuContainer.classList.remove('playing');
       }
 
-      audio = new Audio('pikachu.mp3');
-      audio.play();
+      pikachuAudio = new Audio('pikachu.mp3');
+      pikachuAudio.play();
 
       // Change button color to yellow while the audio is playing
       pikachuContainer.classList.add('playing'); 
 
       // When the audio ends, change button color back to black
-      audio.onended = () => {
+      pikachuAudio.onended = () => {
         pikachuContainer.classList.remove('playing');
       };
     });
   </script>
+
+<script>
+  let gbAudio = null;
+
+  const gbContainer = document.getElementById('console-gb');
+
+  gbContainer.addEventListener('click', () => {
+    // If there is an audio currently playing, stop it
+    if (gbAudio) {
+      gbAudio.pause();
+      gbAudio.currentTime = 0;
+    }
+
+    gbAudio = new Audio('gb.mp3');
+    gbAudio.volume = 0.3;
+    gbAudio.play();
+  });
+</script>
 
 </body>
 </html>
