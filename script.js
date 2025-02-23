@@ -21,6 +21,12 @@ let matrixIntervalID;
  */
 let gbContainer;
 
+/** 
+ * @type {HTMLElement}
+ */
+let skillsPopup;
+let skillsPopupLink;
+
 function setupCanvas() {
     canvas = /** @type {HTMLCanvasElement} */  (document.getElementById('canvas-matrix'));
     canvas.width = window.innerWidth;
@@ -148,8 +154,60 @@ function titanCat() {
   });
 }
 
+function setupResizeEventListener() {
+  window.addEventListener("resize", function () {
+    if (skillsPopupLink) {
+      _positionSkillsPopup(skillsPopup, skillsPopupLink);
+    } 
+  });
+}
+
+function _positionSkillsPopup(skillsPopup, skillsPopupLink) {
+  // Get the position and size of the toolbox icon
+  let iconRect = skillsPopupLink.getBoundingClientRect();
+
+  // Get the height of the skillsPopup now that it's visible
+  let popupHeight = skillsPopup.offsetHeight;
+
+  // Calculate the position for the skillsPopup
+  let topPosition = iconRect.top - popupHeight - 15; // 15px above the icon
+  let leftPosition = iconRect.left + (iconRect.width / 2); // Align the middle of the skillsPopup with the middle of the icon
+
+  // Set the skillsPopup's position dynamically
+  skillsPopup.style.top = `${topPosition}px`;
+  skillsPopup.style.left = `${leftPosition}px`;
+}
+
+function toggleSkillsPopup(event) {
+  event.preventDefault();
+
+  if (!skillsPopup) {
+    skillsPopup = /** @type {HTMLElement} */ (document.getElementById('skills-popup'));
+  }
+  skillsPopupLink = event.currentTarget;
+
+  // Temporarily make the skillsPopup visible to calculate its height
+  skillsPopup.style.visibility = 'hidden'; // Hide the popup for measurement
+  skillsPopup.style.display = 'block'; // Ensure the popup is rendered to get the height
+
+  _positionSkillsPopup(skillsPopup, skillsPopupLink);
+
+  // Toggle the skillsPopup visibility
+  skillsPopup.classList.toggle('show');
+  skillsPopupLink.classList.toggle('active');
+  
+  // Restore skillsPopup visibility (after calculations)
+  skillsPopup.style.visibility = 'visible';
+  skillsPopup.style.display = '';  // Reset to the default display value
+
+  if (!skillsPopup.classList.contains('show')) {
+    skillsPopupLink = null;
+  }
+}
+
 function init() {
     setupCanvas();
+    setupResizeEventListener();
 
     startMatrixBackdrop();
     matrixBackdropColor();
