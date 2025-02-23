@@ -16,6 +16,11 @@ let canvasContext;
  */
 let matrixIntervalID;
 
+/** 
+ * @type {HTMLElement}
+ */
+let gbContainer;
+
 function setupCanvas() {
     canvas = /** @type {HTMLCanvasElement} */  (document.getElementById('canvas-matrix'));
     canvas.width = window.innerWidth;
@@ -104,7 +109,7 @@ function pikachu() {
 function gb() {
   let gbAudio = null;
 
-  const gbContainer = /** @type {HTMLElement} */ (document.getElementById('console-gb'));
+  gbContainer = /** @type {HTMLElement} */ (document.getElementById('console-gb'));
 
   gbContainer.addEventListener('click', () => {
     // If there is an audio currently playing, stop it
@@ -116,6 +121,30 @@ function gb() {
     gbAudio = new Audio('gb.mp3');
     gbAudio.volume = 0.3;
     gbAudio.play();
+  });
+
+  titanCat();
+}
+
+function titanCat() {
+  let zeldaItemAudio = null;
+
+  const titanCatIframe = /** @type {HTMLElement} */  (document.getElementById('titan-cat-iframe'));
+
+  gbContainer.addEventListener('dblclick', () => {
+    titanCatIframe.classList.toggle('visible');
+
+    if (titanCatIframe.classList.contains('visible') ) {
+      // If there is an audio currently playing, stop it
+      if (zeldaItemAudio) {
+        zeldaItemAudio.pause();
+        zeldaItemAudio.currentTime = 0;
+      }
+
+      zeldaItemAudio = new Audio('zelda-item.mp3');
+      zeldaItemAudio.volume = 0.3;
+      zeldaItemAudio.play();
+    }
   });
 }
 
