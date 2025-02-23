@@ -20,6 +20,9 @@ h1 {
 
 pre {
     font-weight: bold;
+
+    cursor: pointer;
+    user-select: none;
 }
 
 #canvas-matrix {
@@ -40,4 +43,21 @@ pre {
     padding: 3rem;
     position: relative;
     z-index: 1;
+}
+
+.playing {
+    color: yellow;
+    animation: alternateColor 1s infinite;
+}
+
+@keyframes alternateColor {
+    0% {
+        color: black;
+    }
+    50% {
+        color: yellow;
+    }
+    100% {
+        color: black;
+    }
 }

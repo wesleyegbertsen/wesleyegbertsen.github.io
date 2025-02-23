@@ -5,14 +5,14 @@
 </head>
 <body>
 
-<canvas id='canvas-matrix'></canvas>
+<canvas id="canvas-matrix"></canvas>
 
 <div class="container">
     <div>
         <h1>wesleyegbertsen.nl</h1>
     </div>
     <div>
-        <pre>
+        <pre id="pikachu-container">
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -89,6 +89,32 @@
 
     setInterval(matrix, 50);
 </script>
+
+<script>
+    let audio = null;
+
+    const pikachuContainer = document.getElementById('pikachu-container');
+
+    pikachuContainer.addEventListener('click', () => {
+      // If there is an audio currently playing, stop it
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        pikachuContainer.classList.remove('playing');
+      }
+
+      audio = new Audio('pikachu.mp3');
+      audio.play();
+
+      // Change button color to yellow while the audio is playing
+      pikachuContainer.classList.add('playing'); 
+
+      // When the audio ends, change button color back to black
+      audio.onended = () => {
+        pikachuContainer.classList.remove('playing');
+      };
+    });
+  </script>
 
 </body>
 </html>
