@@ -1,4 +1,5 @@
-let currentMatrixFontColorIndex = 0;
+// @ts-ignore
+let currentMatrixFontColorIndex = +(localStorage.getItem("currentMatrixFontColorIndex")) || 0;
 const matrixFontColors = ['#0f0', '#f00', '#00f', '#fff'];
 
 let amountOfPokeballs = 0;
@@ -29,6 +30,12 @@ let gbContainer;
  */
 let skillsPopup;
 let skillsPopupLink;
+
+/** 
+ * @type {HTMLElement}
+ */
+let workExperiencePopup;
+let workExperiencePopupLink;
 
 function setupCanvas() {
     canvas = /** @type {HTMLCanvasElement} */  (document.getElementById('canvas-matrix'));
@@ -82,6 +89,7 @@ function matrixBackdropColor() {
       if (event.target === canvas) {
         // loop through the indexes from `matrixFontColors` ensuring it resets via the remainder operator
         currentMatrixFontColorIndex = (currentMatrixFontColorIndex + 1) % matrixFontColors.length;
+        localStorage.setItem("currentMatrixFontColorIndex", currentMatrixFontColorIndex.toString());
 
         clearInterval(matrixIntervalID);
         startMatrixBackdrop();
@@ -160,25 +168,28 @@ function titanCat() {
 function setupResizeEventListener() {
   window.addEventListener("resize", function () {
     if (skillsPopupLink) {
-      _positionSkillsPopup(skillsPopup, skillsPopupLink);
+      _positionPopup(skillsPopup, skillsPopupLink);
+    } 
+    if (workExperiencePopupLink) {
+      _positionPopup(workExperiencePopup, workExperiencePopupLink);
     } 
   });
 }
 
-function _positionSkillsPopup(skillsPopup, skillsPopupLink) {
+function _positionPopup(popup, popupLink) {
   // Get the position and size of the toolbox icon
-  let iconRect = skillsPopupLink.getBoundingClientRect();
+  let iconRect = popupLink.getBoundingClientRect();
 
-  // Get the height of the skillsPopup now that it's visible
-  let popupHeight = skillsPopup.offsetHeight;
+  // Get the height of the popup now that it's visible
+  let popupHeight = popup.offsetHeight;
 
-  // Calculate the position for the skillsPopup
+  // Calculate the position for the popup
   let topPosition = iconRect.top - popupHeight - 15; // 15px above the icon
-  let leftPosition = iconRect.left + (iconRect.width / 2); // Align the middle of the skillsPopup with the middle of the icon
+  let leftPosition = iconRect.left + (iconRect.width / 2); // Align the middle of the popup with the middle of the icon
 
-  // Set the skillsPopup's position dynamically
-  skillsPopup.style.top = `${topPosition}px`;
-  skillsPopup.style.left = `${leftPosition}px`;
+  // Set the popup's position dynamically
+  popup.style.top = `${topPosition}px`;
+  popup.style.left = `${leftPosition}px`;
 }
 
 function toggleSkillsPopup(event) {
@@ -193,7 +204,7 @@ function toggleSkillsPopup(event) {
   skillsPopup.style.visibility = 'hidden'; // Hide the popup for measurement
   skillsPopup.style.display = 'block'; // Ensure the popup is rendered to get the height
 
-  _positionSkillsPopup(skillsPopup, skillsPopupLink);
+  _positionPopup(skillsPopup, skillsPopupLink);
 
   // Toggle the skillsPopup visibility
   skillsPopup.classList.toggle('show');
@@ -205,6 +216,33 @@ function toggleSkillsPopup(event) {
 
   if (!skillsPopup.classList.contains('show')) {
     skillsPopupLink = null;
+  }
+}
+
+function toggleWorkExperiencePopup(event) {
+  event.preventDefault();
+
+  if (!workExperiencePopup) {
+    workExperiencePopup = /** @type {HTMLElement} */ (document.getElementById('work-experience-popup'));
+  }
+  workExperiencePopupLink = event.currentTarget;
+
+  // Temporarily make the skillsPopup visible to calculate its height
+  workExperiencePopup.style.visibility = 'hidden'; // Hide the popup for measurement
+  workExperiencePopup.style.display = 'block'; // Ensure the popup is rendered to get the height
+
+  _positionPopup(workExperiencePopup, workExperiencePopupLink);
+
+  // Toggle the workExperiencePopup visibility
+  workExperiencePopup.classList.toggle('show');
+  workExperiencePopupLink.classList.toggle('active');
+  
+  // Restore workExperiencePopup visibility (after calculations)
+  workExperiencePopup.style.visibility = 'visible';
+  workExperiencePopup.style.display = '';  // Reset to the default display value
+
+  if (!workExperiencePopup.classList.contains('show')) {
+    workExperiencePopupLink = null;
   }
 }
 

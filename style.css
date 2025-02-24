@@ -145,6 +145,11 @@ pre {
     color: #a4e200;
 }
 
+.social-bar a:hover > i.fa-building,
+.building-link.active > i.fa-building {
+    color: #20b2aa;
+}
+
 #titan-cat-iframe {
     opacity: 0;
     visibility: hidden;
@@ -224,6 +229,23 @@ pre {
 
 .popup.show {
     display: block;
+}
+
+#work-experience-popup .popup-content {
+    height: 50vh;
+    overflow-y: auto;
+}
+
+#work-experience-popup .popup-list {
+    display: flex;
+    flex-direction: column;
+    padding-right: 10px;
+    gap: 5px;
+}
+
+#work-experience-popup .popup-list > div {
+    color: #555;
+    border-bottom: 1px solid #555;
 }
 
 #pokeballs-left {
