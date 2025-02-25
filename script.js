@@ -299,6 +299,27 @@ function pokeballs() {
   });
 }
 
+function cat() {
+  const logoContainer = /** @type {HTMLElement} */ (document.getElementById('logo'));
+  const cat = /** @type {HTMLElement} */  (document.getElementById('cat'));
+  let catAudio = null;
+
+  logoContainer.addEventListener('click', () => {
+    cat.classList.toggle('visible');
+
+    // If there is an audio currently playing, stop it
+    if (catAudio) {
+      catAudio.pause();
+      catAudio.currentTime = 0;
+    }
+
+    if (!cat.classList.contains('visible')) return;
+
+    catAudio = new Audio('cat.mp3');
+    catAudio.play();
+  });
+}
+
 function init() {
     setupCanvas();
     setupResizeEventListener();
@@ -309,6 +330,7 @@ function init() {
     pikachu();
     gb();
     pokeballs();
+    cat();
 }
 
 init();
