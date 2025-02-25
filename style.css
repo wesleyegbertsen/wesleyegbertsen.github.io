@@ -323,10 +323,16 @@ pre {
 }
 
 #cat.visible {
+    cursor: pointer;
+
     opacity: 1;
     visibility: visible;
 
     bottom: 0;
     transform: translateY(0);
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, transform 0.5s ease-out;
+}
+
+#cat.glasses {
+    background-image: url(cat_glasses.png);
 }

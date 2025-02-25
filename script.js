@@ -37,6 +37,9 @@ let skillsPopupLink;
 let workExperiencePopup;
 let workExperiencePopupLink;
 
+const catElement = /** @type {HTMLElement} */  (document.getElementById('cat'));
+let catRapAudio = null;
+
 function setupCanvas() {
     canvas = /** @type {HTMLCanvasElement} */  (document.getElementById('canvas-matrix'));
     canvas.width = window.innerWidth;
@@ -301,11 +304,10 @@ function pokeballs() {
 
 function cat() {
   const logoContainer = /** @type {HTMLElement} */ (document.getElementById('logo'));
-  const cat = /** @type {HTMLElement} */  (document.getElementById('cat'));
   let catAudio = null;
 
   logoContainer.addEventListener('click', () => {
-    cat.classList.toggle('visible');
+    catElement.classList.toggle('visible');
 
     // If there is an audio currently playing, stop it
     if (catAudio) {
@@ -313,10 +315,44 @@ function cat() {
       catAudio.currentTime = 0;
     }
 
-    if (!cat.classList.contains('visible')) return;
+    // When cat is hidden again, don't play `cat.mp3` and stop `catRap` if cat was rapping
+    if (!catElement.classList.contains('visible')) {
+      if (catElement.classList.contains('glasses')) {
+        catElement.classList.remove('glasses');
+        catRap();
+      }
+      return;
+    }
 
     catAudio = new Audio('cat.mp3');
     catAudio.play();
+  });
+
+  catGlasses();
+}
+
+function catGlasses() {
+  catElement.addEventListener('click', () => {
+    catElement.classList.toggle('glasses');
+    catRap();
+  });
+}
+
+function catRap() {
+  // If there is an audio currently playing, stop it
+  if (catRapAudio) {
+    catRapAudio.pause();
+    catRapAudio.currentTime = 0;
+  }
+
+  if (!catElement.classList.contains('glasses')) return;
+
+  catRapAudio = new Audio('cat_rap.mp3');
+  catRapAudio.volume = 0.3;
+  catRapAudio.play();
+  
+  catRapAudio.addEventListener("ended", () => {
+    catElement.classList.remove('glasses')
   });
 }
 
