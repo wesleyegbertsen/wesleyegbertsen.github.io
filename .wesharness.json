@@ -1,0 +1,7 @@
+{
+  "profile": "node",
+  "baseBranch": "origin/main",
+  "checks": [
+    { "name": "js-syntax", "command": "node --check script.js", "when": ["script.js"] }
+  ]
+}
