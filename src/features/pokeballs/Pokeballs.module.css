@@ -45,46 +45,35 @@
   outline-offset: 2px;
 }
 
-/* Inside the glass panel (the home .glass is its positioned container), scattered in empty spots rather than the corners, so they take a little finding. Spots that follow the content use percentages only on the free right part of the panel, where no interactive element sits at any height; spots in the padding bands use px, so they stay put when the panel grows taller. */
-/* Right of the name. */
+/* Inside the glass panel (the home .glass is its positioned container), spread out over its empty spots rather than the corners or one side, so they take some finding. Spots in the top, bottom and left padding use px, so they stay put when the panel grows taller; the one that follows the content sits on the free right part of the panel, where no interactive element is at any height. */
+/* In the top padding, left of centre. */
 .ball1 {
-  top: 40px;
-  left: 78%;
+  top: 16px;
+  left: 22%;
 }
 
 /* Right of the end of the subline. */
 .ball2 {
-  top: 33%;
-  left: 76%;
+  top: 28%;
+  left: 82%;
 }
 
-/* Right of the teaser text. */
+/* In the left padding, about half way down. */
 .ball3 {
-  top: 58%;
-  left: 86%;
+  top: 52%;
+  left: 20px;
 }
 
-/* In the bottom padding, below the teaser. */
+/* In the bottom padding, right of centre. */
 .ball4 {
   bottom: 16px;
-  left: 45%;
+  left: 68%;
 }
 
-/* On a narrower desktop window the name and subline wrap and fill the width, so the two upper balls move into the padding bands. */
-@media (max-width: 1100px) {
-  .ball1 {
-    top: 16px;
-    left: 55%;
-  }
-
+/* The panel only reaches its full 960px at about 1300px. Below that the name and subline fill its width, so the ball that sat beside the text moves into the right padding. */
+@media (max-width: 1299px) {
   .ball2 {
-    top: 33%;
-    left: auto;
-    right: 20px;
-  }
-
-  .ball3 {
-    top: 62%;
+    top: 30%;
     left: auto;
     right: 20px;
   }
@@ -94,12 +83,13 @@
 @media (max-width: 700px) {
   .ball1 {
     top: 16px;
-    left: 30%;
+    left: 20%;
   }
 
   .ball2 {
     top: 16px;
-    left: 66%;
+    left: 70%;
+    right: auto;
   }
 
   .ball3 {

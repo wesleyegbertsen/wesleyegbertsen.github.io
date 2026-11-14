@@ -146,6 +146,21 @@ test('the home glass stays readable in all four themes', async ({ page }) => {
   }
 });
 
+/** No two Poké Balls may sit close together, or the hunt is too easy and the layout looks clumped. */
+async function expectSpread(balls: Locator, minDistance: number, where: string) {
+  const centres: { x: number; y: number }[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await box(balls.nth(i));
+    centres.push({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+  }
+  for (let a = 0; a < 4; a++) {
+    for (let b = a + 1; b < 4; b++) {
+      const d = Math.hypot(centres[a]!.x - centres[b]!.x, centres[a]!.y - centres[b]!.y);
+      expect(d, `Poké Balls ${a + 1} and ${b + 1} are ${Math.round(d)}px apart ${where}`).toBeGreaterThanOrEqual(minDistance);
+    }
+  }
+}
+
 test('the intro and the featured project fit and leave every Poké Ball reachable', async ({ page, isMobile }) => {
   await openSite(page);
 
@@ -205,6 +220,8 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
     expect(overlaps(rect, await textBox(subline)), `Poké Ball ${i + 1} overlaps the subline text`).toBe(false);
   }
 
+  await expectSpread(balls, isMobile ? 120 : 250, 'on the home page');
+
   // The counter shows after the first find, in white, just above the glass and clear of every ball and the menu.
   await balls.nth(0).click();
   const status = page.getByRole('status');
@@ -227,11 +244,21 @@ test('the Poké Balls stay in empty spots of the glass at in-between window widt
   const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
   const teaser = page.getByRole('region', { name: 'CardiPaw' });
 
-  for (const width of [701, 900, 1100]) {
+  // The panel only reaches its full 960px at about 1300px, so sample both sides of every layout change.
+  const subline = page.getByText('Full-stack Azure .NET Developer');
+  const textBox = (el: Locator): Promise<Rect> =>
+    el.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  for (const width of [701, 900, 1100, 1101, 1200, 1299, 1300]) {
     await page.setViewportSize({ width, height: 800 });
     const clear = [
       page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
       teaser.getByRole('img'),
+      teaser.getByRole('heading', { level: 2 }),
       teaser.getByRole('link', { name: 'View projects' }),
       width <= 700 ? page.getByRole('button', { name: 'Menu' }) : page.getByRole('navigation', { name: 'Site' }),
       page.getByRole('navigation', { name: 'Social and about' }),
@@ -247,6 +274,7 @@ test('the Poké Balls stay in empty spots of the glass at in-between window widt
         `${where} is not inside the glass`,
       ).toBe(true);
       for (const other of clear) expect(overlaps(rect, await box(other)), `${where} overlaps an element`).toBe(false);
+      expect(overlaps(rect, await textBox(subline)), `${where} overlaps the subline text`).toBe(false);
       const covered = await ball.evaluate((el) => {
         const r = el.getBoundingClientRect();
         const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
@@ -254,6 +282,7 @@ test('the Poké Balls stay in empty spots of the glass at in-between window widt
       });
       expect(covered, `${where} is covered`).toBe(false);
     }
+    await expectSpread(balls, 150, `at ${width}px`);
   }
 });
 
