@@ -27,12 +27,6 @@ updates:
         update-types: [minor, patch]
     # Majors that cannot install yet (npm ci stops on a peer conflict). Remove each entry once unblocked.
     ignore:
-      # eslint-plugin-jsx-a11y only supports ESLint up to 9, and @eslint/js 10 belongs with ESLint 10.
-      # Tracked in issue #9; eslint and @eslint/js must be upgraded together.
-      - dependency-name: eslint
-        versions: ['>=10']
-      - dependency-name: '@eslint/js'
-        versions: ['>=10']
       # typescript-eslint supports TypeScript below 6.1 only (6.0 is still allowed).
       - dependency-name: typescript
         versions: ['>=6.1.0']
