@@ -14,7 +14,7 @@ npm run build      # production build into dist/
 npm run e2e        # real-browser tests with Playwright (see .claude/skills/site-e2e)
 ```
 
-Node 22 or newer (see `.nvmrc`).
+Node 24 or newer (see `.nvmrc`).
 
 ## Layout
 
