@@ -180,7 +180,22 @@ test.describe('the matrix colour is the site theme', () => {
       await expect
         .poll(() => style(bar.getByRole('button', { name: 'Skills' }), 'color'), { timeout: 3000 })
         .toBe(rgb(theme.accent));
+      await bar.getByRole('link', { name: 'Email Wesley' }).hover();
+      await expect
+        .poll(() => style(bar.getByRole('link', { name: 'Email Wesley' }), 'color'), { timeout: 3000 })
+        .toBe(rgb(theme.accent));
     }
+  });
+
+  test('the featured project button follows the theme accent', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openSite(page);
+    await nextColour(page);
+    await expect.poll(() => themeName(page)).toBe('red');
+
+    const link = page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' });
+    await link.scrollIntoViewIfNeeded();
+    await expect.poll(() => style(link, 'backgroundColor')).toBe(rgb(RED.accent));
   });
 });
 

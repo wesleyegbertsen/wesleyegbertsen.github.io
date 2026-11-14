@@ -18,7 +18,8 @@ export function HomePage() {
         <Pokeballs />
         <Logo catVisible={cat.visible} onClick={cat.toggleVisible} />
         <h1 className={styles.name}>Wesley Egbertsen</h1>
-        <p className={styles.subline}>Full-stack .NET &amp; Azure developer · I also build open-source apps</p>
+        {/* The no-break space keeps the dot on the first line when the text wraps. */}
+        <p className={styles.subline}>Full-stack .NET &amp; Azure developer&nbsp;· I also build open-source apps</p>
         <Pikachu />
         {featured && <FeaturedProject project={featured} />}
       </main>

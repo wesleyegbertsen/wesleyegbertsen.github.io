@@ -8,9 +8,61 @@ test('loads cleanly with every part of the page', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Wesley Egbertsen logo' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Poké Ball \d$/ })).toHaveCount(4);
   await expect(page.getByRole('button', { name: 'Game Boy' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Email Wesley' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Social and about' })).toBeVisible();
+  const bar = page.getByRole('navigation', { name: 'Social and about' });
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole('link', { name: 'Email Wesley' })).toHaveAttribute(
+    'href',
+    'mailto:wesleyegbertsen@gmail.com',
+  );
+  await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
+  await expect(page.getByText('Full-stack .NET & Azure developer · I also build open-source apps')).toBeVisible();
+
+  const featured = page.getByRole('region', { name: 'CardiPaw' });
+  await featured.scrollIntoViewIfNeeded();
+  await expect(featured).toBeVisible();
+  await expect
+    .poll(() => featured.getByRole('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
   expect(errors).toEqual([]);
+});
+
+test("the featured project's View projects link opens the projects page", async ({ page }) => {
+  await openSite(page);
+  const link = page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' });
+  await link.scrollIntoViewIfNeeded();
+  await link.click();
+
+  await expect(page).toHaveURL(/#\/projects$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+});
+
+test('the intro and the featured project fit and leave every Poké Ball reachable', async ({ page }) => {
+  await openSite(page);
+
+  for (const target of [
+    page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }),
+    page.getByRole('region', { name: 'CardiPaw' }),
+  ]) {
+    await target.scrollIntoViewIfNeeded();
+    await expect(target).toBeInViewport();
+  }
+  const sideways = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(sideways).toBeLessThanOrEqual(0);
+
+  // Each ball must be the topmost element at its own centre, i.e. not covered by the intro or teaser.
+  const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  for (let i = 0; i < 4; i++) {
+    const ball = balls.nth(i);
+    await ball.scrollIntoViewIfNeeded();
+    const covered = await ball.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return top !== el && !el.contains(top);
+    });
+    expect(covered, `Poké Ball ${i + 1} is covered`).toBe(false);
+  }
 });
 
 test('does not scroll sideways and allows zoom', async ({ page }) => {

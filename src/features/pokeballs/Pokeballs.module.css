@@ -13,6 +13,8 @@
   -webkit-tap-highlight-color: transparent;
 
   position: absolute;
+  /* Above the intro and the teaser, so a ball is never covered. */
+  z-index: 1;
   display: block;
   width: 32px;
   height: 32px;
@@ -44,11 +46,11 @@
 }
 
 .ball3 {
-  right: 20%;
-  top: 3%;
+  right: 6%;
+  top: 38%;
 }
 
 .ball4 {
-  right: 10%;
-  bottom: 25%;
+  right: 3%;
+  bottom: 3%;
 }

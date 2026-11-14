@@ -70,7 +70,9 @@ test.describe('projects page', () => {
     expect(await page.evaluate(() => localStorage.getItem('currentMatrixFontColorIndex'))).toBe('1');
 
     await expect(page.getByRole('button', { name: 'Game Boy' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Email Wesley' })).toBeVisible();
+    await expect(
+      page.getByRole('navigation', { name: 'Social and about' }).getByRole('link', { name: 'Email Wesley' }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Skills' }).click();
     await expect(page.getByRole('dialog', { name: 'My Technical Skills' })).toBeVisible();
@@ -174,12 +176,13 @@ test.describe('site menu', () => {
       expect(3 >= nav.x && 3 <= nav.x + nav.width && 3 >= nav.y && 3 <= nav.y + nav.height).toBe(false);
 
       const others = [
-        page.getByRole('link', { name: 'Email Wesley' }),
         page.getByRole('navigation', { name: 'Social and about' }),
         page.getByRole('button', { name: 'Game Boy' }),
         ...(path === '/'
           ? [
               page.getByRole('button', { name: 'Wesley Egbertsen logo' }),
+              page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }),
+              page.getByRole('region', { name: 'CardiPaw' }),
               page.getByRole('button', { name: 'Pikachu' }),
               page.getByRole('button', { name: /^Poké Ball \d$/ }).first(),
               page.getByRole('button', { name: /^Poké Ball \d$/ }).last(),
