@@ -1,0 +1,59 @@
+/* The terminal sits inside the glass panel: a scrolling log, then the prompt line. Colours come from the theme tokens. */
+.terminal {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* A fixed height, the size the help text fills: the panel never grows or shrinks with the output, which scrolls instead. */
+.log {
+  height: min(55vh, 28rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prompt {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.6ch;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.form:focus-within {
+  border-top-color: var(--accent);
+}
+
+/* 16px or more, so iOS does not zoom the page when the input gets focus. */
+.input {
+  flex: 1 1 8ch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: max(16px, 1rem);
+  caret-color: var(--accent);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

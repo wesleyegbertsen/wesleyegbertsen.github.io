@@ -5,11 +5,19 @@ import { ThemeProvider } from './ThemeProvider.tsx';
 import { useTheme } from './ThemeContext.ts';
 
 function Consumer() {
-  const { index, theme, cycle } = useTheme();
+  const { index, theme, cycle, select } = useTheme();
   return (
-    <button type="button" onClick={cycle}>
-      {index}:{theme.name}
-    </button>
+    <>
+      <button type="button" onClick={cycle}>
+        {index}:{theme.name}
+      </button>
+      <button type="button" onClick={() => select(2)}>
+        pick blue
+      </button>
+      <button type="button" onClick={() => select(9)}>
+        pick nothing
+      </button>
+    </>
   );
 }
 
@@ -31,35 +39,52 @@ afterEach(() => {
 describe('ThemeProvider', () => {
   it('starts on green and puts it on the page root', () => {
     setup();
-    expect(screen.getByRole('button')).toHaveTextContent('0:green');
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('0:green');
     expect(document.documentElement.dataset.theme).toBe('green');
   });
 
   it('starts on the stored theme', () => {
     localStorage.setItem('currentMatrixFontColorIndex', '3');
     setup();
-    expect(screen.getByRole('button')).toHaveTextContent('3:white');
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('3:white');
     expect(document.documentElement.dataset.theme).toBe('white');
   });
 
   it('ignores an invalid stored value, and the first cycle stores 1', async () => {
     localStorage.setItem('currentMatrixFontColorIndex', '9');
     setup();
-    expect(screen.getByRole('button')).toHaveTextContent('0:green');
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('0:green');
 
-    await userEvent.click(screen.getByRole('button'));
+    await userEvent.click(screen.getByRole('button', { name: /^\d:/ }));
 
     expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
-    expect(screen.getByRole('button')).toHaveTextContent('1:red');
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('1:red');
     expect(document.documentElement.dataset.theme).toBe('red');
   });
 
   it('wraps around after the last theme', async () => {
     localStorage.setItem('currentMatrixFontColorIndex', '3');
     setup();
-    await userEvent.click(screen.getByRole('button'));
-    expect(screen.getByRole('button')).toHaveTextContent('0:green');
+    await userEvent.click(screen.getByRole('button', { name: /^\d:/ }));
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('0:green');
     expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('0');
+  });
+});
+
+describe('select', () => {
+  it('sets a theme by index and stores it', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'pick blue' }));
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('2:blue');
+    expect(document.documentElement.dataset.theme).toBe('blue');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('2');
+  });
+
+  it('ignores an index that is not a theme', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'pick nothing' }));
+    expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('0:green');
+    expect(document.documentElement.dataset.theme).toBe('green');
   });
 });
 

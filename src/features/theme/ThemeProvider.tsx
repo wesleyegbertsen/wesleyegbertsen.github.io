@@ -21,6 +21,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     index,
     theme: THEMES[index] ?? THEMES[0]!,
     cycle: () => setIndex(nextColorIndex(index)),
+    select: (next: number) => {
+      const valid = parseColorIndex(String(next));
+      if (valid !== undefined) setIndex(valid);
+    },
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

@@ -46,7 +46,8 @@ export async function stubYouTube(page: Page) {
 /**
  * Opens the site with audio recording on, YouTube stubbed, and fails on console errors.
  * `path` is where to go (the site routes by hash, for example `/#/projects`); the page is ready when
- * its own content shows: the Projects heading on the projects page, the name heading everywhere else.
+ * its own content shows: the Projects heading on the projects page, the Terminal heading on the terminal page,
+ * the name heading everywhere else.
  */
 export async function openSite(page: Page, path = '/') {
   const errors: string[] = [];
@@ -59,6 +60,8 @@ export async function openSite(page: Page, path = '/') {
   await page.goto(path);
   if (path.includes('#/projects')) {
     await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+  } else if (path.includes('#/terminal')) {
+    await expect(page.getByRole('heading', { level: 1, name: 'Terminal' })).toBeVisible();
   } else {
     await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
   }

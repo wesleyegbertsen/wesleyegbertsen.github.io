@@ -1,0 +1,23 @@
+.page {
+  /* Full width, so the panel is as wide as it can be from the start (up to its max) and does not grow with the output. */
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  /* The same padding as the Projects page: room for the left menu and the fixed social bar, the panel centred in the window, and presses on the padding fall through to the backdrop. */
+  padding: 120px 170px;
+  pointer-events: none;
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 1.8rem;
+  /* The panel's accent colour, so the title reads as the head of the shell. */
+  color: var(--accent);
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 120px 4%;
+  }
+}

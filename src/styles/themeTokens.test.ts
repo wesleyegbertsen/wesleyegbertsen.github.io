@@ -12,6 +12,8 @@ const MODULES = [
   'src/components/FeaturedProject.module.css',
   'src/styles/glass.css',
   'src/pages/HomePage.module.css',
+  'src/pages/TerminalPage.module.css',
+  'src/features/terminal/Terminal.module.css',
 ];
 
 /** Hard-coded accent colours from before the theme: none may be left in a themed module. */

@@ -77,6 +77,25 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'Cat', hidden: true })).not.toBeInTheDocument();
   });
 
+  it('shows the terminal with the shared menu and bottom icons, without the home content', () => {
+    renderAt('/terminal');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Terminal' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Command' })).toBeInTheDocument();
+    const menu = screen.getByRole('navigation', { name: 'Site' });
+    expect(within(menu).getByRole('link', { name: 'Terminal' })).toHaveAttribute('aria-current', 'page');
+    expectBottomIcons();
+    expect(screen.queryByRole('button', { name: 'Wesley Egbertsen' })).not.toBeInTheDocument();
+  });
+
+  it('opens the terminal from the menu', async () => {
+    renderAt('/');
+
+    await userEvent.click(within(screen.getByRole('navigation', { name: 'Site' })).getByRole('link', { name: 'Terminal' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Terminal' })).toBeInTheDocument();
+  });
+
   it('sends an unknown address to the home page', () => {
     renderAt('/nope');
 

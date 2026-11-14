@@ -6,6 +6,8 @@ export type ThemeState = {
   theme: Theme;
   /** Move to the next theme (and the next rain colour with it). */
   cycle: () => void;
+  /** Move to the theme at `index`. An index that is not a theme is ignored. */
+  select: (index: number) => void;
 };
 
 export const ThemeContext = createContext<ThemeState | null>(null);

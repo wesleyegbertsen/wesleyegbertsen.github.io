@@ -3,6 +3,7 @@ import { Cat } from '../features/cat/Cat.tsx';
 import { CatToggle } from '../features/cat/CatToggle.tsx';
 import { useCat } from '../features/cat/useCat.ts';
 import { Pokeballs } from '../features/pokeballs/Pokeballs.tsx';
+import { profile } from '../data/profile.ts';
 import { projects } from '../data/projects.ts';
 import '../styles/glass.css';
 import styles from './HomePage.module.css';
@@ -18,11 +19,13 @@ export function HomePage() {
         <div className={`glass-panel ${styles.glass}`}>
           <h1 className={styles.name}>
             <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
-              Wesley Egbertsen
+              {profile.name}
             </CatToggle>
           </h1>
           {/* The no-break space keeps the dot on the first line when the text wraps. */}
-          <p className={styles.subline}>Full-stack Azure .NET Developer&nbsp;· I also build open-source apps</p>
+          <p className={styles.subline}>
+            {profile.role}&nbsp;· {profile.tagline}
+          </p>
           {featured && <FeaturedProject project={featured} />}
           {/* Last, so Tab reaches the name and the project link first; the balls are absolutely positioned inside the glass. */}
           <Pokeballs />
