@@ -13,6 +13,7 @@ export const skills: Skill[] = [
   { id: 'azure', name: 'Azure' },
   { id: 'azure-devops', name: 'Azure DevOps' },
   { id: 'git', name: 'Git' },
+  { id: 'github', name: 'GitHub' },
   { id: 'ci-cd', name: 'CI/CD' },
   { id: 'javascript', name: 'JavaScript' },
   { id: 'html', name: 'HTML' },

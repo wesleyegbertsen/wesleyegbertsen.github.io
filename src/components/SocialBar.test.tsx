@@ -16,7 +16,8 @@ describe('social bar panels', () => {
 
     expect(button).toHaveAttribute('aria-expanded', 'true');
     const dialog = screen.getByRole('dialog', { name: 'My Technical Skills' });
-    expect(within(dialog).getAllByRole('listitem')).toHaveLength(15);
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(16);
+    expect(within(dialog).getByText('GitHub')).toBeInTheDocument();
     expect(within(dialog).getByText(/Images & LoRA training/)).toBeInTheDocument();
   });
 

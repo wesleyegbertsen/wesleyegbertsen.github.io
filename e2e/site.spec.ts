@@ -41,7 +41,8 @@ test.describe('panels', () => {
 
     const dialog = page.getByRole('dialog', { name: 'My Technical Skills' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('listitem')).toHaveCount(15);
+    await expect(dialog.getByRole('listitem')).toHaveCount(16);
+    await expect(dialog.getByText('GitHub', { exact: true })).toBeVisible();
     await expect(dialog).toBeInViewport({ ratio: 1 });
 
     await page.keyboard.press('Escape');
