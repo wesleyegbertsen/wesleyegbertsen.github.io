@@ -2,180 +2,1013 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "wesleyegbertsen.nl: routed React site and delivery pipeline",
+    "title": "wesleyegbertsen.nl: routed, themed React site and delivery pipeline",
     "output": "docs/architecture/overview.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "a1da1cb080707c62abdf56bd3fa0093b87c97db3"
+      "revision": "a306a50ddb5362ec25c6cdb8b73a8fe0b305d19d"
     },
     "legend": {
       "entries": {
-        "frontend": { "label": "UI (React components)" },
-        "backend": { "label": "Hooks and tooling" },
-        "database": { "label": "Browser storage and bundled data" },
-        "cloud": { "label": "Hosting and CI" },
-        "external": { "label": "Outside this repo" }
+        "frontend": {
+          "label": "UI (React components)"
+        },
+        "backend": {
+          "label": "Hooks and tooling"
+        },
+        "database": {
+          "label": "Browser storage and bundled data"
+        },
+        "cloud": {
+          "label": "Hosting and CI"
+        },
+        "external": {
+          "label": "Outside this repo"
+        }
       }
     }
   },
   "components": [
-    { "id": "visitor", "type": "external", "label": "Visitor", "sublabel": "Browser / phone", "pos": [40, 40], "size": [120, 60] },
     {
-      "id": "pages", "type": "cloud", "label": "GitHub Pages", "sublabel": "www.wesleyegbertsen.nl", "pos": [220, 40], "size": [160, 60],
-      "sources": [{ "path": ".github/workflows/deploy.yml", "line": 78, "end_line": 95, "label": "deploy job" }]
-    },
-    {
-      "id": "entry", "type": "frontend", "label": "Entry and router", "sublabel": "index.html, HashRouter", "pos": [470, 40], "size": [170, 60],
-      "sources": [
-        { "path": "index.html", "line": 11, "end_line": 12, "label": "root and module script" },
-        { "path": "src/main.tsx", "line": 7, "end_line": 13, "label": "createRoot with HashRouter" }
+      "id": "visitor",
+      "type": "external",
+      "label": "Visitor",
+      "sublabel": "Browser / phone",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        100,
+        60
       ]
     },
     {
-      "id": "app", "type": "frontend", "label": "App layout", "sublabel": "shared shell and routes", "pos": [740, 40], "size": [170, 60],
-      "sources": [{ "path": "src/App.tsx", "line": 10, "end_line": 26, "label": "shared layout and Routes" }]
-    },
-    {
-      "id": "menu", "type": "frontend", "label": "Site menu", "sublabel": "left list, Menu button under 700px", "pos": [40, 190], "size": [170, 60],
+      "id": "pages",
+      "type": "cloud",
+      "label": "GitHub Pages",
+      "sublabel": "custom domain",
+      "pos": [
+        40,
+        330
+      ],
+      "size": [
+        110,
+        60
+      ],
       "sources": [
-        { "path": "src/components/SiteMenu.tsx", "line": 28, "end_line": 35, "label": "collapsed when narrow" },
-        { "path": "src/components/SiteMenu.tsx", "line": 61, "end_line": 94, "label": "wide list or collapsed toggle" }
+        {
+          "path": ".github/workflows/deploy.yml",
+          "line": 78,
+          "end_line": 95,
+          "label": "deploy job"
+        }
       ]
     },
     {
-      "id": "matrix", "type": "frontend", "label": "Matrix backdrop", "sublabel": "canvas rain, colour cycle", "pos": [260, 190], "size": [150, 60],
+      "id": "entry",
+      "type": "frontend",
+      "label": "Entry and router",
+      "sublabel": "index.html, HashRouter",
+      "pos": [
+        210,
+        330
+      ],
+      "size": [
+        150,
+        70
+      ],
       "sources": [
-        { "path": "src/features/matrix/MatrixBackdrop.tsx", "line": 8, "end_line": 14, "label": "stored colour and click to cycle" },
-        { "path": "src/features/matrix/useMatrixRain.ts", "line": 51, "end_line": 67, "label": "rAF frame, start and stop" }
+        {
+          "path": "index.html",
+          "line": 11,
+          "end_line": 12,
+          "label": "root and module script"
+        },
+        {
+          "path": "src/main.tsx",
+          "line": 9,
+          "end_line": 20,
+          "label": "applyTheme, render in HashRouter, enable fade"
+        }
       ]
     },
     {
-      "id": "home", "type": "frontend", "label": "Home page", "sublabel": "route /", "pos": [470, 190], "size": [150, 60],
-      "sources": [{ "path": "src/pages/HomePage.tsx", "line": 9, "end_line": 22, "label": "logo, Pikachu, Poke Balls, cat" }]
-    },
-    {
-      "id": "projectspage", "type": "frontend", "label": "Projects page", "sublabel": "route /projects", "pos": [690, 190], "size": [150, 60],
-      "sources": [{ "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 16, "label": "a card per project" }]
-    },
-    {
-      "id": "social", "type": "frontend", "label": "Social bar", "sublabel": "skills, experience, education panels", "pos": [910, 190], "size": [190, 60],
+      "id": "app",
+      "type": "frontend",
+      "label": "App layout",
+      "sublabel": "shared shell and routes",
+      "pos": [
+        470,
+        330
+      ],
+      "size": [
+        170,
+        70
+      ],
       "sources": [
-        { "path": "src/components/SocialBar.tsx", "line": 11, "end_line": 20, "label": "one panel open at a time" },
-        { "path": "src/components/SocialBar.tsx", "line": 83, "end_line": 100, "label": "skills, experience, education panels" }
+        {
+          "path": "src/App.tsx",
+          "line": 11,
+          "end_line": 27,
+          "label": "ThemeProvider around the shell and Routes"
+        }
       ]
     },
     {
-      "id": "gameboy", "type": "frontend", "label": "Game Boy", "sublabel": "always mounted", "pos": [1170, 190], "size": [130, 60],
-      "sources": [{ "path": "src/features/gameboy/GameBoy.tsx", "line": 28, "end_line": 43, "label": "button and hidden iframe" }]
-    },
-    {
-      "id": "navdata", "type": "database", "label": "Navigation data", "sublabel": "Home, Projects", "pos": [40, 340], "size": [170, 60],
-      "sources": [{ "path": "src/data/navigation.ts", "line": 1, "end_line": 12, "label": "navItems" }]
-    },
-    {
-      "id": "hooks", "type": "backend", "label": "Hooks", "sublabel": "useAudio, useLocalStorage, useMediaQuery", "pos": [260, 340], "size": [170, 70],
+      "id": "themeprov",
+      "type": "frontend",
+      "label": "ThemeProvider",
+      "sublabel": "one colour index, useTheme()",
+      "pos": [
+        470,
+        170
+      ],
+      "size": [
+        170,
+        70
+      ],
       "sources": [
-        { "path": "src/hooks/useAudio.ts", "line": 29, "end_line": 38, "label": "new Audio per play" },
-        { "path": "src/hooks/useLocalStorage.ts", "line": 21, "end_line": 34, "label": "state backed by storage" },
-        { "path": "src/hooks/useMediaQuery.ts", "line": 4, "end_line": 16, "label": "matchMedia subscription" }
+        {
+          "path": "src/features/theme/ThemeProvider.tsx",
+          "line": 8,
+          "end_line": 27,
+          "label": "index from storage, layout effect, cycle"
+        },
+        {
+          "path": "src/features/theme/ThemeContext.ts",
+          "line": 4,
+          "end_line": 17,
+          "label": "ThemeState and useTheme"
+        }
       ]
     },
     {
-      "id": "eggs", "type": "frontend", "label": "Easter eggs", "sublabel": "Pikachu, Poke Balls, cat", "pos": [470, 340], "size": [150, 60],
+      "id": "matrix",
+      "type": "frontend",
+      "label": "Matrix backdrop",
+      "sublabel": "rain, click cycles theme",
+      "pos": [
+        210,
+        170
+      ],
+      "size": [
+        160,
+        60
+      ],
       "sources": [
-        { "path": "src/features/pikachu/Pikachu.tsx", "line": 8, "end_line": 15, "label": "Pikachu cry on click" },
-        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 15, "end_line": 30, "label": "Poke Balls and sounds" },
-        { "path": "src/features/cat/useCat.ts", "line": 10, "end_line": 30, "label": "cat and rap" }
+        {
+          "path": "src/features/matrix/MatrixBackdrop.tsx",
+          "line": 6,
+          "end_line": 21,
+          "label": "index and cycle from useTheme"
+        },
+        {
+          "path": "src/features/matrix/useMatrixRain.ts",
+          "line": 51,
+          "end_line": 67,
+          "label": "rAF frame, start and stop"
+        }
       ]
     },
     {
-      "id": "card", "type": "frontend", "label": "Project card", "sublabel": "text, chips, screenshots, links", "pos": [690, 340], "size": [170, 60],
-      "sources": [{ "path": "src/components/ProjectCard.tsx", "line": 8, "end_line": 41, "label": "card with built-with chips and screenshots" }]
-    },
-    {
-      "id": "contentdata", "type": "database", "label": "Panel content data", "sublabel": "skills, experience, education", "pos": [930, 340], "size": [170, 60],
+      "id": "menu",
+      "type": "frontend",
+      "label": "Site menu",
+      "sublabel": "list, Menu button under 700px",
+      "pos": [
+        190,
+        480
+      ],
+      "size": [
+        150,
+        60
+      ],
       "sources": [
-        { "path": "src/data/skills.ts", "line": 7, "end_line": 24, "label": "skills list" },
-        { "path": "src/data/experience.ts", "line": 12, "end_line": 22, "label": "jobs, newest first" },
-        { "path": "src/components/EducationTimeline.tsx", "line": 4, "end_line": 18, "label": "education list" }
+        {
+          "path": "src/components/SiteMenu.tsx",
+          "line": 28,
+          "end_line": 35,
+          "label": "collapsed when narrow"
+        },
+        {
+          "path": "src/components/SiteMenu.tsx",
+          "line": 61,
+          "end_line": 94,
+          "label": "wide list or collapsed toggle"
+        }
       ]
     },
     {
-      "id": "youtube", "type": "external", "label": "YouTube player", "sublabel": "hidden video", "pos": [1170, 340], "size": [130, 60],
-      "sources": [{ "path": "src/features/gameboy/GameBoy.tsx", "line": 33, "end_line": 40, "label": "iframe, always mounted" }]
-    },
-    {
-      "id": "storage", "type": "database", "label": "localStorage", "sublabel": "colour index 0-3", "pos": [260, 490], "size": [150, 60],
+      "id": "home",
+      "type": "frontend",
+      "label": "Home page",
+      "sublabel": "route /",
+      "pos": [
+        360,
+        480
+      ],
+      "size": [
+        140,
+        60
+      ],
       "sources": [
-        { "path": "src/hooks/useLocalStorage.ts", "line": 11, "label": "getItem" },
-        { "path": "src/hooks/useLocalStorage.ts", "line": 28, "label": "setItem" }
+        {
+          "path": "src/pages/HomePage.tsx",
+          "line": 9,
+          "end_line": 22,
+          "label": "logo, Pikachu, Poke Balls, cat"
+        }
       ]
     },
     {
-      "id": "assets", "type": "database", "label": "Assets", "sublabel": "images, sounds", "pos": [470, 490], "size": [150, 60],
-      "sources": [{ "path": "src/assets/index.ts", "line": 17, "end_line": 26, "label": "bundled URLs" }]
-    },
-    {
-      "id": "projectdata", "type": "database", "label": "Project data", "sublabel": "projects.ts, screenshots", "pos": [690, 490], "size": [170, 60],
-      "sources": [{ "path": "src/data/projects.ts", "line": 14, "end_line": 49, "label": "Project type and CardiPaw entry" }]
-    },
-    { "id": "dev", "type": "external", "label": "Developer", "sublabel": "push / pull request", "pos": [40, 700], "size": [120, 60] },
-    {
-      "id": "actions", "type": "cloud", "label": "GitHub Actions", "sublabel": "deploy.yml", "pos": [220, 700], "size": [160, 60],
-      "sources": [{ "path": ".github/workflows/deploy.yml", "line": 1, "end_line": 12, "label": "triggers and jobs" }]
-    },
-    {
-      "id": "check", "type": "backend", "label": "Checks", "sublabel": "tsc, eslint, vitest", "pos": [480, 620], "size": [200, 60],
+      "id": "projectspage",
+      "type": "frontend",
+      "label": "Projects page",
+      "sublabel": "route /projects",
+      "pos": [
+        530,
+        480
+      ],
+      "size": [
+        140,
+        60
+      ],
       "sources": [
-        { "path": ".github/workflows/deploy.yml", "line": 14, "end_line": 26, "label": "check job steps" },
-        { "path": "vite.config.ts", "line": 8, "end_line": 14, "label": "Vitest config" }
+        {
+          "path": "src/pages/ProjectsPage.tsx",
+          "line": 6,
+          "end_line": 16,
+          "label": "a card per project"
+        }
       ]
     },
     {
-      "id": "build", "type": "backend", "label": "Build", "sublabel": "tsc, vite build, dist artifact", "pos": [480, 730], "size": [200, 60],
+      "id": "social",
+      "type": "frontend",
+      "label": "Social bar",
+      "sublabel": "skills, jobs, education panels",
+      "pos": [
+        700,
+        480
+      ],
+      "size": [
+        150,
+        60
+      ],
       "sources": [
-        { "path": ".github/workflows/deploy.yml", "line": 28, "end_line": 50, "label": "build job and artifacts" },
-        { "path": "package.json", "line": 11, "label": "build script" }
+        {
+          "path": "src/components/SocialBar.tsx",
+          "line": 11,
+          "end_line": 20,
+          "label": "one panel open at a time"
+        },
+        {
+          "path": "src/components/SocialBar.tsx",
+          "line": 83,
+          "end_line": 100,
+          "label": "skills, experience, education panels"
+        }
       ]
     },
     {
-      "id": "e2e", "type": "backend", "label": "Playwright e2e", "sublabel": "Chromium, desktop + mobile", "pos": [760, 730], "size": [210, 60],
+      "id": "gameboy",
+      "type": "frontend",
+      "label": "Game Boy",
+      "sublabel": "always mounted",
+      "pos": [
+        880,
+        480
+      ],
+      "size": [
+        110,
+        60
+      ],
       "sources": [
-        { "path": ".github/workflows/deploy.yml", "line": 52, "end_line": 70, "label": "e2e job steps" },
-        { "path": "playwright.config.ts", "line": 22, "end_line": 34, "label": "projects and web server" },
-        { "path": "e2e/projects.spec.ts", "line": 24, "end_line": 42, "label": "projects deep link test" }
+        {
+          "path": "src/features/gameboy/GameBoy.tsx",
+          "line": 28,
+          "end_line": 43,
+          "label": "button and hidden iframe"
+        }
+      ]
+    },
+    {
+      "id": "navdata",
+      "type": "database",
+      "label": "Navigation data",
+      "sublabel": "Home, Projects",
+      "pos": [
+        190,
+        620
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/data/navigation.ts",
+          "line": 1,
+          "end_line": 12,
+          "label": "navItems"
+        }
+      ]
+    },
+    {
+      "id": "eggs",
+      "type": "frontend",
+      "label": "Easter eggs",
+      "sublabel": "Pikachu, Poke Balls, cat",
+      "pos": [
+        360,
+        620
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/features/pikachu/Pikachu.tsx",
+          "line": 8,
+          "end_line": 15,
+          "label": "Pikachu cry on click"
+        },
+        {
+          "path": "src/features/pokeballs/Pokeballs.tsx",
+          "line": 15,
+          "end_line": 30,
+          "label": "Poke Balls and sounds"
+        },
+        {
+          "path": "src/features/cat/useCat.ts",
+          "line": 10,
+          "end_line": 30,
+          "label": "cat and rap"
+        }
+      ]
+    },
+    {
+      "id": "card",
+      "type": "frontend",
+      "label": "Project card",
+      "sublabel": "chips, screenshots, links",
+      "pos": [
+        530,
+        620
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/components/ProjectCard.tsx",
+          "line": 8,
+          "end_line": 41,
+          "label": "card with built-with chips and screenshots"
+        }
+      ]
+    },
+    {
+      "id": "contentdata",
+      "type": "database",
+      "label": "Panel content data",
+      "sublabel": "skills, jobs, education",
+      "pos": [
+        700,
+        620
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/data/skills.ts",
+          "line": 7,
+          "end_line": 24,
+          "label": "skills list"
+        },
+        {
+          "path": "src/data/experience.ts",
+          "line": 12,
+          "end_line": 22,
+          "label": "jobs, newest first"
+        },
+        {
+          "path": "src/components/EducationTimeline.tsx",
+          "line": 4,
+          "end_line": 18,
+          "label": "education list"
+        }
+      ]
+    },
+    {
+      "id": "youtube",
+      "type": "external",
+      "label": "YouTube player",
+      "sublabel": "hidden video",
+      "pos": [
+        880,
+        620
+      ],
+      "size": [
+        110,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/features/gameboy/GameBoy.tsx",
+          "line": 33,
+          "end_line": 40,
+          "label": "iframe, always mounted"
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "type": "backend",
+      "label": "Hooks",
+      "sublabel": "audio, storage, media query",
+      "pos": [
+        190,
+        780
+      ],
+      "size": [
+        150,
+        70
+      ],
+      "sources": [
+        {
+          "path": "src/hooks/useAudio.ts",
+          "line": 29,
+          "end_line": 38,
+          "label": "new Audio per play"
+        },
+        {
+          "path": "src/hooks/useLocalStorage.ts",
+          "line": 9,
+          "end_line": 34,
+          "label": "readStored and state backed by storage"
+        },
+        {
+          "path": "src/hooks/useMediaQuery.ts",
+          "line": 4,
+          "end_line": 16,
+          "label": "matchMedia subscription"
+        }
+      ]
+    },
+    {
+      "id": "assets",
+      "type": "database",
+      "label": "Assets",
+      "sublabel": "images, sounds",
+      "pos": [
+        360,
+        780
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/assets/index.ts",
+          "line": 17,
+          "end_line": 26,
+          "label": "bundled URLs"
+        }
+      ]
+    },
+    {
+      "id": "projectdata",
+      "type": "database",
+      "label": "Project data",
+      "sublabel": "projects.ts, screenshots",
+      "pos": [
+        530,
+        780
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/data/projects.ts",
+          "line": 14,
+          "end_line": 49,
+          "label": "Project type and CardiPaw entry"
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "database",
+      "label": "localStorage",
+      "sublabel": "colour index 0-3 (the theme)",
+      "pos": [
+        190,
+        920
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/hooks/useLocalStorage.ts",
+          "line": 11,
+          "label": "getItem"
+        },
+        {
+          "path": "src/hooks/useLocalStorage.ts",
+          "line": 28,
+          "label": "setItem"
+        }
+      ]
+    },
+    {
+      "id": "themes",
+      "type": "database",
+      "label": "Theme palettes",
+      "sublabel": "themes.ts, contrast.ts",
+      "pos": [
+        700,
+        170
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/features/theme/themes.ts",
+          "line": 19,
+          "end_line": 32,
+          "label": "one theme per matrix colour"
+        },
+        {
+          "path": "src/features/theme/contrast.ts",
+          "line": 11,
+          "end_line": 16,
+          "label": "WCAG contrast ratio"
+        }
+      ]
+    },
+    {
+      "id": "applytheme",
+      "type": "backend",
+      "label": "applyTheme",
+      "sublabel": "theme name and tokens on html",
+      "pos": [
+        740,
+        40
+      ],
+      "size": [
+        150,
+        70
+      ],
+      "sources": [
+        {
+          "path": "src/features/theme/applyTheme.ts",
+          "line": 5,
+          "end_line": 14,
+          "label": "sets data-theme and --accent tokens"
+        },
+        {
+          "path": "src/features/theme/applyTheme.ts",
+          "line": 16,
+          "end_line": 19,
+          "label": "readStoredThemeIndex"
+        },
+        {
+          "path": "src/features/theme/applyTheme.ts",
+          "line": 21,
+          "end_line": 27,
+          "label": "enableThemeFade after first paint"
+        }
+      ]
+    },
+    {
+      "id": "tokens",
+      "type": "database",
+      "label": "Theme tokens",
+      "sublabel": "--accent and four more",
+      "pos": [
+        470,
+        40
+      ],
+      "size": [
+        170,
+        70
+      ],
+      "sources": [
+        {
+          "path": "src/features/theme/theme.css",
+          "line": 6,
+          "end_line": 34,
+          "label": "registered colour properties, green defaults"
+        },
+        {
+          "path": "src/features/theme/theme.css",
+          "line": 36,
+          "end_line": 49,
+          "label": "0.4s fade after first paint"
+        }
+      ]
+    },
+    {
+      "id": "modules",
+      "type": "frontend",
+      "label": "Themed CSS modules",
+      "sublabel": "seven CSS modules read them",
+      "pos": [
+        210,
+        40
+      ],
+      "size": [
+        200,
+        70
+      ],
+      "sources": [
+        {
+          "path": "src/components/SiteMenu.module.css",
+          "line": 64,
+          "end_line": 72,
+          "label": "link accent and glow"
+        },
+        {
+          "path": "src/components/ProjectCard.module.css",
+          "line": 56,
+          "end_line": 61,
+          "label": "primary button"
+        },
+        {
+          "path": "src/components/SkillsChips.module.css",
+          "line": 10,
+          "end_line": 14,
+          "label": "chip colours"
+        }
+      ]
+    },
+    {
+      "id": "themetests",
+      "type": "backend",
+      "label": "Theme tests",
+      "sublabel": "token and e2e specs",
+      "pos": [
+        880,
+        170
+      ],
+      "size": [
+        110,
+        70
+      ],
+      "sources": [
+        {
+          "path": "src/styles/themeTokens.test.ts",
+          "line": 30,
+          "end_line": 36,
+          "label": "modules read tokens, no old accents"
+        },
+        {
+          "path": "e2e/theme.spec.ts",
+          "line": 32,
+          "end_line": 42,
+          "label": "click moves theme and menu"
+        },
+        {
+          "path": "e2e/theme.spec.ts",
+          "line": 106,
+          "end_line": 126,
+          "label": "stored theme before React renders"
+        }
+      ]
+    },
+    {
+      "id": "dev",
+      "type": "external",
+      "label": "Developer",
+      "sublabel": "push / PR",
+      "pos": [
+        40,
+        1100
+      ],
+      "size": [
+        100,
+        60
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "deploy.yml",
+      "pos": [
+        40,
+        980
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": ".github/workflows/deploy.yml",
+          "line": 1,
+          "end_line": 12,
+          "label": "triggers and jobs"
+        }
+      ]
+    },
+    {
+      "id": "check",
+      "type": "backend",
+      "label": "Checks",
+      "sublabel": "tsc, eslint, vitest",
+      "pos": [
+        360,
+        960
+      ],
+      "size": [
+        170,
+        60
+      ],
+      "sources": [
+        {
+          "path": ".github/workflows/deploy.yml",
+          "line": 14,
+          "end_line": 26,
+          "label": "check job steps"
+        },
+        {
+          "path": "vite.config.ts",
+          "line": 8,
+          "end_line": 14,
+          "label": "Vitest config"
+        }
+      ]
+    },
+    {
+      "id": "build",
+      "type": "backend",
+      "label": "Build",
+      "sublabel": "tsc, vite build, dist artifact",
+      "pos": [
+        360,
+        1090
+      ],
+      "size": [
+        190,
+        60
+      ],
+      "sources": [
+        {
+          "path": ".github/workflows/deploy.yml",
+          "line": 28,
+          "end_line": 50,
+          "label": "build job and artifacts"
+        },
+        {
+          "path": "package.json",
+          "line": 11,
+          "label": "build script"
+        }
+      ]
+    },
+    {
+      "id": "e2e",
+      "type": "backend",
+      "label": "Playwright e2e",
+      "sublabel": "Chromium, desktop + mobile",
+      "pos": [
+        720,
+        1090
+      ],
+      "size": [
+        200,
+        60
+      ],
+      "sources": [
+        {
+          "path": ".github/workflows/deploy.yml",
+          "line": 52,
+          "end_line": 70,
+          "label": "e2e job steps"
+        },
+        {
+          "path": "playwright.config.ts",
+          "line": 22,
+          "end_line": 34,
+          "label": "projects and web server"
+        },
+        {
+          "path": "e2e/projects.spec.ts",
+          "line": 24,
+          "end_line": 42,
+          "label": "projects deep link test"
+        }
       ]
     }
   ],
   "connections": [
-    { "id": "visitor-to-pages", "from": "visitor", "to": "pages", "label": "HTTPS", "variant": "emphasis" },
-    { "id": "pages-to-entry", "from": "pages", "to": "entry", "label": "serves dist/", "variant": "emphasis" },
-    { "id": "entry-to-app", "from": "entry", "to": "app", "label": "mounts in router" },
-    { "id": "app-to-menu", "from": "app", "to": "menu" },
-    { "id": "app-to-matrix", "from": "app", "to": "matrix" },
-    { "id": "app-to-home", "from": "app", "to": "home", "label": "/" },
-    { "id": "app-to-projects", "from": "app", "to": "projectspage", "label": "/projects" },
-    { "id": "app-to-social", "from": "app", "to": "social" },
-    { "id": "app-to-gameboy", "from": "app", "to": "gameboy" },
-    { "id": "menu-to-navdata", "from": "menu", "to": "navdata", "label": "reads" },
-    { "id": "menu-to-hooks", "from": "menu", "to": "hooks", "label": "useMediaQuery" },
-    { "id": "matrix-to-hooks", "from": "matrix", "to": "hooks", "label": "useLocalStorage" },
-    { "id": "home-to-eggs", "from": "home", "to": "eggs" },
-    { "id": "projects-to-card", "from": "projectspage", "to": "card" },
-    { "id": "social-to-content", "from": "social", "to": "contentdata", "label": "reads" },
-    { "id": "gameboy-to-youtube", "from": "gameboy", "to": "youtube", "label": "iframe" },
-    { "id": "eggs-to-hooks", "from": "eggs", "to": "hooks", "label": "useAudio" },
-    { "id": "eggs-to-assets", "from": "eggs", "to": "assets", "label": "imports" },
-    { "id": "card-to-data", "from": "card", "to": "projectdata", "label": "reads" },
-    { "id": "hooks-to-storage", "from": "hooks", "to": "storage", "label": "persists colour" },
-    { "id": "dev-to-actions", "from": "dev", "to": "actions", "label": "push / PR" },
-    { "id": "actions-to-check", "from": "actions", "to": "check", "label": "check job" },
-    { "id": "actions-to-build", "from": "actions", "to": "build", "label": "build job" },
-    { "id": "build-to-e2e", "from": "build", "to": "e2e", "label": "same dist artifact" },
-    { "id": "actions-to-pages", "from": "actions", "to": "pages", "label": "deploy, main only", "variant": "emphasis" }
+    {
+      "id": "visitor-to-pages",
+      "from": "visitor",
+      "to": "pages",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pages-to-entry",
+      "from": "pages",
+      "to": "entry",
+      "label": "dist/",
+      "variant": "emphasis"
+    },
+    {
+      "id": "entry-to-app",
+      "from": "entry",
+      "to": "app",
+      "label": "mounts in router"
+    },
+    {
+      "id": "app-to-themeprov",
+      "from": "app",
+      "to": "themeprov",
+      "label": "wraps all"
+    },
+    {
+      "id": "app-to-matrix",
+      "from": "app",
+      "to": "matrix"
+    },
+    {
+      "id": "app-to-menu",
+      "from": "app",
+      "to": "menu"
+    },
+    {
+      "id": "app-to-home",
+      "from": "app",
+      "to": "home",
+      "label": "/"
+    },
+    {
+      "id": "app-to-projects",
+      "from": "app",
+      "to": "projectspage",
+      "label": "/projects"
+    },
+    {
+      "id": "app-to-social",
+      "from": "app",
+      "to": "social"
+    },
+    {
+      "id": "app-to-gameboy",
+      "from": "app",
+      "to": "gameboy"
+    },
+    {
+      "id": "matrix-to-themeprov",
+      "from": "matrix",
+      "to": "themeprov",
+      "label": "useTheme()"
+    },
+    {
+      "id": "menu-to-navdata",
+      "from": "menu",
+      "to": "navdata",
+      "label": "reads"
+    },
+    {
+      "id": "home-to-eggs",
+      "from": "home",
+      "to": "eggs"
+    },
+    {
+      "id": "projects-to-card",
+      "from": "projectspage",
+      "to": "card"
+    },
+    {
+      "id": "social-to-content",
+      "from": "social",
+      "to": "contentdata",
+      "label": "reads"
+    },
+    {
+      "id": "gameboy-to-youtube",
+      "from": "gameboy",
+      "to": "youtube",
+      "label": "iframe"
+    },
+    {
+      "id": "eggs-to-hooks",
+      "from": "eggs",
+      "to": "hooks",
+      "label": "useAudio"
+    },
+    {
+      "id": "eggs-to-assets",
+      "from": "eggs",
+      "to": "assets",
+      "label": "imports"
+    },
+    {
+      "id": "card-to-data",
+      "from": "card",
+      "to": "projectdata",
+      "label": "reads"
+    },
+    {
+      "id": "themeprov-to-themes",
+      "from": "themeprov",
+      "to": "themes",
+      "label": "THEMES[index]"
+    },
+    {
+      "id": "themeprov-to-applytheme",
+      "from": "themeprov",
+      "to": "applytheme",
+      "label": "layout effect: applyTheme"
+    },
+    {
+      "id": "applytheme-to-tokens",
+      "from": "applytheme",
+      "to": "tokens",
+      "label": "sets on html",
+      "variant": "emphasis"
+    },
+    {
+      "id": "applytheme-to-themes",
+      "from": "applytheme",
+      "to": "themes",
+      "label": "reads palette"
+    },
+    {
+      "id": "tokens-to-modules",
+      "from": "tokens",
+      "to": "modules",
+      "label": "var(--accent)"
+    },
+    {
+      "id": "themetests-to-applytheme",
+      "from": "themetests",
+      "to": "applytheme",
+      "label": "asserts"
+    },
+    {
+      "id": "hooks-to-storage",
+      "from": "hooks",
+      "to": "storage",
+      "label": "persists colour"
+    },
+    {
+      "id": "dev-to-actions",
+      "from": "dev",
+      "to": "actions",
+      "label": "push / PR"
+    },
+    {
+      "id": "actions-to-check",
+      "from": "actions",
+      "to": "check",
+      "label": "check job"
+    },
+    {
+      "id": "actions-to-build",
+      "from": "actions",
+      "to": "build",
+      "label": "build job"
+    },
+    {
+      "id": "build-to-e2e",
+      "from": "build",
+      "to": "e2e",
+      "label": "same dist artifact"
+    },
+    {
+      "id": "actions-to-pages",
+      "from": "actions",
+      "to": "pages",
+      "label": "deploy, main only",
+      "variant": "emphasis"
+    },
+    {
+      "id": "themeprov-to-hooks",
+      "from": "themeprov",
+      "to": "hooks",
+      "label": "useLocalStorage"
+    }
   ],
   "cards": [
     {
@@ -184,16 +1017,16 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
-        "The only persisted state is the matrix colour index in localStorage"
+        "The only persisted state is the colour index in localStorage"
       ]
     },
     {
       "dot": "amber",
-      "title": "Layout",
+      "title": "Theme",
       "items": [
-        "App keeps the backdrop, menu, mail link, Game Boy and social bar on every page",
-        "The menu collapses to a Menu button at 700px wide or less",
-        "Menu items and projects are plain data files: add a line to add one"
+        "The matrix colour and the site theme are one index, owned by ThemeProvider",
+        "main.tsx applies the stored theme before React renders, then turns the fade on",
+        "CSS modules read --accent tokens on html; clicking the rain changes them all"
       ]
     },
     {
@@ -209,7 +1042,7 @@
       "dot": "violet",
       "title": "Tests",
       "items": [
-        "Vitest unit tests sit beside the code in src/",
+        "Vitest unit tests sit beside the code in src/, including theme contrast and token use",
         "Playwright tests the exact dist the build job produced, on desktop and mobile"
       ]
     }
