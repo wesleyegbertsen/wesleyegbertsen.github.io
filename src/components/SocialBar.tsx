@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBuilding, faEnvelope, faUserGraduate, faToolbox } from '@fortawesome/free-solid-svg-icons';
 import { faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
+import { profile } from '../data/profile.ts';
 import { EducationTimeline } from './EducationTimeline.tsx';
 import { ExperienceTimeline } from './ExperienceTimeline.tsx';
 import { Panel } from './Panel.tsx';
@@ -24,7 +25,7 @@ export function SocialBar() {
       <nav className={styles.bar} aria-label="Social and about">
         <a
           className={`${styles.item} ${styles.github}`}
-          href="https://github.com/wesleyegbertsen/"
+          href={profile.links.github}
           target="_blank"
           rel="noreferrer"
           aria-label="GitHub"
@@ -70,7 +71,7 @@ export function SocialBar() {
         </button>
         <a
           className={`${styles.item} ${styles.mail}`}
-          href="mailto:wesleyegbertsen@gmail.com"
+          href={`mailto:${profile.links.email}`}
           aria-label="Email Wesley"
           title="Email"
         >
@@ -78,7 +79,7 @@ export function SocialBar() {
         </a>
         <a
           className={`${styles.item} ${styles.linkedin}`}
-          href="https://www.linkedin.com/in/wesleyegbertsen/"
+          href={profile.links.linkedin}
           target="_blank"
           rel="noreferrer"
           aria-label="LinkedIn"

@@ -155,7 +155,7 @@ test.describe('site menu', () => {
     await expect(nav.getByRole('link', { name: 'Projects' })).toHaveCount(0);
   });
 
-  for (const path of ['/', '/#/projects']) {
+  for (const path of ['/', '/#/projects', '/#/terminal']) {
     test(`stays clear of the page content and the click-through corner on ${path}`, async ({ page }) => {
       await openSite(page, path);
       const nav = await box(page.getByRole('navigation', { name: 'Site' }));
@@ -173,7 +173,11 @@ test.describe('site menu', () => {
               page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..'),
               ...[0, 1, 2, 3].map((i) => page.getByRole('button', { name: /^Poké Ball \d$/ }).nth(i)),
             ]
-          : [page.getByRole('heading', { level: 1, name: 'Projects' }).locator('..')]),
+          : [
+              page
+                .getByRole('heading', { level: 1, name: path === '/#/terminal' ? 'Terminal' : 'Projects' })
+                .locator('..'),
+            ]),
       ];
       for (const other of others) {
         expect(overlaps(nav, await box(other))).toBe(false);

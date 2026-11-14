@@ -1,10 +1,11 @@
 import { navItems } from './navigation.ts';
 
 describe('navItems', () => {
-  it('lists Home then Projects', () => {
+  it('lists Home, Projects then Terminal', () => {
     expect(navItems.map((item) => [item.label, item.to])).toEqual([
       ['Home', '/'],
       ['Projects', '/projects'],
+      ['Terminal', '/terminal'],
     ]);
   });
 
