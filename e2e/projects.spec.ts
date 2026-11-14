@@ -127,8 +127,18 @@ test.describe('site menu', () => {
     expect(current.shadow).not.toBe('none');
 
     const other = await style(projects);
+    // Dimmed, but still easy to read over the rain.
     expect(other.opacity).toBeLessThan(1);
+    expect(other.opacity).toBeGreaterThanOrEqual(0.75);
     expect(other.visibility).toBe('hidden');
+
+    // A soft dark fade behind the list (not a box) keeps the rain from fighting the text.
+    const fade = await nav.evaluate((el) => {
+      const behind = getComputedStyle(el, '::before');
+      return { image: behind.backgroundImage, events: behind.pointerEvents };
+    });
+    expect(fade.image).toContain('radial-gradient');
+    expect(fade.events).toBe('none');
   });
 
   test('narrow screens: a Menu button works from the keyboard', async ({ page, isMobile }) => {

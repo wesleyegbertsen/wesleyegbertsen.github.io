@@ -6,6 +6,21 @@
   z-index: 2;
 }
 
+/* A soft dark fade, not a box: it dims the rain behind the text so the items stay readable. */
+.menu::before {
+  content: '';
+  position: absolute;
+  inset: -28px -48px;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.72) 45%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
 .list {
   list-style: none;
   margin: 0;
@@ -24,14 +39,16 @@
   color: #fff;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: 0.95rem;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-decoration: none;
-  opacity: 0.55;
-  /* A dark halo, not a background, keeps the text readable over the rain. */
+  opacity: 0.8;
+  /* A tight dark halo keeps the letters crisp over any rain glyph. */
   text-shadow:
-    0 0 3px #000,
-    0 0 6px #000;
+    0 0 2px #000,
+    0 0 4px #000,
+    0 0 8px #000;
   transition:
     opacity 0.2s ease-in-out,
     color 0.2s ease-in-out,
@@ -51,7 +68,8 @@
   color: #a4e200;
   text-shadow:
     0 0 6px #a4e200,
-    0 0 3px #000;
+    0 0 2px #000,
+    0 0 4px #000;
 }
 
 .link:hover::before,
