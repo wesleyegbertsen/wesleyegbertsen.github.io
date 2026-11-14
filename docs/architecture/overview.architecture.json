@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "ed15dcf226d7ce0d65c6d89a713c5d6fad3ced21"
+      "revision": "df20e06b6666e60fb403b3db9d760127f6986191"
     },
     "legend": {
       "entries": {
@@ -67,7 +67,7 @@
     {
       "id": "data", "type": "database", "label": "Content data", "sublabel": "skills, experience", "pos": [360, 340], "size": [140, 60],
       "sources": [
-        { "path": "src/data/skills.ts", "line": 7, "end_line": 23, "label": "skills list" },
+        { "path": "src/data/skills.ts", "line": 7, "end_line": 24, "label": "skills list" },
         { "path": "src/data/experience.ts", "line": 12, "end_line": 22, "label": "jobs, newest first" }
       ]
     },
