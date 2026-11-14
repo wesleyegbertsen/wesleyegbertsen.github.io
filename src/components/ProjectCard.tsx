@@ -32,6 +32,8 @@ export function ProjectCard({ project }: { project: Project }) {
             className={styles.shot}
             src={shot.src}
             alt={shot.alt}
+            width={shot.width}
+            height={shot.height}
             loading="lazy"
             decoding="async"
           />

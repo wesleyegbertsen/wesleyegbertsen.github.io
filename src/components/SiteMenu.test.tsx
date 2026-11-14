@@ -96,6 +96,24 @@ describe('SiteMenu on a narrow screen', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('only points aria-controls at the list while the list exists', async () => {
+    setup(true);
+    const toggle = screen.getByRole('button', { name: 'Menu' });
+    expect(toggle).not.toHaveAttribute('aria-controls');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-controls');
+  });
+
+  it('closes and returns focus to the toggle when the link for the current page is chosen', async () => {
+    setup(true, '/');
+    const toggle = screen.getByRole('button', { name: 'Menu' });
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole('link', { name: 'Home' }));
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
+  });
+
   it('navigates and closes when a link is chosen', async () => {
     setup(true);
     const toggle = screen.getByRole('button', { name: 'Menu' });

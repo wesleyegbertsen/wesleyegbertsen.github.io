@@ -7,12 +7,12 @@ import styles from './SiteMenu.module.css';
 const COLLAPSE_QUERY = '(max-width: 700px)';
 const LIST_ID = 'site-menu-list';
 
-function Links({ items }: { items: NavItem[] }) {
+function Links({ items, onChoose }: { items: NavItem[]; onChoose?: () => void }) {
   return (
     <ul id={LIST_ID} className={styles.list}>
       {items.map((item) => (
         <li key={item.id}>
-          <NavLink to={item.to} end={item.to === '/'} className={styles.link}>
+          <NavLink to={item.to} end={item.to === '/'} className={styles.link} onClick={onChoose}>
             {item.label}
           </NavLink>
         </li>
@@ -73,14 +73,21 @@ export function SiteMenu({ items = navItems }: { items?: NavItem[] }) {
         type="button"
         className={styles.toggle}
         aria-expanded={open}
-        aria-controls={LIST_ID}
+        aria-controls={open ? LIST_ID : undefined}
         onClick={() => setOpenOn(open ? null : pathname)}
       >
         Menu
       </button>
       {open && (
         <div ref={wrapRef} className={styles.overlay}>
-          <Links items={items} />
+          {/* Choosing any link closes the menu, even the page already shown, and the chosen link is about to unmount. */}
+          <Links
+            items={items}
+            onChoose={() => {
+              setOpenOn(null);
+              toggleRef.current?.focus();
+            }}
+          />
         </div>
       )}
     </nav>

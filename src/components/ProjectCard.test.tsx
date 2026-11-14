@@ -25,7 +25,11 @@ describe('ProjectCard', () => {
     render(<ProjectCard project={project} />);
 
     for (const shot of project.screenshots) {
-      expect(screen.getByRole('img', { name: shot.alt })).toHaveAttribute('src', shot.src);
+      const image = screen.getByRole('img', { name: shot.alt });
+      expect(image).toHaveAttribute('src', shot.src);
+      // Intrinsic size reserves the space, so the card does not jump as lazy images load.
+      expect(image).toHaveAttribute('width', String(shot.width));
+      expect(image).toHaveAttribute('height', String(shot.height));
     }
   });
 

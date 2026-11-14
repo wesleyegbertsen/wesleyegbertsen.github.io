@@ -6,6 +6,9 @@ import cardipawReadings from '../assets/images/projects/cardipaw-readings.png';
 export type Screenshot = {
   src: string;
   alt: string;
+  /** Intrinsic size in pixels, so the layout holds its place while the image loads. */
+  width: number;
+  height: number;
 };
 
 export type Project = {
@@ -42,18 +45,26 @@ export const projects: Project[] = [
       {
         src: cardipawHome,
         alt: 'CardiPaw home screen: each pet with a 7-day sparkline, one with a Trending up badge',
+        width: 780,
+        height: 1688,
       },
       {
         src: cardipawTracker,
         alt: 'CardiPaw guided tracker: tap the heart for each breath during a 30-second count',
+        width: 780,
+        height: 1688,
       },
       {
         src: cardipawPetDetail,
         alt: "CardiPaw pet page with its week chart and the Normal ceiling",
+        width: 780,
+        height: 1688,
       },
       {
         src: cardipawReadings,
         alt: "CardiPaw readings list, each reading with its rate and status label",
+        width: 780,
+        height: 1688,
       },
     ],
     links: {

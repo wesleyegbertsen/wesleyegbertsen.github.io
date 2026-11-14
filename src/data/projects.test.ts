@@ -19,7 +19,11 @@ describe('projects', () => {
       const alts = project.screenshots.map((s) => s.alt);
       for (const alt of alts) expect(alt.trim()).not.toBe('');
       expect(new Set(alts).size).toBe(alts.length);
-      for (const shot of project.screenshots) expect(shot.src).toBeTruthy();
+      for (const shot of project.screenshots) {
+        expect(shot.src).toBeTruthy();
+        expect(shot.width).toBeGreaterThan(0);
+        expect(shot.height).toBeGreaterThan(0);
+      }
     }
   });
 
