@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 import styles from './Panel.module.css';
 
 type PanelProps = {
@@ -19,6 +19,24 @@ export function Panel({ id, title, onClose, returnFocusRef, children }: PanelPro
   useEffect(() => {
     onCloseRef.current = onClose;
   });
+
+  // Point the arrow at the trigger's centre, kept clear of the rounded corners.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const trigger = returnFocusRef.current;
+    if (!panel || !trigger) return;
+
+    const place = () => {
+      const p = panel.getBoundingClientRect();
+      const t = trigger.getBoundingClientRect();
+      const edge = 24;
+      const x = Math.min(Math.max(t.left + t.width / 2 - p.left, edge), p.width - edge);
+      panel.style.setProperty('--arrow-x', `${x}px`);
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [returnFocusRef]);
 
   useEffect(() => {
     panelRef.current?.focus();
