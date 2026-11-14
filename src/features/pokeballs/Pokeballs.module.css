@@ -1,8 +1,8 @@
 .counter {
+  /* Hugs the panel: just above its top edge, left aligned. Absolute, so the glass geometry is unchanged. */
   position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: calc(100% + 8px);
+  left: 0;
   white-space: nowrap;
   pointer-events: none;
 
@@ -23,7 +23,7 @@
   position: absolute;
   /* Above the intro and the teaser, so a ball is never covered. */
   z-index: 1;
-  /* The home page around the glass is click-through, so the balls opt back in. */
+  /* Explicit, so the balls take presses whatever their container does. */
   pointer-events: auto;
   display: block;
   width: 32px;
@@ -45,45 +45,46 @@
   outline-offset: 2px;
 }
 
-/* Two in the top band of the page padding, two in the bottom band; the glass starts and ends outside them. */
+/* Inside the glass panel (the home .glass is the positioned container), in its padding, clear of the name, the subline and the teaser. Offsets are percentages of the panel. Two along the top, two along the bottom. */
 .ball1 {
-  top: 9px;
-  left: 200px;
+  top: 6%;
+  left: 4%;
 }
 
 .ball2 {
-  top: 9px;
-  right: 200px;
+  top: 7%;
+  right: 5%;
 }
 
 .ball3 {
-  bottom: 76px;
-  left: 30%;
+  bottom: 6%;
+  left: 7%;
 }
 
 .ball4 {
-  bottom: 76px;
-  right: 30%;
+  bottom: 7%;
+  right: 4%;
 }
 
-/* On a phone the top band shares its width with the Menu button and the counter, so both top balls sit to the right. */
+/* On a phone the panel is narrow and tall, so the balls sit along the top and bottom padding. */
 @media (max-width: 700px) {
   .ball1 {
-    top: 16px;
-    left: auto;
-    right: 64px;
+    top: 2.5%;
+    left: 8%;
   }
 
   .ball2 {
-    top: 16px;
-    right: 16px;
+    top: 2.5%;
+    right: 8%;
   }
 
   .ball3 {
-    left: 12%;
+    bottom: 2.5%;
+    left: 20%;
   }
 
   .ball4 {
-    right: 12%;
+    bottom: 2.5%;
+    right: 20%;
   }
 }

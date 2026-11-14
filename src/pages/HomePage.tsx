@@ -6,7 +6,7 @@ import { Pokeballs } from '../features/pokeballs/Pokeballs.tsx';
 import { projects } from '../data/projects.ts';
 import styles from './HomePage.module.css';
 
-/** The landing screen: name, intro and newest project on a glass panel, with Poké Balls around it and the cat. */
+/** The landing screen: name, intro and newest project on a glass panel, with the hidden Poké Balls inside it, and the cat. */
 export function HomePage() {
   const cat = useCat();
   const featured = projects[0];
@@ -14,8 +14,8 @@ export function HomePage() {
   return (
     <>
       <main className={styles.page}>
-        <Pokeballs />
         <div className={styles.glass}>
+          <Pokeballs />
           <h1 className={styles.name}>
             <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
               Wesley Egbertsen

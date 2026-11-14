@@ -70,7 +70,7 @@ describe('HomePage intro', () => {
     expect(screen.queryByRole('button', { name: 'Pikachu' })).not.toBeInTheDocument();
   });
 
-  it('keeps the name, intro and featured project in one container, apart from the Poké Balls', () => {
+  it('keeps the name, intro and featured project in one container, and the four Poké Balls in one glass container', () => {
     setup();
     const h1 = screen.getByRole('heading', { level: 1 });
     const subline = screen.getByText(/Full-stack Azure \.NET Developer/);
@@ -81,7 +81,7 @@ describe('HomePage intro', () => {
     const container = h1.parentElement!;
     expect(container).toContainElement(subline);
     expect(container).toContainElement(region);
-    expect(within(container).queryByRole('button', { name: /Poké Ball/ })).not.toBeInTheDocument();
+    expect(within(container).getAllByRole('button', { name: /Poké Ball \d/ })).toHaveLength(4);
     expect(screen.getAllByRole('button', { name: /Poké Ball \d/ })).toHaveLength(4);
   });
 

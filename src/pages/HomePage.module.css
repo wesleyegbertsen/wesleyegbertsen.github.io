@@ -1,4 +1,4 @@
-/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window, level with the centred site menu. The Poké Balls sit in the padding bands above and below the glass. */
+/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window, level with the centred site menu. The glass is the positioned container of the Poké Balls and their counter, which sit inside its roomy padding. */
 .page {
   width: 100%;
   position: relative;
@@ -12,6 +12,14 @@
   composes: glass from './ProjectsPage.module.css';
 }
 
+/* Home-only additions. The extra .page in the selector outranks the shared glass's own (padding) rules, whichever stylesheet loads last; width, left edge and font stay the shared glass's. */
+.page .glass {
+  /* Anchors the Poké Balls (inside) and their counter (just above). */
+  position: relative;
+  /* More room than the Projects glass, for the balls and to breathe. Mobile padding is set in the media query below. */
+  padding: 4rem 4.5rem;
+}
+
 .name {
   margin: 0;
   font-size: clamp(1.6rem, 5vw, 2.4rem);
@@ -19,13 +27,26 @@
 }
 
 .subline {
-  margin: 0.5rem 0 0;
+  margin: 0.75rem 0 0;
   opacity: 0.9;
   text-wrap: balance;
+}
+
+/* The featured project: more air above its divider than its own default. */
+.glass > section {
+  margin-top: 2.25rem;
 }
 
 @media (max-width: 700px) {
   .page {
     padding: 120px 4%;
+  }
+
+  .page .glass {
+    padding: 3.25rem 1.5rem;
+  }
+
+  .glass > section {
+    margin-top: 1.75rem;
   }
 }

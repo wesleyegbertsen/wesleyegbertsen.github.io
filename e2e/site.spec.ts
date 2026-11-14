@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { THEMES } from '../src/features/theme/themes.ts';
-import { box, litPixels, openSite, overlaps, playsOf } from './helpers.ts';
+import { box, litPixels, openSite, overlaps, playsOf, type Rect } from './helpers.ts';
 
 test('loads cleanly with every part of the page', async ({ page }) => {
   const { errors } = await openSite(page);
@@ -168,8 +168,17 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
     page.getByRole('button', { name: 'Game Boy' }),
   ];
 
-  // Each ball must be the topmost element at its own centre, and clear of the glass and the fixed controls.
+  // Each ball sits inside the glass, in an empty spot: topmost at its centre, clear of the content and the fixed controls.
   const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  const content = [
+    page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
+    page.getByText('Full-stack Azure .NET Developer'),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('img'),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('heading', { level: 2 }),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' }),
+  ];
+  const inside = (a: Rect, b: Rect) =>
+    a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
   for (let i = 0; i < 4; i++) {
     const ball = balls.nth(i);
     await ball.scrollIntoViewIfNeeded();
@@ -181,18 +190,21 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
     expect(covered, `Poké Ball ${i + 1} is covered`).toBe(false);
 
     const rect = await box(ball);
-    expect(overlaps(rect, await box(glass)), `Poké Ball ${i + 1} overlaps the glass`).toBe(false);
-    for (const other of fixed) {
-      expect(overlaps(rect, await box(other)), `Poké Ball ${i + 1} overlaps a fixed control`).toBe(false);
+    expect(inside(rect, await box(glass)), `Poké Ball ${i + 1} is not inside the glass`).toBe(true);
+    for (const other of [...content, ...fixed]) {
+      expect(overlaps(rect, await box(other)), `Poké Ball ${i + 1} overlaps content or a fixed control`).toBe(false);
     }
   }
 
-  // The counter shows after the first find, in white, clear of the glass and every ball.
+  // The counter shows after the first find, in white, just above the glass and clear of every ball and the menu.
   await balls.nth(0).click();
   const status = page.getByRole('status');
   await expect(status).toBeVisible();
   const counter = await box(status);
-  expect(overlaps(counter, await box(glass))).toBe(false);
+  const glassBox = await box(glass);
+  expect(counter.y + counter.height, 'counter is above the glass top edge').toBeLessThanOrEqual(glassBox.y + 1);
+  expect(overlaps(counter, glassBox)).toBe(false);
+  expect(overlaps(counter, await box(fixed[0]!)), 'counter overlaps the menu').toBe(false);
   for (let i = 0; i < 4; i++) {
     expect(overlaps(counter, await box(balls.nth(i))), `counter overlaps ball ${i + 1}`).toBe(false);
   }
