@@ -2,9 +2,74 @@
   "profile": "node",
   "baseBranch": "origin/main",
   "checks": [
-    { "name": "typecheck", "command": "npm run typecheck", "when": ["src/**", "index.html", "package.json", "package-lock.json", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json", "vite.config.ts"] },
-    { "name": "lint", "command": "npm run lint", "when": ["src/**", "package.json", "package-lock.json", "eslint.config.js"] },
-    { "name": "test", "command": "npm test", "when": ["src/**", "index.html", "package.json", "package-lock.json", "vite.config.ts"] },
-    { "name": "build", "command": "npm run build", "when": ["src/**", "index.html", "public/**", "package.json", "package-lock.json", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json", "vite.config.ts"] }
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "when": [
+        "src/**",
+        "e2e/**",
+        "index.html",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "tsconfig.app.json",
+        "tsconfig.node.json",
+        "tsconfig.e2e.json",
+        "vite.config.ts",
+        "playwright.config.ts"
+      ]
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "when": [
+        "src/**",
+        "e2e/**",
+        "package.json",
+        "package-lock.json",
+        "eslint.config.js",
+        "playwright.config.ts"
+      ]
+    },
+    {
+      "name": "test",
+      "command": "npm test",
+      "when": [
+        "src/**",
+        "index.html",
+        "package.json",
+        "package-lock.json",
+        "vite.config.ts"
+      ]
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "when": [
+        "src/**",
+        "index.html",
+        "public/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "tsconfig.app.json",
+        "tsconfig.node.json",
+        "vite.config.ts"
+      ]
+    },
+    {
+      "name": "e2e",
+      "command": "npm run e2e",
+      "when": [
+        "src/**",
+        "e2e/**",
+        "index.html",
+        "public/**",
+        "package.json",
+        "package-lock.json",
+        "vite.config.ts",
+        "playwright.config.ts"
+      ]
+    }
   ]
 }

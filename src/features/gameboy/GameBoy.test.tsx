@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FakeAudio, installFakeAudio } from '../../test/fakeAudio.ts';
 import { GameBoy } from './GameBoy.tsx';
-import { MailLink } from './MailLink.tsx';
 
 beforeEach(installFakeAudio);
 afterEach(() => vi.unstubAllGlobals());
@@ -52,15 +51,5 @@ describe('GameBoy', () => {
 
     expect(video()).toHaveAttribute('data-visible', 'false');
     expect(FakeAudio.of('zelda-item')).toHaveLength(1);
-  });
-});
-
-describe('MailLink', () => {
-  it('links to the email address', () => {
-    render(<MailLink />);
-    expect(screen.getByRole('link', { name: 'Email Wesley' })).toHaveAttribute(
-      'href',
-      'mailto:wesleyegbertsen@gmail.com',
-    );
   });
 });

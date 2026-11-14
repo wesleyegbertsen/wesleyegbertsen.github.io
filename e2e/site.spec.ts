@@ -180,10 +180,14 @@ test.describe('matrix backdrop', () => {
     expect(await key()).toBe('2');
   });
 
-  test('a stale or invalid stored colour falls back to green instead of breaking', async ({ page }) => {
+  test('a stale or invalid stored colour is ignored: the cycle restarts from green', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('currentMatrixFontColorIndex', '9'));
     const { errors } = await openSite(page);
     await expect.poll(() => litPixels(page), { timeout: 5000 }).toBeGreaterThan(50);
+
+    // Valid fallback is index 0, so the first click must store 1 (an unvalidated 9 would give 2).
+    await page.mouse.click(3, 3);
+    expect(await page.evaluate(() => localStorage.getItem('currentMatrixFontColorIndex'))).toBe('1');
     expect(errors).toEqual([]);
   });
 

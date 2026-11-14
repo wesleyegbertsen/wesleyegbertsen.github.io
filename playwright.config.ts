@@ -2,9 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 
-// Locally use the Edge that ships with Windows (no browser download needed);
-// CI has no Edge, so it falls back to Playwright's own Chromium.
-const channel = process.env.CI ? undefined : 'msedge';
+// Browser: set PW_CHANNEL (for example "msedge" or "chrome") to use an installed browser. Without it,
+// Windows outside CI uses the Edge that ships with Windows (no download needed); everywhere else
+// uses Playwright's own Chromium (`npx playwright install chromium`).
+const channel = process.env.PW_CHANNEL || (process.platform === 'win32' && !process.env.CI ? 'msedge' : undefined);
 
 export default defineConfig({
   testDir: './e2e',

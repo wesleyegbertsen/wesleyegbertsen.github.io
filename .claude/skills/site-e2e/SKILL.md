@@ -18,7 +18,9 @@ npx playwright show-trace test-results/<dir>/trace.zip   # after a failure
 ```
 
 - Takes about 15 s. It always runs `npm run build` first and serves `dist/` with `vite preview` on port 4173.
-- Locally it drives the Edge that ships with Windows (`channel: 'msedge'`), so no browser download. In CI (`CI` set) it falls back to Playwright's Chromium, which needs `npx playwright install chromium` first.
+- Browser: on Windows outside CI it drives the Edge that ships with Windows (`channel: 'msedge'`), so no download. Elsewhere, and in CI, it uses Playwright's Chromium (`npx playwright install --with-deps chromium`). Set `PW_CHANNEL=chrome` (or `msedge`) to force an installed browser.
+- CI: `.github/workflows/deploy.yml` has an `e2e` job (installs Chromium, runs `npm run e2e`) and the deploy job needs it. The harness runtime gate also runs `npm run e2e` (`.wesharness.json`), so it needs port 4173 free.
+- Headless by default (no window opens). Watch it with `npx playwright test --headed --workers=1` or `--ui`.
 - Failures leave screenshots and traces in `test-results/` (git-ignored).
 
 ## Traps (each one cost time)
@@ -53,7 +55,7 @@ Assertions do not tell you it looks right. To see it, add a temporary spec such 
 
 ## Other repo facts
 
-- Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` (the harness runtime gate runs these four; `npm run e2e` is separate and not in the gate).
+- Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run e2e` (the harness runtime gate runs all five; CI runs them too).
 - Deploy: GitHub Actions publishes `dist/` to Pages. The repository's Pages source must be "GitHub Actions" before the migration merges or the live site is blank.
 - Windows prints "LF will be replaced by CRLF" warnings on `git add`; they are harmless.
 - When writing many files from the shell, prefer the Write tool: a large bash heredoc once failed to parse and wrote nothing.

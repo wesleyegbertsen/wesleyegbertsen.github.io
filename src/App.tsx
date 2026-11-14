@@ -2,7 +2,7 @@ import { Cat } from './features/cat/Cat.tsx';
 import { Logo } from './features/cat/Logo.tsx';
 import { useCat } from './features/cat/useCat.ts';
 import { GameBoy } from './features/gameboy/GameBoy.tsx';
-import { MailLink } from './features/gameboy/MailLink.tsx';
+import { MailLink } from './components/MailLink.tsx';
 import { MatrixBackdrop } from './features/matrix/MatrixBackdrop.tsx';
 import { Pikachu } from './features/pikachu/Pikachu.tsx';
 import { Pokeballs } from './features/pokeballs/Pokeballs.tsx';

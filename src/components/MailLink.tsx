@@ -1,4 +1,4 @@
-import { images } from '../../assets/index.ts';
+import { images } from '../assets/index.ts';
 import styles from './MailLink.module.css';
 
 export function MailLink() {
