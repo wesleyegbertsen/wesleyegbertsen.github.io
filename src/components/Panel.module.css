@@ -1,0 +1,49 @@
+.panel {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 5;
+
+  box-sizing: border-box;
+  width: min(92vw, 440px);
+  max-height: min(65dvh, 560px);
+  display: flex;
+  flex-direction: column;
+
+  background: #fff;
+  color: #333;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 16px 8px 12px 16px;
+  animation: rise 0.2s ease-out;
+}
+
+.panel:focus-visible {
+  outline: 2px solid #20b2aa;
+  outline-offset: 2px;
+}
+
+.title {
+  margin: 0 8px 12px 0;
+  font-size: 1.15rem;
+  text-align: center;
+}
+
+.body {
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}

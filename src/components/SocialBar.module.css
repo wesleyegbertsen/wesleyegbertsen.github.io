@@ -1,0 +1,53 @@
+.bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+
+  display: flex;
+  gap: 15px;
+  background: #333;
+  padding: 10px 20px;
+  border-radius: 30px;
+  box-shadow: 0 0 5px 0;
+}
+
+.item {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 0.3s ease-in-out;
+}
+
+.item:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.linkedin:hover {
+  color: #0073b1;
+}
+
+.github:hover {
+  color: #6e5494;
+}
+
+.skills:hover,
+.skills[aria-expanded='true'] {
+  color: #a4e200;
+}
+
+.experience:hover,
+.experience[aria-expanded='true'] {
+  color: #20b2aa;
+}
