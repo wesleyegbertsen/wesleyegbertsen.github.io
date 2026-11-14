@@ -89,6 +89,16 @@ test.describe('the matrix colour is the site theme', () => {
     await expect.poll(() => style(glass, 'borderTopColor')).not.toBe(greenBorder);
   });
 
+  test('the home glass border follows the theme', async ({ page }) => {
+    await openSite(page);
+    const glass = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..');
+    const greenBorder = await style(glass, 'borderTopColor');
+
+    await nextColour(page);
+
+    await expect.poll(() => style(glass, 'borderTopColor')).not.toBe(greenBorder);
+  });
+
   test('the theme survives a reload', async ({ page }) => {
     await openSite(page, '/#/projects');
     await nextColour(page);
