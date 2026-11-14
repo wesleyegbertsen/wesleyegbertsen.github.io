@@ -63,6 +63,16 @@ test.describe('panels', () => {
     await expect(dialog).toBeInViewport({ ratio: 1 });
   });
 
+  test('education opens in a panel that fits the screen', async ({ page }) => {
+    await openSite(page);
+    await page.getByRole('button', { name: 'Education', exact: true }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'My Education' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('listitem').first()).toContainText('HAN University of Applied Sciences');
+    await expect(dialog).toBeInViewport({ ratio: 1 });
+  });
+
   test('an outside press closes a panel and one panel replaces the other', async ({ page }) => {
     await openSite(page);
     await page.getByRole('button', { name: 'Skills' }).click();
@@ -119,7 +129,7 @@ test.describe('easter eggs', () => {
   test('the logo brings the cat; the cat puts on glasses and raps', async ({ page }) => {
     await openSite(page);
     // includeHidden: role queries skip hidden elements, and this cat is hidden at first.
-    const cat = page.getByRole('button', { name: 'Cat', includeHidden: true });
+    const cat = page.getByRole('button', { name: 'Cat', exact: true, includeHidden: true });
     await expect(cat).toBeHidden();
 
     await page.getByRole('button', { name: 'Wesley Egbertsen logo' }).click();
