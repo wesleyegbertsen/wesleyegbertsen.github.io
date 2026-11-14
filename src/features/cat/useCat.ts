@@ -4,7 +4,7 @@ import { useAudio } from '../../hooks/useAudio.ts';
 import { catReducer, initialCatState } from './catState.ts';
 
 /**
- * The logo summons a cat; the cat can put on glasses and rap.
+ * The name heading summons a cat; the cat can put on glasses and rap.
  * Sounds: `cat.mp3` when the cat appears, `cat_rap.mp3` while it wears glasses.
  */
 export function useCat() {
