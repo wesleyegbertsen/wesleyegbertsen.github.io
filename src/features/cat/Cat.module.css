@@ -10,7 +10,7 @@
   bottom: -250px;
 
   z-index: 3;
-  position: absolute;
+  position: fixed;
   right: 5vw;
 
   width: min(250px, 60vw);

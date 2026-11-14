@@ -1,0 +1,22 @@
+html {
+  background-color: #000;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  min-height: 100dvh;
+  margin: 0;
+  /* Room for the fixed social bar and corner icons on short screens. */
+  padding: 0 0 100px;
+  box-sizing: border-box;
+
+  background-color: #000;
+}
+
+#root {
+  display: contents;
+}
