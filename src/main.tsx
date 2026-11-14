@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router';
 import App from './App.tsx';
-import { applyTheme, readStoredThemeIndex } from './features/theme/applyTheme.ts';
+import { applyTheme, enableThemeFade, readStoredThemeIndex } from './features/theme/applyTheme.ts';
 import './styles/global.css';
 import './features/theme/theme.css';
 
@@ -16,3 +16,5 @@ createRoot(document.getElementById('root')!).render(
     </HashRouter>
   </StrictMode>,
 );
+
+enableThemeFade();

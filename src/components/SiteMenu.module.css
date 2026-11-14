@@ -93,7 +93,7 @@
 
 .toggle {
   appearance: none;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.85);
   color: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
   border-radius: 6px;

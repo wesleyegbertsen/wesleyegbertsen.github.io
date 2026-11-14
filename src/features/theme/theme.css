@@ -33,9 +33,12 @@
   initial-value: #1c2b00;
 }
 
-/* Fade the theme in on the root and every var() user follows; no fade for people who ask for less motion. */
+/*
+ * Fade the theme on the root and every var() user follows; no fade for people who ask for less motion.
+ * Only after the first paint (data-theme-fade, set in main.tsx): loading a stored theme is not a change.
+ */
 @media (prefers-reduced-motion: no-preference) {
-  :root {
+  :root[data-theme-fade] {
     transition:
       --accent 0.4s ease,
       --accent-hover 0.4s ease,

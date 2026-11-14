@@ -17,3 +17,11 @@ export function applyTheme(index: number, root: HTMLElement = document.documentE
 export function readStoredThemeIndex(): number {
   return readStored(STORAGE_KEY, 0, parseColorIndex);
 }
+
+/**
+ * Turns on the colour fade once the page has painted with its stored theme, so only later changes
+ * (a click on the background) animate, not the first colours on load.
+ */
+export function enableThemeFade(root: HTMLElement = document.documentElement) {
+  requestAnimationFrame(() => requestAnimationFrame(() => root.setAttribute('data-theme-fade', '')));
+}

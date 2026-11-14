@@ -37,7 +37,8 @@ describe('theme.css', () => {
 
   it('transitions every token on the root, only when motion is allowed', () => {
     const motion = motionBlock();
-    expect(motion).toContain(':root');
+    // Only once the page has painted (data-theme-fade), so loading a stored theme does not fade from green.
+    expect(motion).toContain(':root[data-theme-fade]');
     for (const [token] of TOKENS) expect(motion).toContain(`${token} 0.4s`);
 
     // No transition anywhere before that media query.

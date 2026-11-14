@@ -103,25 +103,49 @@ test.describe('the matrix colour is the site theme', () => {
       .toBe(rgb(RED.accent));
   });
 
-  test('a stored theme is on the page before anything renders, with no flash of green', async ({
-    page,
-    isMobile,
-  }) => {
+  test('a stored theme is on the page before React renders anything', async ({ page, isMobile }) => {
     await page.addInitScript(() => {
       localStorage.setItem('currentMatrixFontColorIndex', '2');
-      const seen: string[] = [];
-      (window as unknown as { __themes: string[] }).__themes = seen;
-      new MutationObserver(() => {
-        const name = document.documentElement.dataset.theme;
-        if (name) seen.push(name);
-      }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-theme'] });
+      const order: string[] = [];
+      (window as unknown as { __order: string[] }).__order = order;
+      new MutationObserver((records) => {
+        for (const record of records) {
+          if (record.type === 'attributes') order.push(`theme:${document.documentElement.dataset.theme}`);
+          else if ((record.target as HTMLElement).id === 'root' && record.addedNodes.length) order.push('react');
+        }
+      }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-theme'] });
     });
     await openSite(page);
 
-    const seen = await page.evaluate(() => (window as unknown as { __themes: string[] }).__themes);
-    expect(seen.length).toBeGreaterThan(0);
-    expect(new Set(seen)).toEqual(new Set(['blue']));
+    const order = await page.evaluate(() => (window as unknown as { __order: string[] }).__order);
+    // main.tsx sets the stored theme first, so the first thing seen is the theme and it is never green.
+    expect(order[0]).toBe('theme:blue');
+    expect(order).not.toContain('theme:green');
+    expect(order.indexOf('theme:blue')).toBeLessThan(order.indexOf('react'));
     await expect.poll(() => style(menuAccent(page, isMobile), 'color')).toBe(rgb(BLUE.accent));
+  });
+
+  test('loading a stored theme does not fade in from green', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.addInitScript(() => {
+      localStorage.setItem('currentMatrixFontColorIndex', '2');
+      const seen: string[] = [];
+      (window as unknown as { __accents: string[] }).__accents = seen;
+      let frames = 0;
+      const tick = () => {
+        const root = document.documentElement;
+        if (root.dataset.theme) seen.push(getComputedStyle(root).getPropertyValue('--accent').trim());
+        if (++frames < 90) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await openSite(page);
+    await page.waitForTimeout(1500);
+
+    const seen = await page.evaluate(() => (window as unknown as { __accents: string[] }).__accents);
+    expect(seen.length).toBeGreaterThan(10);
+    // One value for the whole load: no frame ever shows green or a colour between green and blue.
+    expect(new Set(seen).size).toBe(1);
   });
 
   test('an invalid stored colour falls back to green, and the first click goes to red', async ({ page }) => {
@@ -164,8 +188,10 @@ test.describe('theme motion', () => {
   test('colours fade for most visitors', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await openSite(page);
-    const property = await page.evaluate(() => getComputedStyle(document.documentElement).transitionProperty);
-    expect(property).toContain('--accent');
+    // The fade is switched on one paint after load, so a stored theme does not animate in.
+    await expect
+      .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).transitionProperty))
+      .toContain('--accent');
   });
 
   test('colours switch at once when the visitor asks for less motion', async ({ page, isMobile }) => {

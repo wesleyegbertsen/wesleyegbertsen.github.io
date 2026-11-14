@@ -34,6 +34,26 @@ describe('themed CSS modules', () => {
     for (const colour of OLD_ACCENTS) expect(css).not.toContain(colour);
   });
 
+  it('draws the panel focus ring in the bright accent, which reads on the dark page around the panel', () => {
+    const css = read('src/components/Panel.module.css');
+    const block = css.slice(css.indexOf('.panel:focus-visible'), css.indexOf('}', css.indexOf('.panel:focus-visible')));
+    expect(block).toContain('var(--accent)');
+    expect(block).not.toContain('--accent-on-light');
+  });
+
+  it('gives the mobile Menu button a fill dark enough to read over the rain', () => {
+    const css = read('src/components/SiteMenu.module.css');
+    const start = css.indexOf('.toggle {');
+    const block = css.slice(start, css.indexOf('}', start));
+    const alpha = Number(block.match(/background:\s*rgba\(0, 0, 0, ([0-9.]+)\)/)?.[1]);
+    expect(alpha).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('keeps one hover rule for the three bottom bar icons that follow the theme', () => {
+    const css = read('src/components/SocialBar.module.css');
+    expect(css.match(/color: var\(--accent\)/g)).toHaveLength(1);
+  });
+
   it('leaves the GitHub and LinkedIn brand hovers alone', () => {
     const css = read('src/components/SocialBar.module.css');
     expect(css).toContain('#0073b1');

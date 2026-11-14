@@ -42,16 +42,11 @@
   color: #6e5494;
 }
 
+/* The three about icons share the theme accent, on hover and while their panel is open. */
 .skills:hover,
-.skills[aria-expanded='true'] {
-  color: var(--accent);
-}
-
+.skills[aria-expanded='true'],
 .experience:hover,
-.experience[aria-expanded='true'] {
-  color: var(--accent);
-}
-
+.experience[aria-expanded='true'],
 .education:hover,
 .education[aria-expanded='true'] {
   color: var(--accent);
