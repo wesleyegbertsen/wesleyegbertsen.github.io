@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "37e2097fab1cf6b1aa5d8ffd1aba8533e2b7ebbc"
+      "revision": "ed5220a9c2b14333e8c5eaa7113a7d7c7e7c3ba7"
     },
     "legend": {
       "entries": {
@@ -61,7 +61,8 @@
       "pos": [470, 330],
       "size": [170, 70],
       "sources": [
-        { "path": "src/App.tsx", "line": 11, "end_line": 25, "label": "ThemeProvider around the shell and Routes" }
+        { "path": "src/App.tsx", "line": 11, "end_line": 25, "label": "ThemeProvider around the shell and Routes" },
+        { "path": "src/styles/global.css", "line": 5, "end_line": 17, "label": "body centres content, no padding" }
       ]
     },
     {
@@ -121,7 +122,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 16, "label": "a card per project" },
-        { "path": "src/pages/ProjectsPage.module.css", "line": 11, "end_line": 24, "label": "shared glass: width, blur, monospace" }
+        { "path": "src/pages/ProjectsPage.module.css", "line": 1, "end_line": 24, "label": "120px page padding, shared glass" }
       ]
     },
     {
@@ -429,7 +430,8 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
-        "The home page is a glass panel centred in the window like the Projects glass: same width, padding and monospace (shared .glass), and it no longer pins to the top. It holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
+        "Both pages use the same symmetric page padding (120px top and bottom) and the body has none, so the home and Projects glass panels are centred on the window's middle line, level with the centred site menu",
+        "Both glass panels share one .glass: same width, padding and monospace font. The home glass holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
         "The Poke Balls sit in the top and bottom padding bands around the glass",
         "The only persisted state is the colour index in localStorage"
       ]
