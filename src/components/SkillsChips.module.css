@@ -8,9 +8,9 @@
 }
 
 .chip {
-  background: #e8f5c8;
-  color: #2f4a00;
-  border: 1px solid #a4e200;
+  background: var(--accent-soft);
+  color: var(--accent-on-light);
+  border: 1px solid var(--accent-on-light);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 0.9rem;

@@ -2,7 +2,7 @@
   list-style: none;
   margin: 0;
   padding: 0 0 0 18px;
-  border-left: 2px solid #20b2aa;
+  border-left: 2px solid var(--accent-on-light);
 }
 
 .job {
@@ -18,7 +18,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #20b2aa;
+  background: var(--accent-on-light);
   box-shadow: 0 0 0 3px #fff;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .when {
-  color: #20807a;
+  color: var(--accent-on-light);
   font-weight: 600;
 }
 

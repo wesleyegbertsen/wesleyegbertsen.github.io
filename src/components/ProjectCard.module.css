@@ -1,13 +1,13 @@
 .card + .card {
   margin-top: 2.5rem;
   padding-top: 2rem;
-  border-top: 1px solid rgba(164, 226, 0, 0.25);
+  border-top: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .name {
   margin: 0;
   font-size: 1.5rem;
-  color: #a4e200;
+  color: var(--accent);
 }
 
 .tagline {
@@ -55,23 +55,23 @@
 }
 
 .primary {
-  background: #a4e200;
-  color: #1c2b00;
-  border: 1px solid #a4e200;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid var(--accent);
 }
 
 .primary:hover {
-  background: #c2f53a;
+  background: var(--accent-hover);
 }
 
 .secondary {
   background: transparent;
-  color: #a4e200;
-  border: 1px solid rgba(164, 226, 0, 0.6);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .secondary:hover {
-  background: rgba(164, 226, 0, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .primary:focus-visible,
@@ -84,4 +84,11 @@
   margin: 1rem 0 0;
   font-size: 0.8rem;
   opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary {
+    transition: none;
+  }
 }

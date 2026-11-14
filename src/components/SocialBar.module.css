@@ -44,15 +44,21 @@
 
 .skills:hover,
 .skills[aria-expanded='true'] {
-  color: #a4e200;
+  color: var(--accent);
 }
 
 .experience:hover,
 .experience[aria-expanded='true'] {
-  color: #20b2aa;
+  color: var(--accent);
 }
 
 .education:hover,
 .education[aria-expanded='true'] {
-  color: #ffb400;
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
 }

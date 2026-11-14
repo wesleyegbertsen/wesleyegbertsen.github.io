@@ -17,7 +17,7 @@
 
   background: rgba(10, 20, 10, 0.55);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(164, 226, 0, 0.35);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-radius: 16px;
   color: #f2f7e8;
 }
