@@ -16,6 +16,8 @@ npm run e2e        # real-browser tests with Playwright (see .claude/skills/site
 
 Node 24 or newer (see `.nvmrc`).
 
+`package.json` has an npm `overrides` entry that lets `eslint-plugin-jsx-a11y` run on ESLint 10: the plugin works there (checked with deliberate violations) but its declared peer range still stops at ESLint 9 (upstream: jsx-eslint/eslint-plugin-jsx-a11y#1075). Remove the override once a release declares support.
+
 ## Layout
 
 An architecture overview drawn from the code, with source citations, is in [docs/architecture/overview.html](docs/architecture/overview.html) (open it in a browser).
