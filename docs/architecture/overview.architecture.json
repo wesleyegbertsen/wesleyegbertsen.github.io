@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "70664fd6878e914bdda112451e54876e72c0a0f4"
+      "revision": "5dfbc51c4c742e382e67e88044178b2bc168a6a7"
     },
     "legend": {
       "entries": {
@@ -104,23 +104,24 @@
       "id": "home",
       "type": "frontend",
       "label": "Home page",
-      "sublabel": "route /, name toggles cat",
+      "sublabel": "route /, glass, name toggles cat",
       "pos": [360, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 11, "end_line": 31, "label": "glass panel, name button, teaser, balls, cat" },
-        { "path": "src/pages/HomePage.module.css", "line": 21, "end_line": 24, "label": "glass composed from the Projects page" }
+        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 31, "label": "balls, glass with name button and teaser, cat" },
+        { "path": "src/pages/HomePage.module.css", "line": 1, "end_line": 15, "label": "Projects padding, glass composed from Projects" }
       ]
     },
     {
       "id": "projectspage",
       "type": "frontend",
       "label": "Projects page",
-      "sublabel": "route /projects",
+      "sublabel": "route /projects, owns .glass",
       "pos": [530, 480],
       "size": [140, 60],
       "sources": [
-        { "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 16, "label": "a card per project" }
+        { "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 16, "label": "a card per project" },
+        { "path": "src/pages/ProjectsPage.module.css", "line": 11, "end_line": 24, "label": "shared glass: width, blur, monospace" }
       ]
     },
     {
@@ -167,7 +168,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/features/cat/CatToggle.tsx", "line": 10, "end_line": 17, "label": "name button, aria-pressed" },
-        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 17, "end_line": 33, "label": "Poke Balls and sounds" },
+        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 18, "end_line": 34, "label": "Poke Balls and sounds" },
         { "path": "src/features/cat/useCat.ts", "line": 10, "end_line": 30, "label": "cat and rap" }
       ]
     },
@@ -215,7 +216,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/components/FeaturedProject.tsx", "line": 7, "end_line": 34, "label": "name, tagline, screenshot, Link to /projects" },
-        { "path": "src/pages/HomePage.tsx", "line": 27, "label": "rendered when projects[0] exists" }
+        { "path": "src/pages/HomePage.tsx", "line": 26, "label": "rendered when projects[0] exists" }
       ]
     },
     {
@@ -428,7 +429,8 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
-        "The home page is a glass panel with the name, intro and newest project (projects[0]); the name button toggles the cat",
+        "The home page is a glass panel at the same width and top as the Projects page (shared .glass, monospace), with the name, intro and newest project (projects[0]); the name button toggles the cat",
+        "The Poke Balls sit in the top and bottom padding bands around the glass",
         "The only persisted state is the colour index in localStorage"
       ]
     },
