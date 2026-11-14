@@ -33,6 +33,20 @@ describe('social bar panels', () => {
     expect(within(jobs[9]!).getByText('January 2012 - June 2012')).toBeInTheDocument();
   });
 
+  it('lists the education newest first', async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole('button', { name: 'Education' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'My Education' });
+    const items = within(dialog).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(
+      within(items[0]!).getByRole('heading', { name: 'HAN University of Applied Sciences' }),
+    ).toBeInTheDocument();
+    expect(within(items[0]!).getByText('2014 - 2018')).toBeInTheDocument();
+    expect(within(items[2]!).getByText('2006 - 2010')).toBeInTheDocument();
+  });
+
   it('closes on Escape and returns focus to the button', async () => {
     const { user } = setup();
     const button = screen.getByRole('button', { name: 'Skills' });

@@ -1,18 +1,20 @@
 import { useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBuilding, faToolbox } from '@fortawesome/free-solid-svg-icons';
+import { faBuilding, faUserGraduate, faToolbox } from '@fortawesome/free-solid-svg-icons';
 import { faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
+import { EducationTimeline } from './EducationTimeline.tsx';
 import { ExperienceTimeline } from './ExperienceTimeline.tsx';
 import { Panel } from './Panel.tsx';
 import { SkillsChips } from './SkillsChips.tsx';
 import styles from './SocialBar.module.css';
 
-type PanelName = 'skills' | 'experience';
+type PanelName = 'skills' | 'experience' | 'education';
 
 export function SocialBar() {
   const [open, setOpen] = useState<PanelName | null>(null);
   const skillsButton = useRef<HTMLButtonElement>(null);
   const experienceButton = useRef<HTMLButtonElement>(null);
+  const educationButton = useRef<HTMLButtonElement>(null);
 
   const toggle = (name: PanelName) => setOpen((current) => (current === name ? null : name));
   const close = () => setOpen(null);
@@ -54,6 +56,18 @@ export function SocialBar() {
         >
           <FontAwesomeIcon icon={faBuilding} />
         </button>
+        <button
+          ref={educationButton}
+          type="button"
+          className={`${styles.item} ${styles.education}`}
+          aria-label="Education"
+          title="Education"
+          aria-expanded={open === 'education'}
+          aria-controls="education-panel"
+          onClick={() => toggle('education')}
+        >
+          <FontAwesomeIcon icon={faUserGraduate} />
+        </button>
         <a
           className={`${styles.item} ${styles.linkedin}`}
           href="https://www.linkedin.com/in/wesleyegbertsen/"
@@ -79,6 +93,11 @@ export function SocialBar() {
           returnFocusRef={experienceButton}
         >
           <ExperienceTimeline />
+        </Panel>
+      )}
+      {open === 'education' && (
+        <Panel id="education-panel" title="My Education" onClose={close} returnFocusRef={educationButton}>
+          <EducationTimeline />
         </Panel>
       )}
     </>
