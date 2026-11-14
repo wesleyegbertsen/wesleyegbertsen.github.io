@@ -1,2 +1,13 @@
 docs/verdicts/
 docs/reviews/
+node_modules/
+dist/
+coverage/
+docs/plans/
+.archify/
+test-results/
+playwright-report/
+*.finalize.json
+*.finalize-summary.json
+*.browser-check.json
+*.delivery.json

@@ -1,0 +1,20 @@
+.mail {
+  position: fixed;
+  bottom: 10px;
+  left: 5px;
+  z-index: 1;
+  width: 64px;
+
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.mail:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.mail img {
+  display: block;
+  width: 100%;
+}

@@ -1,0 +1,64 @@
+.gameboy {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  /* Zoom is allowed now, so stop a double-tap from zooming instead of reaching onDoubleClick. */
+  touch-action: manipulation;
+
+  position: fixed;
+  bottom: 10px;
+  right: 0;
+  z-index: 4;
+  width: 64px;
+}
+
+.gameboy:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.gameboy img {
+  display: block;
+  width: 100%;
+}
+
+.video {
+  border: 0;
+  position: fixed;
+  right: 10px;
+  bottom: -576px;
+  z-index: 3;
+
+  width: min(288px, calc(100vw - 20px));
+  height: min(576px, calc(100dvh - 100px));
+  box-shadow: 0 0 5px 0;
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition:
+    opacity 0.5s ease-in-out,
+    visibility 0s linear 0.5s;
+}
+
+.video[data-visible='true'] {
+  opacity: 1;
+  visibility: visible;
+  bottom: 80px;
+  transform: translateY(0);
+  transition:
+    opacity 0.5s ease-in-out,
+    visibility 0s linear 0s,
+    transform 0.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video,
+  .video[data-visible='true'] {
+    transition: none;
+  }
+}

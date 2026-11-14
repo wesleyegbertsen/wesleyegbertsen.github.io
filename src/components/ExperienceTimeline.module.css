@@ -1,0 +1,45 @@
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 18px;
+  border-left: 2px solid #20b2aa;
+}
+
+.job {
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.job::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #20b2aa;
+  box-shadow: 0 0 0 3px #fff;
+}
+
+.jobTitle {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.where,
+.when,
+.stack {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+}
+
+.when {
+  color: #20807a;
+  font-weight: 600;
+}
+
+.stack {
+  color: #555;
+  font-size: 0.82rem;
+}

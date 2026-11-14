@@ -1,0 +1,51 @@
+.pikachu {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 1em 0;
+  max-width: 100%;
+  overflow: hidden;
+
+  color: #000;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.pikachu:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}
+
+.art {
+  display: block;
+  white-space: pre;
+  text-align: left;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 1vmin;
+}
+
+.pikachu[data-playing='true'] {
+  color: yellow;
+  animation: alternate-color 1s infinite;
+}
+
+@keyframes alternate-color {
+  0% {
+    color: black;
+  }
+  50% {
+    color: yellow;
+  }
+  100% {
+    color: black;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pikachu[data-playing='true'] {
+    animation: none;
+  }
+}

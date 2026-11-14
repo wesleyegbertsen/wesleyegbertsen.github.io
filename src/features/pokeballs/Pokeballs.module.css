@@ -1,0 +1,54 @@
+.counter {
+  position: absolute;
+  top: 20px;
+  left: 50px;
+  color: #555;
+}
+
+.pokeball {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  position: absolute;
+  display: block;
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 10px #000);
+  background-color: transparent;
+  /* The source image is huge, so until found only its corner shows. */
+  background-image: url('../../assets/images/pokeball.png');
+  background-repeat: no-repeat;
+  background-size: unset;
+}
+
+.pokeball[data-found='true'] {
+  background-size: contain;
+}
+
+.pokeball:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.ball1 {
+  left: 3%;
+  bottom: 3%;
+}
+
+.ball2 {
+  left: 10%;
+  top: 25%;
+}
+
+.ball3 {
+  right: 20%;
+  top: 3%;
+}
+
+.ball4 {
+  right: 10%;
+  bottom: 25%;
+}
