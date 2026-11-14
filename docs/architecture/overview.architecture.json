@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "7bb13127b4f7d48de200d89979da2915e414a454"
+      "revision": "70664fd6878e914bdda112451e54876e72c0a0f4"
     },
     "legend": {
       "entries": {
@@ -104,11 +104,12 @@
       "id": "home",
       "type": "frontend",
       "label": "Home page",
-      "sublabel": "route /, logo, name and intro",
+      "sublabel": "route /, name toggles cat",
       "pos": [360, 480],
-      "size": [140, 60],
+      "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 11, "end_line": 29, "label": "logo, intro, Pikachu, teaser, balls, cat" }
+        { "path": "src/pages/HomePage.tsx", "line": 11, "end_line": 31, "label": "glass panel, name button, teaser, balls, cat" },
+        { "path": "src/pages/HomePage.module.css", "line": 21, "end_line": 24, "label": "glass composed from the Projects page" }
       ]
     },
     {
@@ -161,12 +162,12 @@
       "id": "eggs",
       "type": "frontend",
       "label": "Easter eggs",
-      "sublabel": "Pikachu, Poke Balls, cat",
+      "sublabel": "Poke Balls and cat",
       "pos": [360, 620],
       "size": [140, 60],
       "sources": [
-        { "path": "src/features/pikachu/Pikachu.tsx", "line": 8, "end_line": 15, "label": "Pikachu cry on click" },
-        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 17, "end_line": 32, "label": "Poke Balls and sounds" },
+        { "path": "src/features/cat/CatToggle.tsx", "line": 10, "end_line": 17, "label": "name button, aria-pressed" },
+        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 17, "end_line": 33, "label": "Poke Balls and sounds" },
         { "path": "src/features/cat/useCat.ts", "line": 10, "end_line": 30, "label": "cat and rap" }
       ]
     },
@@ -214,7 +215,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/components/FeaturedProject.tsx", "line": 7, "end_line": 34, "label": "name, tagline, screenshot, Link to /projects" },
-        { "path": "src/pages/HomePage.tsx", "line": 24, "label": "rendered when projects[0] exists" }
+        { "path": "src/pages/HomePage.tsx", "line": 27, "label": "rendered when projects[0] exists" }
       ]
     },
     {
@@ -234,11 +235,11 @@
       "id": "assets",
       "type": "database",
       "label": "Assets",
-      "sublabel": "images, sounds",
+      "sublabel": "game boy image, sounds",
       "pos": [360, 870],
       "size": [140, 60],
       "sources": [
-        { "path": "src/assets/index.ts", "line": 16, "end_line": 25, "label": "bundled URLs" }
+        { "path": "src/assets/index.ts", "line": 10, "end_line": 18, "label": "bundled URLs" }
       ]
     },
     {
@@ -305,13 +306,13 @@
       "id": "modules",
       "type": "frontend",
       "label": "Themed CSS modules",
-      "sublabel": "eight CSS modules read them",
+      "sublabel": "nine CSS modules read them",
       "pos": [210, 40],
       "size": [200, 70],
       "sources": [
         { "path": "src/components/SiteMenu.module.css", "line": 64, "end_line": 72, "label": "link accent and glow" },
         { "path": "src/components/ProjectCard.module.css", "line": 56, "end_line": 61, "label": "primary button" },
-        { "path": "src/components/FeaturedProject.module.css", "line": 51, "end_line": 61, "label": "teaser link uses the accent" }
+        { "path": "src/styles/themeTokens.test.ts", "line": 5, "end_line": 15, "label": "the nine modules that must read tokens" }
       ]
     },
     {
@@ -322,9 +323,9 @@
       "pos": [880, 170],
       "size": [110, 70],
       "sources": [
-        { "path": "src/styles/themeTokens.test.ts", "line": 32, "end_line": 36, "label": "modules read tokens, no old accents" },
+        { "path": "src/styles/themeTokens.test.ts", "line": 33, "end_line": 37, "label": "modules read tokens, no old accents" },
         { "path": "e2e/theme.spec.ts", "line": 32, "end_line": 42, "label": "click moves theme and menu" },
-        { "path": "e2e/theme.spec.ts", "line": 106, "end_line": 126, "label": "stored theme before React renders" }
+        { "path": "e2e/theme.spec.ts", "line": 116, "end_line": 136, "label": "stored theme before React renders" }
       ]
     },
     {
@@ -380,7 +381,7 @@
       "sources": [
         { "path": ".github/workflows/deploy.yml", "line": 52, "end_line": 70, "label": "e2e job steps" },
         { "path": "playwright.config.ts", "line": 22, "end_line": 34, "label": "projects and web server" },
-        { "path": "e2e/projects.spec.ts", "line": 24, "end_line": 42, "label": "projects deep link test" }
+        { "path": "e2e/projects.spec.ts", "line": 13, "end_line": 30, "label": "projects deep link test" }
       ]
     }
   ],
@@ -427,7 +428,7 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
-        "The home page shows the newest project (projects[0]) and links to /projects",
+        "The home page is a glass panel with the name, intro and newest project (projects[0]); the name button toggles the cat",
         "The only persisted state is the colour index in localStorage"
       ]
     },
