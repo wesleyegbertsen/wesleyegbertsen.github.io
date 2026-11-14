@@ -1,2 +1,5 @@
 docs/verdicts/
 docs/reviews/
+node_modules/
+dist/
+coverage/
