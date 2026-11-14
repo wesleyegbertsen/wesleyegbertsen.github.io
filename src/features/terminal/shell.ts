@@ -10,6 +10,9 @@ export type Env = Omit<Context, keyof ShellState>;
 
 export type Execution = { state: ShellState; lines: string[]; effects: Effect[] };
 
+/** How many commands the history keeps: the session now outlasts a visit to another page, so it must not grow for ever. */
+export const MAX_HISTORY = 500;
+
 export const initialState = (): ShellState => ({ cwd: HOME, history: [] });
 
 /**
@@ -20,7 +23,7 @@ export function execute(line: string, state: ShellState, env: Env): Execution {
   const parsed = parse(line);
   if (!parsed) return { state, lines: [], effects: [] };
 
-  const history = [...state.history, line.trim()];
+  const history = [...state.history, line.trim()].slice(-MAX_HISTORY);
   const command = commands.find((candidate) => candidate.name === parsed.name);
   if (!command) {
     return {

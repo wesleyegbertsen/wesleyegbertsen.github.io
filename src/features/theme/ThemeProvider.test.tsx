@@ -5,11 +5,20 @@ import { ThemeProvider } from './ThemeProvider.tsx';
 import { useTheme } from './ThemeContext.ts';
 
 function Consumer() {
-  const { index, theme, cycle, select } = useTheme();
+  const { index, theme, cycle, select, preview } = useTheme();
   return (
     <>
       <button type="button" onClick={cycle}>
         {index}:{theme.name}
+      </button>
+      <button type="button" onClick={() => preview(3)}>
+        preview white
+      </button>
+      <button type="button" onClick={() => preview(9)}>
+        preview nothing
+      </button>
+      <button type="button" onClick={() => preview(null)}>
+        preview end
       </button>
       <button type="button" onClick={() => select(2)}>
         pick blue
@@ -85,6 +94,47 @@ describe('select', () => {
     await userEvent.click(screen.getByRole('button', { name: 'pick nothing' }));
     expect(screen.getByRole('button', { name: /^\d:/ })).toHaveTextContent('0:green');
     expect(document.documentElement.dataset.theme).toBe('green');
+  });
+});
+
+describe('preview', () => {
+  const shown = () => screen.getByRole('button', { name: /^\d:/ });
+
+  it('shows a theme on the page without storing it, and preview(null) puts the stored one back', async () => {
+    localStorage.setItem('currentMatrixFontColorIndex', '1');
+    setup();
+
+    await userEvent.click(screen.getByRole('button', { name: 'preview white' }));
+    expect(shown()).toHaveTextContent('3:white');
+    expect(document.documentElement.dataset.theme).toBe('white');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
+
+    await userEvent.click(screen.getByRole('button', { name: 'preview end' }));
+    expect(shown()).toHaveTextContent('1:red');
+    expect(document.documentElement.dataset.theme).toBe('red');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
+  });
+
+  it('ignores an index that is not a theme', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'preview nothing' }));
+    expect(shown()).toHaveTextContent('0:green');
+  });
+
+  it('is replaced by a real choice: select ends the preview and stores the pick', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'preview white' }));
+    await userEvent.click(screen.getByRole('button', { name: 'pick blue' }));
+    expect(shown()).toHaveTextContent('2:blue');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('2');
+  });
+
+  it('is replaced by a real choice: cycle moves on from the stored theme, not the previewed one', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'preview white' }));
+    await userEvent.click(shown());
+    expect(shown()).toHaveTextContent('1:red');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
   });
 });
 

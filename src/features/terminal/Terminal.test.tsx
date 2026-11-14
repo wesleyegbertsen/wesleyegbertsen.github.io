@@ -171,10 +171,17 @@ describe('Terminal', () => {
     expect(notPrevented).toBe(true);
   });
 
-  it('Tab on a typed line is intercepted', () => {
+  it('Tab on a typed line that completes is intercepted', () => {
     const { input } = setup();
     fireEvent.change(input, { target: { value: 'he' } });
     expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(false);
+  });
+
+  it('Tab on a typed line with nothing to complete moves focus on, so the input is never a trap', () => {
+    const { input } = setup();
+    fireEvent.change(input, { target: { value: 'zzz' } });
+    expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(true);
+    expect(input).toHaveValue('zzz');
   });
 
   it('Ctrl+L clears the output without leaving the page', async () => {
@@ -222,7 +229,53 @@ describe('Terminal matrix', () => {
     act(() => void vi.advanceTimersByTime(2000));
     expect(log.querySelectorAll('[data-kind="rain"]')).toHaveLength(12);
     expect(document.documentElement.dataset.theme).toBe('green');
-    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('0');
+  });
+
+  it('never stores the colours it shows on the way', async () => {
+    mockReducedMotion(false);
+    localStorage.setItem('currentMatrixFontColorIndex', '1');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { input } = setup();
+    await user.type(input, 'matrix{Enter}');
+
+    act(() => void vi.advanceTimersByTime(450));
+    expect(document.documentElement.dataset.theme).not.toBe('red');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
+
+    act(() => void vi.advanceTimersByTime(3000));
+    expect(document.documentElement.dataset.theme).toBe('red');
+    expect(localStorage.getItem('currentMatrixFontColorIndex')).toBe('1');
+  });
+
+  it('clear during a run stops the rain and gives the colour back', async () => {
+    mockReducedMotion(false);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { input, log } = setup();
+    await user.type(input, 'matrix{Enter}');
+    act(() => void vi.advanceTimersByTime(450));
+
+    await user.type(input, 'clear{Enter}');
+    act(() => void vi.advanceTimersByTime(3000));
+
+    expect(log).toBeEmptyDOMElement();
+    expect(document.documentElement.dataset.theme).toBe('green');
+  });
+
+  it('Ctrl+L during a run stops the rain too', async () => {
+    mockReducedMotion(false);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { input, log } = setup();
+    await user.type(input, 'matrix{Enter}');
+    act(() => void vi.advanceTimersByTime(450));
+
+    fireEvent.keyDown(input, { key: 'l', ctrlKey: true });
+    act(() => void vi.advanceTimersByTime(3000));
+
+    expect(log).toBeEmptyDOMElement();
+    expect(document.documentElement.dataset.theme).toBe('green');
   });
 
   it('prints at once and keeps the colour when the visitor prefers reduced motion', async () => {

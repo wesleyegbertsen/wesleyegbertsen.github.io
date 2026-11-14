@@ -25,7 +25,7 @@ const promptFor = (cwd: string) => `guest@wesleyegbertsen:${displayPath(cwd)}$`;
 /** A fake shell: type a command, read the answer. The commands themselves live in the pure modules beside it. */
 export function Terminal() {
   const navigate = useNavigate();
-  const { index, theme, select } = useTheme();
+  const { index, theme, select, preview } = useTheme();
   const reducedMotion = useMediaQuery(REDUCED_MOTION);
 
   // The scrollback, folder and history live above the routes, so they outlast a visit to another page.
@@ -45,7 +45,7 @@ export function Terminal() {
 
   const matrix = useMatrixRun({
     index,
-    select,
+    preview,
     reducedMotion,
     print: (line) => setEntries((current) => [...current, ...newEntries('rain', [line])]),
   });
@@ -85,8 +85,17 @@ export function Terminal() {
       case 'matrix':
         matrix.start();
         break;
-      default:
+      case 'clear':
+        // The screen is emptied by submit(); a run still printing rain would refill it.
+        matrix.cancel();
         break;
+      case 'cd':
+        // Applied by execute() and never passed on.
+        break;
+      default: {
+        const unhandled: never = effect;
+        return unhandled;
+      }
     }
   };
 
@@ -135,11 +144,14 @@ export function Terminal() {
       recall('down');
     } else if (event.key === 'l' && event.ctrlKey) {
       event.preventDefault();
+      matrix.cancel();
       setEntries([]);
     } else if (event.key === 'Tab' && !event.shiftKey && input.trim() !== '') {
-      // Only with text to complete: on an empty line Tab still moves focus on, so the input is no trap.
-      event.preventDefault();
+      // Only when there is something to complete: on an empty line, or one that nothing completes, Tab still
+      // moves focus on, so the input is no trap.
       const { line, candidates } = complete(input, { ...shell, fs, data, navItems });
+      if (line === input && candidates.length === 0) return;
+      event.preventDefault();
       setInput(line);
       if (candidates.length > 0) {
         setEntries((current) => [

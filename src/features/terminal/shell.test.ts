@@ -6,7 +6,7 @@ import { projects } from '../../data/projects.ts';
 import { skills } from '../../data/skills.ts';
 import { commands } from './commands.ts';
 import { buildFileSystem, HOME } from './fs.ts';
-import { execute, initialState, type Env, type ShellState } from './shell.ts';
+import { MAX_HISTORY, execute, initialState, type Env, type ShellState } from './shell.ts';
 
 const data = { profile, skills, experience, education, projects };
 const env: Env = {
@@ -38,6 +38,14 @@ describe('execute', () => {
 
   it('says what an unknown command is and where help is', () => {
     expect(run('nope').lines).toEqual(["command not found: nope. Type 'help' to see the commands."]);
+  });
+
+  it('keeps the newest commands only, however many are typed', () => {
+    let state: ShellState = initialState();
+    for (let i = 0; i < MAX_HISTORY + 20; i += 1) state = execute(`echo ${i}`, state, env).state;
+    expect(state.history).toHaveLength(MAX_HISTORY);
+    expect(state.history.at(-1)).toBe(`echo ${MAX_HISTORY + 19}`);
+    expect(state.history[0]).toBe('echo 20');
   });
 
   it('records every non-blank line, including unknown ones', () => {
