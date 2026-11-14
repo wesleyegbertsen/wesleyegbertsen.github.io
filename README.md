@@ -18,6 +18,8 @@ Node 24 or newer (see `.nvmrc`).
 
 `package.json` has an npm `overrides` entry that lets `eslint-plugin-jsx-a11y` run on ESLint 10: the plugin works there (checked with deliberate violations) but its declared peer range still stops at ESLint 9 (upstream: jsx-eslint/eslint-plugin-jsx-a11y#1075). Remove the override once a release declares support.
 
+TypeScript runs side by side, as Microsoft recommends for 7.0: `tsc` (typecheck and build) is TypeScript 7 (`@typescript/native`), while the package named `typescript` is the 6.0 compatibility package (`@typescript/typescript6`), because TypeScript 7 has no programmatic API and `typescript-eslint` needs one (tracked in typescript-eslint#10940; a new API is expected in TypeScript 7.1). When `typescript-eslint` supports TypeScript 7, point `typescript` back at the real package and drop `@typescript/native`.
+
 ## Layout
 
 An architecture overview drawn from the code, with source citations, is in [docs/architecture/overview.html](docs/architecture/overview.html) (open it in a browser).
