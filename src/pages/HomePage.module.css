@@ -8,11 +8,7 @@
   pointer-events: none;
 }
 
-.glass {
-  composes: glass from './ProjectsPage.module.css';
-}
-
-/* Home-only additions. The extra .page in the selector outranks the shared glass's own (padding) rules, whichever stylesheet loads last; width, left edge and font stay the shared glass's. */
+/* Home-only additions to the shared glass (src/styles/glass.css, the `glass-panel` class). The extra .page in the selector outranks the shared padding rules, whichever stylesheet loads last; width, left edge and font stay the shared glass's. */
 .page .glass {
   /* Anchors the Poké Balls (inside) and their counter (just above). */
   position: relative;

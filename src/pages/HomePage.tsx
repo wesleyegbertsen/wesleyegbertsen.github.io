@@ -4,6 +4,7 @@ import { CatToggle } from '../features/cat/CatToggle.tsx';
 import { useCat } from '../features/cat/useCat.ts';
 import { Pokeballs } from '../features/pokeballs/Pokeballs.tsx';
 import { projects } from '../data/projects.ts';
+import '../styles/glass.css';
 import styles from './HomePage.module.css';
 
 /** The landing screen: name, intro and newest project on a glass panel, with the hidden Poké Balls inside it, and the cat. */
@@ -14,7 +15,7 @@ export function HomePage() {
   return (
     <>
       <main className={styles.page}>
-        <div className={styles.glass}>
+        <div className={`glass-panel ${styles.glass}`}>
           <h1 className={styles.name}>
             <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
               Wesley Egbertsen

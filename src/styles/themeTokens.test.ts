@@ -10,7 +10,7 @@ const MODULES = [
   'src/components/Panel.module.css',
   'src/components/SocialBar.module.css',
   'src/components/FeaturedProject.module.css',
-  'src/pages/ProjectsPage.module.css',
+  'src/styles/glass.css',
   'src/pages/HomePage.module.css',
 ];
 

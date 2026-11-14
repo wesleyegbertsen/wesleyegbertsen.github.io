@@ -98,11 +98,19 @@ describe('HomePage intro', () => {
   it('draws a glass panel like the Projects page, with no card image', () => {
     const css = readCss('src/pages/HomePage.module.css');
     expect(css).not.toContain('bg.png');
-    expect(css).toContain("composes: glass from './ProjectsPage.module.css'");
+    // Both pages use one plain stylesheet's `.glass-panel`. `composes ... from` another CSS module makes
+    // Vite's dev server warn that a PostCSS plugin did not pass the `from` option, so it must not come back.
+    expect(css).not.toContain('composes');
+    expect(readCss('src/pages/ProjectsPage.module.css')).not.toContain('composes');
     // One shared look: the monospace font comes from the shared glass, not from the home page alone.
     expect(css).not.toContain('font-family');
     expect(css).not.toContain('.stage');
-    expect(readCss('src/pages/ProjectsPage.module.css')).toContain('monospace');
+    expect(readCss('src/styles/glass.css')).toContain('monospace');
+    for (const page of ['src/pages/HomePage.tsx', 'src/pages/ProjectsPage.tsx']) {
+      const source = readCss(page);
+      expect(source, `${page} imports the shared glass`).toContain("import '../styles/glass.css'");
+      expect(source, `${page} uses the shared glass class`).toContain('glass-panel');
+    }
   });
 
   it('has no contact button, the mail icon lives in the social bar', () => {

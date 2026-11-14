@@ -8,21 +8,6 @@
   pointer-events: none;
 }
 
-.glass {
-  pointer-events: auto;
-  box-sizing: border-box;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 2rem;
-
-  background: rgba(10, 20, 10, 0.55);
-  backdrop-filter: blur(8px);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  border-radius: 16px;
-  color: #f2f7e8;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-}
-
 .title {
   margin: 0 0 1.5rem;
   font-size: 1.8rem;
@@ -31,9 +16,5 @@
 @media (max-width: 700px) {
   .page {
     padding: 120px 4%;
-  }
-
-  .glass {
-    padding: 1.25rem 1rem;
   }
 }
