@@ -51,3 +51,8 @@
 .experience[aria-expanded='true'] {
   color: #20b2aa;
 }
+
+.education:hover,
+.education[aria-expanded='true'] {
+  color: #ffb400;
+}
