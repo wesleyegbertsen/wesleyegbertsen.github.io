@@ -1,0 +1,87 @@
+.card + .card {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(164, 226, 0, 0.25);
+}
+
+.name {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #a4e200;
+}
+
+.tagline {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.description {
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  opacity: 0.9;
+}
+
+/* Phone screenshots: narrow, tall images side by side, wrapping on small screens. */
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 1.25rem 0;
+}
+
+.shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primary,
+.secondary {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+}
+
+.primary {
+  background: #a4e200;
+  color: #1c2b00;
+  border: 1px solid #a4e200;
+}
+
+.primary:hover {
+  background: #c2f53a;
+}
+
+.secondary {
+  background: transparent;
+  color: #a4e200;
+  border: 1px solid rgba(164, 226, 0, 0.6);
+}
+
+.secondary:hover {
+  background: rgba(164, 226, 0, 0.15);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.license {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}

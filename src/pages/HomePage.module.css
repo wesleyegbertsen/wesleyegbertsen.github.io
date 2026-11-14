@@ -10,7 +10,7 @@
   position: relative;
   z-index: 1;
 
-  background-image: url('./assets/images/bg.png');
+  background-image: url('../assets/images/bg.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   border-radius: 50px;
