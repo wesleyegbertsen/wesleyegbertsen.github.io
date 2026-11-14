@@ -1,10 +1,10 @@
-/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window the same way. The Poké Balls sit in the padding bands above and below the glass. */
+/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window, level with the centred site menu. The Poké Balls sit in the padding bands above and below the glass. */
 .page {
   width: 100%;
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  padding: 50px 170px 120px;
+  padding: 120px 170px;
   pointer-events: none;
 }
 
@@ -26,6 +26,6 @@
 
 @media (max-width: 700px) {
   .page {
-    padding: 64px 4% 120px;
+    padding: 120px 4%;
   }
 }

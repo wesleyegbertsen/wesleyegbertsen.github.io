@@ -101,15 +101,26 @@ test('the home glass and the projects glass share width, position and font', asy
     expect(home.font).toContain('monospace');
   }
 
-  // Both pages sit in the vertical middle of the window the same way. That is only
-  // visible when both fit, so use a window tall enough for the Projects page.
+  // Both panels sit in the vertical middle of the window, on the same line as the
+  // centred site menu. That is only visible when the page fits, so use a window
+  // tall enough for the Projects page.
   for (const width of [1100, 1440]) {
     await page.setViewportSize({ width, height: 1600 });
+    const menuCentre = async () =>
+      page
+        .getByRole('navigation', { name: 'Site' })
+        .evaluate((el) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2);
     await page.goto('/#/');
     const home = await measure('Wesley Egbertsen');
+    const homeMenu = await menuCentre();
     await page.goto('/#/projects');
     const projects = await measure('Projects');
-    expect(Math.abs(home.centreY - projects.centreY), `vertical centre at ${width}`).toBeLessThanOrEqual(1);
+    const projectsMenu = await menuCentre();
+
+    expect(Math.abs(home.centreY - 800), `home centre at ${width}`).toBeLessThanOrEqual(1);
+    expect(Math.abs(projects.centreY - 800), `projects centre at ${width}`).toBeLessThanOrEqual(1);
+    expect(Math.abs(home.centreY - homeMenu), `home vs menu at ${width}`).toBeLessThanOrEqual(2);
+    expect(Math.abs(projects.centreY - projectsMenu), `projects vs menu at ${width}`).toBeLessThanOrEqual(2);
   }
 });
 
