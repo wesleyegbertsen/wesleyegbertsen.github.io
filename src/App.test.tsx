@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.tsx';
 
@@ -20,7 +20,9 @@ function renderAt(path: string) {
 
 function expectBottomIcons() {
   expect(screen.getByRole('button', { name: 'Game Boy' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: 'Email Wesley' })).toHaveLength(1);
+  const bar = screen.getByRole('navigation', { name: 'Social and about' });
+  expect(within(bar).getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Skills' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Work experience' })).toBeInTheDocument();
 }

@@ -49,9 +49,10 @@ describe('themed CSS modules', () => {
     expect(alpha).toBeGreaterThanOrEqual(0.8);
   });
 
-  it('keeps one hover rule for the three bottom bar icons that follow the theme', () => {
+  it('keeps one hover rule for the four bottom bar icons that follow the theme', () => {
     const css = read('src/components/SocialBar.module.css');
     expect(css.match(/color: var\(--accent\)/g)).toHaveLength(1);
+    expect(css).toContain('.mail:hover');
   });
 
   it('leaves the GitHub and LinkedIn brand hovers alone', () => {

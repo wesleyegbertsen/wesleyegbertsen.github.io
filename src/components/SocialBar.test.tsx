@@ -93,6 +93,24 @@ describe('social bar panels', () => {
     expect(screen.getByRole('dialog')).toHaveFocus();
   });
 
+  it('links to email in the same window', () => {
+    setup();
+    const link = screen.getByRole('link', { name: 'Email Wesley' });
+    expect(link).toHaveAttribute('href', 'mailto:wesleyegbertsen@gmail.com');
+    expect(link).not.toHaveAttribute('target');
+  });
+
+  it('puts the mail link between Education and LinkedIn', () => {
+    setup();
+    const bar = screen.getByRole('navigation', { name: 'Social and about' });
+    const names = within(bar)
+      .getAllByRole('link')
+      .concat(within(bar).getAllByRole('button'))
+      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map((el) => el.getAttribute('aria-label'));
+    expect(names).toEqual(['GitHub', 'Skills', 'Work experience', 'Education', 'Email Wesley', 'LinkedIn']);
+  });
+
   it('links out to GitHub and LinkedIn safely', () => {
     setup();
     for (const name of ['GitHub', 'LinkedIn']) {

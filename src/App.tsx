@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { GameBoy } from './features/gameboy/GameBoy.tsx';
-import { MailLink } from './components/MailLink.tsx';
 import { MatrixBackdrop } from './features/matrix/MatrixBackdrop.tsx';
 import { SiteMenu } from './components/SiteMenu.tsx';
 import { SocialBar } from './components/SocialBar.tsx';
@@ -19,7 +18,6 @@ export default function App() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <MailLink />
       <GameBoy />
       <SocialBar />
     </ThemeProvider>
