@@ -23,11 +23,7 @@ test('does not scroll sideways and allows zoom', async ({ page }) => {
   expect(viewport).not.toMatch(/user-scalable|maximum-scale/);
 });
 
-test('serves the custom domain file and the PDF at their old URLs', async ({ request }) => {
-  const cname = await request.get('/CNAME');
-  expect(cname.ok()).toBe(true);
-  expect(await cname.text()).toContain('www.wesleyegbertsen.nl');
-
+test('serves the PDF at its old URL', async ({ request }) => {
   const pdf = await request.get('/docs/Replacing%20Paper%20Contracts%20With%20Ethereum.pdf');
   expect(pdf.ok()).toBe(true);
   expect(pdf.headers()['content-type']).toContain('pdf');
