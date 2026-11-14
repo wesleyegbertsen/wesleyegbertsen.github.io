@@ -28,6 +28,10 @@
   text-transform: uppercase;
   text-decoration: none;
   opacity: 0.55;
+  /* A dark halo, not a background, keeps the text readable over the rain. */
+  text-shadow:
+    0 0 3px #000,
+    0 0 6px #000;
   transition:
     opacity 0.2s ease-in-out,
     color 0.2s ease-in-out,
@@ -45,7 +49,9 @@
 .link[aria-current='page'] {
   opacity: 1;
   color: #a4e200;
-  text-shadow: 0 0 6px #a4e200;
+  text-shadow:
+    0 0 6px #a4e200,
+    0 0 3px #000;
 }
 
 .link:hover::before,

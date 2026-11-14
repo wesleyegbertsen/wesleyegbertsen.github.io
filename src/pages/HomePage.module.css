@@ -28,6 +28,13 @@
   white-space: nowrap;
 }
 
+/* Keep the card clear of the left site menu, which is about 130px wide. */
+@media (min-width: 701px) {
+  .container {
+    margin: 50px max(10%, 150px);
+  }
+}
+
 @media (max-width: 600px) {
   .container {
     margin: 24px 4%;

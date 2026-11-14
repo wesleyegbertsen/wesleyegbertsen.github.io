@@ -36,6 +36,9 @@ npx playwright show-trace test-results/<dir>/trace.zip   # after a failure
 9. **The cat overlaps the social bar** (cat z-index 3, bar 2). That is how the original site behaved; it is not a regression.
 10. **Panels live in a fixed dialog above the social bar**, not anchored to their button. Check them with `toBeInViewport({ ratio: 1 })` at both viewports; work experience scrolls inside the panel, so the last job starts out of view.
 
+11. **The site routes by hash.** Home is `/` (or `/#/`), projects is `/#/projects`; `openSite(page, '/#/projects')` waits for that page's heading instead of Pikachu. The first history entry is the bare address, so after `goBack` expect `/` or `/#/`. On a narrow viewport (`isMobile`) the site menu is a "Menu" button that must be opened before its links exist.
+12. **Keep `(3, 3)` clear.** The left menu, the mobile Menu button (at 12px) and the projects page wrapper (`pointer-events: none` around the glass card) must not cover the top-left corner, or the background-click tests fail on the page that covers it.
+
 ## Looking at the page (not just asserting)
 
 Assertions do not tell you it looks right. To see it, add a temporary spec such as `e2e/_shots.spec.ts` that opens the site with `openSite(page)`, drives it, and calls `page.screenshot({ path: '<scratchpad>/name.png' })`; run it with `npx playwright test _shots`, `Read` the images, then delete the spec. Do not commit it.
