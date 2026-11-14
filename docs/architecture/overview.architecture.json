@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "ed5220a9c2b14333e8c5eaa7113a7d7c7e7c3ba7"
+      "revision": "65cff1888eee4fe8202c629b0c7f5fe9e5adc2cf"
     },
     "legend": {
       "entries": {
@@ -105,12 +105,12 @@
       "id": "home",
       "type": "frontend",
       "label": "Home page",
-      "sublabel": "route /, centred glass, name toggle",
+      "sublabel": "route /, glass with balls inside",
       "pos": [360, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 32, "label": "balls, glass with name button and teaser, cat" },
-        { "path": "src/pages/HomePage.module.css", "line": 2, "end_line": 13, "label": "Projects padding, glass composed from Projects" }
+        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 32, "label": "glass holds balls, name, subline, teaser" },
+        { "path": "src/pages/HomePage.module.css", "line": 11, "end_line": 21, "label": "glass anchors balls, roomier padding" }
       ]
     },
     {
@@ -168,8 +168,8 @@
       "pos": [360, 620],
       "size": [140, 60],
       "sources": [
-        { "path": "src/features/cat/CatToggle.tsx", "line": 10, "end_line": 17, "label": "name button, aria-pressed" },
-        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 18, "end_line": 34, "label": "Poke Balls and sounds" },
+        { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 36, "end_line": 60, "label": "counter and four ball buttons" },
+        { "path": "src/features/pokeballs/Pokeballs.module.css", "line": 1, "end_line": 14, "label": "counter just above the panel's top edge" },
         { "path": "src/features/cat/useCat.ts", "line": 10, "end_line": 30, "label": "cat and rap" }
       ]
     },
@@ -400,7 +400,7 @@
     { "id": "app-to-gameboy", "from": "app", "to": "gameboy" },
     { "id": "matrix-to-themeprov", "from": "matrix", "to": "themeprov", "label": "useTheme()" },
     { "id": "menu-to-navdata", "from": "menu", "to": "navdata", "label": "reads" },
-    { "id": "home-to-eggs", "from": "home", "to": "eggs" },
+    { "id": "home-to-eggs", "from": "home", "to": "eggs", "label": "balls in glass" },
     { "id": "home-to-featured", "from": "home", "to": "featured", "label": "projects[0]" },
     { "id": "projects-to-card", "from": "projectspage", "to": "card" },
     { "id": "social-to-content", "from": "social", "to": "contentdata", "label": "reads" },
@@ -431,8 +431,8 @@
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
         "Both pages use the same symmetric page padding (120px top and bottom) and the body has none, so the home and Projects glass panels are centred on the window's middle line, level with the centred site menu",
-        "Both glass panels share one .glass: same width, padding and monospace font. The home glass holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
-        "The Poke Balls sit in the top and bottom padding bands around the glass",
+        "Both glass panels share one .glass: same width, left edge and monospace font. The home panel has roomier inner padding; it holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
+        "The four hidden Poke Balls live inside the home glass panel, anchored to it, with the counter just above the panel's top edge",
         "The only persisted state is the colour index in localStorage"
       ]
     },
