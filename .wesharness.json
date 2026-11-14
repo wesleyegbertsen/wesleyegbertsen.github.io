@@ -28,7 +28,12 @@
         "package.json",
         "package-lock.json",
         "eslint.config.js",
-        "playwright.config.ts"
+        "vite.config.ts",
+        "playwright.config.ts",
+        "tsconfig.json",
+        "tsconfig.app.json",
+        "tsconfig.node.json",
+        "tsconfig.e2e.json"
       ]
     },
     {
@@ -47,6 +52,7 @@
       "command": "npm run build",
       "when": [
         "src/**",
+        "e2e/**",
         "index.html",
         "public/**",
         "package.json",
@@ -54,7 +60,9 @@
         "tsconfig.json",
         "tsconfig.app.json",
         "tsconfig.node.json",
-        "vite.config.ts"
+        "tsconfig.e2e.json",
+        "vite.config.ts",
+        "playwright.config.ts"
       ]
     },
     {

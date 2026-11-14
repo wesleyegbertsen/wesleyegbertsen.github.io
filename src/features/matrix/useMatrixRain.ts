@@ -27,10 +27,13 @@ export function useMatrixRain(canvasRef: RefObject<HTMLCanvasElement | null>, co
     };
 
     const resize = () => {
-      // Resizing clears the canvas, so start over at the new width.
+      const widthChanged = canvas.width !== window.innerWidth;
+      // Setting the size clears the canvas, so repaint it black either way.
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      columns = createColumns(window.innerWidth);
+      // Columns depend only on the width: a height-only change (the phone URL bar showing or
+      // hiding) keeps them falling, as the original did.
+      if (widthChanged || columns.length === 0) columns = createColumns(window.innerWidth);
       paintBlack();
     };
 

@@ -28,6 +28,6 @@ Node 22 or newer (see `.nvmrc`).
 
 GitHub Actions (`.github/workflows/deploy.yml`) type-checks, lints, tests and builds on every push and pull request, and deploys `dist/` to GitHub Pages from `main`.
 
-**One-time setting:** in the repository settings, Pages, Build and deployment, set Source to **GitHub Actions**. Do this *before* merging the migration: with the old "Deploy from a branch" source the raw `index.html` is served and the page is blank. The custom domain comes from `public/CNAME`.
+**One-time setting:** in the repository settings, Pages, Build and deployment, set Source to **GitHub Actions**. Do this *before* merging the migration: with the old "Deploy from a branch" source the raw `index.html` is served and the page is blank. `public/CNAME` is kept for the old branch deploy, but an Actions-based Pages deploy ignores it: the custom domain lives only in the repository's Pages settings (Custom domain: `www.wesleyegbertsen.nl`, Enforce HTTPS on). Check both after the first deploy.
 
 Rollback: revert the merge commit on `main`, or set the Pages source back to the branch deploy.

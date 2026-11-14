@@ -134,4 +134,49 @@ describe('useMatrixRain', () => {
     act(() => void window.dispatchEvent(new Event('resize')));
     expect(context.fillRect.mock.calls.length).toBe(before);
   });
+
+  it('keeps the columns falling when only the height changes', () => {
+    render(<Harness />);
+    act(() => void vi.advanceTimersByTime(500));
+    const before = context.fillText.mock.calls.filter((call) => call[1] === 0).map((call) => call[2] as number);
+    const lastY = before[before.length - 1]!;
+    expect(lastY).toBeGreaterThan(0);
+
+    vi.stubGlobal('innerHeight', window.innerHeight + 80);
+    act(() => void window.dispatchEvent(new Event('resize')));
+    context.fillText.mockClear();
+    act(() => void vi.advanceTimersByTime(100));
+
+    const firstAfter = context.fillText.mock.calls.find((call) => call[1] === 0)![2] as number;
+    expect(firstAfter).toBeGreaterThan(lastY);
+    vi.unstubAllGlobals();
+  });
+
+  it('restarts the columns from the top when the width changes', () => {
+    render(<Harness />);
+    act(() => void vi.advanceTimersByTime(500));
+
+    vi.stubGlobal('innerWidth', window.innerWidth + 100);
+    act(() => void window.dispatchEvent(new Event('resize')));
+    context.fillText.mockClear();
+    act(() => void vi.advanceTimersByTime(100));
+
+    expect(context.fillText.mock.calls.find((call) => call[1] === 0)![2]).toBe(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('restarts from a black canvas in the new colour when the colour changes', () => {
+    const { rerender } = render(<Harness colorIndex={0} />);
+    act(() => void vi.advanceTimersByTime(200));
+    expect(new Set(context.textColors)).toEqual(new Set(['#0f0']));
+    const fills = context.fillRect.mock.calls.length;
+    context.textColors.length = 0;
+
+    rerender(<Harness colorIndex={1} />);
+    expect(context.fillRect.mock.calls.length).toBe(fills + 1);
+    act(() => void vi.advanceTimersByTime(200));
+
+    expect(context.textColors.length).toBeGreaterThan(0);
+    expect(new Set(context.textColors)).toEqual(new Set(['#f00']));
+  });
 });

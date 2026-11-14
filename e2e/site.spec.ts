@@ -148,6 +148,8 @@ test.describe('easter eggs', () => {
     const video = page.getByTitle('Titan cat video');
 
     await expect(video).toBeHidden();
+    // Zoom is allowed, so a double-tap must not be taken by the browser's double-tap zoom.
+    await expect(gameboy).toHaveCSS('touch-action', 'manipulation');
     await gameboy.click();
     expect((await playsOf(page, 'gb-'))[0]?.volume).toBe(0.3);
 
@@ -191,11 +193,15 @@ test.describe('matrix backdrop', () => {
     expect(errors).toEqual([]);
   });
 
-  test('stays black when the visitor prefers reduced motion', async ({ page }) => {
+  test('stays black under reduced motion and starts raining when that preference is lifted', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openSite(page);
     await page.waitForTimeout(1500);
     expect(await litPixels(page)).toBe(0);
+
+    // Positive control: the same page rains once the preference changes.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await expect.poll(() => litPixels(page), { timeout: 5000 }).toBeGreaterThan(50);
   });
 
   test('stops drawing while the tab is hidden', async ({ page }) => {

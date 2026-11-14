@@ -6,6 +6,8 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* Zoom is allowed now, so stop a double-tap from zooming instead of reaching onDoubleClick. */
+  touch-action: manipulation;
 
   position: fixed;
   bottom: 10px;
