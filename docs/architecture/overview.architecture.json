@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "5dfbc51c4c742e382e67e88044178b2bc168a6a7"
+      "revision": "37e2097fab1cf6b1aa5d8ffd1aba8533e2b7ebbc"
     },
     "legend": {
       "entries": {
@@ -104,12 +104,12 @@
       "id": "home",
       "type": "frontend",
       "label": "Home page",
-      "sublabel": "route /, glass, name toggles cat",
+      "sublabel": "route /, centred glass, name toggle",
       "pos": [360, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 31, "label": "balls, glass with name button and teaser, cat" },
-        { "path": "src/pages/HomePage.module.css", "line": 1, "end_line": 15, "label": "Projects padding, glass composed from Projects" }
+        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 32, "label": "balls, glass with name button and teaser, cat" },
+        { "path": "src/pages/HomePage.module.css", "line": 2, "end_line": 13, "label": "Projects padding, glass composed from Projects" }
       ]
     },
     {
@@ -429,7 +429,7 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
-        "The home page is a glass panel at the same width and top as the Projects page (shared .glass, monospace), with the name, intro and newest project (projects[0]); the name button toggles the cat",
+        "The home page is a glass panel centred in the window like the Projects glass: same width, padding and monospace (shared .glass), and it no longer pins to the top. It holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
         "The Poke Balls sit in the top and bottom padding bands around the glass",
         "The only persisted state is the colour index in localStorage"
       ]
