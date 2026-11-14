@@ -1,30 +1,27 @@
-import { Cat } from './features/cat/Cat.tsx';
-import { Logo } from './features/cat/Logo.tsx';
-import { useCat } from './features/cat/useCat.ts';
+import { Navigate, Route, Routes } from 'react-router';
 import { GameBoy } from './features/gameboy/GameBoy.tsx';
 import { MailLink } from './components/MailLink.tsx';
 import { MatrixBackdrop } from './features/matrix/MatrixBackdrop.tsx';
-import { Pikachu } from './features/pikachu/Pikachu.tsx';
-import { Pokeballs } from './features/pokeballs/Pokeballs.tsx';
+import { SiteMenu } from './components/SiteMenu.tsx';
 import { SocialBar } from './components/SocialBar.tsx';
-import styles from './App.module.css';
+import { ThemeProvider } from './features/theme/ThemeProvider.tsx';
+import { HomePage } from './pages/HomePage.tsx';
+import { ProjectsPage } from './pages/ProjectsPage.tsx';
 
+/** What every page shares: the theme, the backdrop, the menu and the bottom icons. */
 export default function App() {
-  const cat = useCat();
-
   return (
-    <>
+    <ThemeProvider>
       <MatrixBackdrop />
-      <main className={styles.container}>
-        <h1 className={styles.visuallyHidden}>Wesley Egbertsen</h1>
-        <Pokeballs />
-        <Logo catVisible={cat.visible} onClick={cat.toggleVisible} />
-        <Pikachu />
-      </main>
+      <SiteMenu />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
       <MailLink />
       <GameBoy />
       <SocialBar />
-      <Cat visible={cat.visible} glasses={cat.glasses} onClick={cat.toggleGlasses} />
-    </>
+    </ThemeProvider>
   );
 }

@@ -6,7 +6,7 @@ type Options<T> = {
   serialize?: (value: T) => string;
 };
 
-function read<T>(key: string, fallback: T, parse: Options<T>['parse']): T {
+export function readStored<T>(key: string, fallback: T, parse: Options<T>['parse']): T {
   try {
     const raw = localStorage.getItem(key);
     if (raw === null) return fallback;
@@ -19,7 +19,7 @@ function read<T>(key: string, fallback: T, parse: Options<T>['parse']): T {
 
 /** State persisted to localStorage; invalid or missing values fall back to `fallback`. */
 export function useLocalStorage<T>(key: string, fallback: T, { parse, serialize = String }: Options<T>) {
-  const [value, setValue] = useState<T>(() => read(key, fallback, parse));
+  const [value, setValue] = useState<T>(() => readStored(key, fallback, parse));
 
   const update = useCallback(
     (next: T) => {

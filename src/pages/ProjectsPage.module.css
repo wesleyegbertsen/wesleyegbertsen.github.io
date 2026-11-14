@@ -1,0 +1,38 @@
+.page {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  /* Side room keeps the left menu and the click-through background clear of the card. */
+  padding: 50px 170px 120px;
+  /* The padding is not content: let presses fall through to the backdrop underneath. */
+  pointer-events: none;
+}
+
+.glass {
+  pointer-events: auto;
+  box-sizing: border-box;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  background: rgba(10, 20, 10, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 16px;
+  color: #f2f7e8;
+}
+
+.title {
+  margin: 0 0 1.5rem;
+  font-size: 1.8rem;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 64px 4% 120px;
+  }
+
+  .glass {
+    padding: 1.25rem 1rem;
+  }
+}

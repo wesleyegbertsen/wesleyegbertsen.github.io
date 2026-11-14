@@ -25,8 +25,10 @@ TypeScript runs side by side, as Microsoft recommends for 7.0: `tsc` (typecheck 
 An architecture overview drawn from the code, with source citations, is in [docs/architecture/overview.html](docs/architecture/overview.html) (open it in a browser).
 
 - `src/features/*`: the hobby easter eggs (matrix backdrop, Pikachu, Poké Balls, cat, Game Boy), each with its hooks and tests
-- `src/components/*`: the social bar and its skills/work-experience panels
-- `src/data/*`: skills and work experience as typed data, edit these to update the CV
+- `src/pages/*`: the two routed pages, `HomePage` (`#/`) and `ProjectsPage` (`#/projects`); `src/App.tsx` holds what every page shares (backdrop, site menu, mail link, Game Boy, social bar)
+- `src/components/*`: the social bar and its panels, the left site menu (`SiteMenu`) and the project card
+- `src/data/*`: skills, work experience, education, menu items and projects as typed data, edit these to update the site: add a line to `navigation.ts` for a menu item, add an entry to `projects.ts` (with screenshots in `src/assets/images/projects/`) for a project
+- `src/features/theme/*`: the matrix background colour is the site theme. `themes.ts` holds one palette per colour (green, red, blue, white) and is the only place to change a colour; a test checks every pairing for contrast. The chosen theme is set on `<html>` as `data-theme` plus the CSS custom properties `--accent`, `--accent-hover`, `--accent-on-light`, `--accent-soft` and `--on-accent`, which the CSS modules use instead of hard-coded colours (GitHub and LinkedIn keep their brand colours)
 - `src/assets/*`: images and sounds, imported by components
 - `public/*`: served as-is (the `docs/` PDF)
 

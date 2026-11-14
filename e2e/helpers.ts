@@ -43,8 +43,12 @@ export async function stubYouTube(page: Page) {
   await page.route('**/*youtube.com/**', (route) => route.fulfill({ contentType: 'text/html', body }));
 }
 
-/** Opens the site with audio recording on, YouTube stubbed, and fails on console errors. */
-export async function openSite(page: Page) {
+/**
+ * Opens the site with audio recording on, YouTube stubbed, and fails on console errors.
+ * `path` is where to go (the site routes by hash, for example `/#/projects`); the page is ready when
+ * its own content shows: the Projects heading on the projects page, Pikachu everywhere else.
+ */
+export async function openSite(page: Page, path = '/') {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -52,8 +56,12 @@ export async function openSite(page: Page) {
   });
   await recordAudio(page);
   await stubYouTube(page);
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Pikachu' })).toBeVisible();
+  await page.goto(path);
+  if (path.includes('#/projects')) {
+    await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+  } else {
+    await expect(page.getByRole('button', { name: 'Pikachu' })).toBeVisible();
+  }
   return { errors };
 }
 

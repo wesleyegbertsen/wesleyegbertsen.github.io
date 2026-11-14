@@ -1,0 +1,49 @@
+/*
+ * The colour tokens the whole site reads. JS sets the real values on <html> from themes.ts (see
+ * applyTheme.ts); the values here are the green theme, so a page without JS still looks as it always did.
+ * Registering them as colours lets the browser fade between themes.
+ */
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #a4e200;
+}
+
+@property --accent-hover {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #c2f53a;
+}
+
+@property --accent-on-light {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3d6b00;
+}
+
+@property --accent-soft {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e8f5c8;
+}
+
+@property --on-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1c2b00;
+}
+
+/*
+ * Fade the theme on the root and every var() user follows; no fade for people who ask for less motion.
+ * Only after the first paint (data-theme-fade, set in main.tsx): loading a stored theme is not a change.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme-fade] {
+    transition:
+      --accent 0.4s ease,
+      --accent-hover 0.4s ease,
+      --accent-on-light 0.4s ease,
+      --accent-soft 0.4s ease,
+      --on-accent 0.4s ease;
+  }
+}

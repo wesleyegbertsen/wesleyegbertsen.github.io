@@ -10,7 +10,7 @@
   position: relative;
   z-index: 1;
 
-  background-image: url('./assets/images/bg.png');
+  background-image: url('../assets/images/bg.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   border-radius: 50px;
@@ -26,6 +26,13 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Keep the card clear of the left site menu, which is about 130px wide. */
+@media (min-width: 701px) {
+  .container {
+    margin: 50px max(10%, 150px);
+  }
 }
 
 @media (max-width: 600px) {

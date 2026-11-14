@@ -1,27 +1,71 @@
 import { StrictMode } from 'react';
+import { MemoryRouter } from 'react-router';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from './App.tsx';
 
 beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
 });
 
-describe('App', () => {
-  it('renders every part of the page', () => {
-    render(
-      <StrictMode>
+function renderAt(path: string) {
+  return render(
+    <StrictMode>
+      <MemoryRouter initialEntries={[path]}>
         <App />
-      </StrictMode>,
-    );
+      </MemoryRouter>
+    </StrictMode>,
+  );
+}
+
+function expectBottomIcons() {
+  expect(screen.getByRole('button', { name: 'Game Boy' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Skills' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Work experience' })).toBeInTheDocument();
+}
+
+afterEach(() => {
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('style');
+});
+
+describe('App', () => {
+  it('follows the matrix colour with the site theme', async () => {
+    renderAt('/');
+    expect(document.documentElement.dataset.theme).toBe('green');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Change background colour' }));
+    expect(document.documentElement.dataset.theme).toBe('red');
+  });
+
+  it('renders every part of the home page', () => {
+    renderAt('/');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Wesley Egbertsen logo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pikachu' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Poké Ball \d$/ })).toHaveLength(4);
-    expect(screen.getByRole('button', { name: 'Game Boy' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Skills' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Work experience' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cat', hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument();
+    expectBottomIcons();
+  });
+
+  it('shows the projects page with the shared menu and bottom icons, without the home content', () => {
+    renderAt('/projects');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'CardiPaw' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Social and about' })).toBeInTheDocument();
+    expectBottomIcons();
+    expect(screen.queryByRole('button', { name: 'Pikachu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cat', hidden: true })).not.toBeInTheDocument();
+  });
+
+  it('sends an unknown address to the home page', () => {
+    renderAt('/nope');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeInTheDocument();
   });
 });
