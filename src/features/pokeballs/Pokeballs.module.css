@@ -45,52 +45,45 @@
   outline-offset: 2px;
 }
 
+/* Two in the top band of the page padding, two in the bottom band; the glass starts and ends outside them. */
 .ball1 {
-  left: 12px;
-  top: 18%;
+  top: 9px;
+  left: 200px;
 }
 
 .ball2 {
-  left: 12px;
-  bottom: 14%;
+  top: 9px;
+  right: 200px;
 }
 
 .ball3 {
-  right: 12px;
-  top: 34%;
+  bottom: 76px;
+  left: 30%;
 }
 
 .ball4 {
-  right: 12px;
-  bottom: 8%;
+  bottom: 76px;
+  right: 30%;
 }
 
-/* On a phone there is no side room, so the balls use the bands above and below the glass. */
+/* On a phone the top band shares its width with the Menu button and the counter, so both top balls sit to the right. */
 @media (max-width: 700px) {
   .ball1 {
-    top: 12px;
-    left: 6%;
-    bottom: auto;
+    top: 16px;
+    left: auto;
+    right: 64px;
   }
 
   .ball2 {
-    top: 12px;
-    right: 6%;
-    left: auto;
-    bottom: auto;
+    top: 16px;
+    right: 16px;
   }
 
   .ball3 {
-    bottom: 12px;
-    left: 22%;
-    top: auto;
-    right: auto;
+    left: 12%;
   }
 
   .ball4 {
-    bottom: 12px;
-    right: 22%;
-    top: auto;
-    left: auto;
+    right: 12%;
   }
 }

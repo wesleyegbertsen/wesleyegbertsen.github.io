@@ -38,6 +38,7 @@ npx playwright show-trace test-results/<dir>/trace.zip   # after a failure
 
 11. **The site routes by hash.** Home is `/` (or `/#/`), projects is `/#/projects`; `openSite(page, '/#/projects')` waits for that page's heading instead of the home h1. The first history entry is the bare address, so after `goBack` expect `/` or `/#/`. On a narrow viewport (`isMobile`) the site menu is a "Menu" button that must be opened before its links exist.
 12. **Keep `(3, 3)` clear.** The left menu, the mobile Menu button (at 12px) and the projects page wrapper (`pointer-events: none` around the glass card) must not cover the top-left corner, or the background-click tests fail on the page that covers it.
+13. **Home and Projects share one glass geometry.** Same `max-width`, side padding and top padding (home `.page` mirrors Projects' `.page`), same monospace font from the shared `.glass`. `body` centres its content vertically, so a short page floats down unless it has `margin-bottom: auto` (home does); a test measures both panels at several widths. The Poké Balls and their counter sit in the top (50px, 64px on mobile) and bottom (120px) padding bands, not beside the glass.
 
 ## Looking at the page (not just asserting)
 

@@ -9,10 +9,11 @@ const POSITIONS = [styles.ball1, styles.ball2, styles.ball3, styles.ball4];
 
 /**
  * Hidden Poké Balls to find. Must be rendered inside a positioned container:
- * the balls and the counter are placed relative to it. They live in the padding
- * ring around the home glass panel (see `.stage` in HomePage.module.css), clear of
- * the panel and of the fixed menu, bar and Game Boy; e2e "leave every Poké Ball
- * reachable" guards this when the page content changes.
+ * the balls and the counter are placed relative to it. They live in the top and bottom
+ * padding bands of the home page (`.page` in HomePage.module.css), which has the same
+ * padding as the Projects page so the glass lines up on both. They sit clear of the glass
+ * and of the fixed menu, bar and Game Boy; e2e "leave every Poké Ball reachable" guards
+ * this when the page content changes.
  */
 export function Pokeballs() {
   const { found, remaining, anyFound, allFound, find } = usePokeballs();

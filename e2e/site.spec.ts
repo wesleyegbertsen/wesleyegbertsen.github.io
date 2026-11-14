@@ -71,6 +71,33 @@ test('the home content is a glass panel like the projects page', async ({ page }
   }
 });
 
+test('the home glass and the projects glass share width, top and font', async ({ page }) => {
+  const measure = (name: string) =>
+    page
+      .getByRole('heading', { level: 1, name })
+      .locator('..')
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x, width: r.width, top: r.top + window.scrollY, font: getComputedStyle(el).fontFamily };
+      });
+
+  await openSite(page);
+  // The two device sizes plus widths in between, around the 700px breakpoint.
+  for (const width of [360, 700, 701, 900, 1100, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/#/');
+    const home = await measure('Wesley Egbertsen');
+    await page.goto('/#/projects');
+    const projects = await measure('Projects');
+
+    expect(home.width, `width at ${width}`).toBe(projects.width);
+    expect(home.x, `x at ${width}`).toBe(projects.x);
+    expect(home.top, `top at ${width}`).toBe(projects.top);
+    expect(home.font).toBe(projects.font);
+    expect(home.font).toContain('monospace');
+  }
+});
+
 test('the home glass stays readable in all four themes', async ({ page }) => {
   await openSite(page);
   const h1 = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' });

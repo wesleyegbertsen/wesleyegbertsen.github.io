@@ -14,18 +14,16 @@ export function HomePage() {
   return (
     <>
       <main className={styles.page}>
-        <div className={styles.stage}>
-          <Pokeballs />
-          <div className={styles.glass}>
-            <h1 className={styles.name}>
-              <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
-                Wesley Egbertsen
-              </CatToggle>
-            </h1>
-            {/* The no-break space keeps the dot on the first line when the text wraps. */}
-            <p className={styles.subline}>Full-stack .NET &amp; Azure developer&nbsp;· I also build open-source apps</p>
-            {featured && <FeaturedProject project={featured} />}
-          </div>
+        <Pokeballs />
+        <div className={styles.glass}>
+          <h1 className={styles.name}>
+            <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
+              Wesley Egbertsen
+            </CatToggle>
+          </h1>
+          {/* The no-break space keeps the dot on the first line when the text wraps. */}
+          <p className={styles.subline}>Full-stack .NET &amp; Azure developer&nbsp;· I also build open-source apps</p>
+          {featured && <FeaturedProject project={featured} />}
         </div>
       </main>
       <Cat visible={cat.visible} glasses={cat.glasses} onClick={cat.toggleGlasses} />

@@ -89,6 +89,10 @@ describe('HomePage intro', () => {
     const css = readCss('src/pages/HomePage.module.css');
     expect(css).not.toContain('bg.png');
     expect(css).toContain("composes: glass from './ProjectsPage.module.css'");
+    // One shared look: the monospace font comes from the shared glass, not from the home page alone.
+    expect(css).not.toContain('font-family');
+    expect(css).not.toContain('.stage');
+    expect(readCss('src/pages/ProjectsPage.module.css')).toContain('monospace');
   });
 
   it('has no contact button, the mail icon lives in the social bar', () => {
