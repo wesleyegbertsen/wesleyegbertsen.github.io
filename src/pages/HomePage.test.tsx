@@ -85,6 +85,16 @@ describe('HomePage intro', () => {
     expect(screen.getAllByRole('button', { name: /Poké Ball \d/ })).toHaveLength(4);
   });
 
+  it('puts the Poké Balls after the name button and the project link in tab order', () => {
+    setup();
+    const name = screen.getByRole('button', { name: 'Wesley Egbertsen' });
+    const link = screen.getByRole('link', { name: 'View projects' });
+    for (const ball of screen.getAllByRole('button', { name: /Poké Ball \d/ })) {
+      expect(follows(name, ball)).toBe(true);
+      expect(follows(link, ball)).toBe(true);
+    }
+  });
+
   it('draws a glass panel like the Projects page, with no card image', () => {
     const css = readCss('src/pages/HomePage.module.css');
     expect(css).not.toContain('bg.png');

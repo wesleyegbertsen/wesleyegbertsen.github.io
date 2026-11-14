@@ -45,46 +45,71 @@
   outline-offset: 2px;
 }
 
-/* Inside the glass panel (the home .glass is the positioned container), in its padding, clear of the name, the subline and the teaser. Offsets are percentages of the panel. Two along the top, two along the bottom. */
+/* Inside the glass panel (the home .glass is its positioned container), scattered in empty spots rather than the corners, so they take a little finding. Spots that follow the content use percentages only on the free right part of the panel, where no interactive element sits at any height; spots in the padding bands use px, so they stay put when the panel grows taller. */
+/* Right of the name. */
 .ball1 {
-  top: 6%;
-  left: 4%;
+  top: 40px;
+  left: 78%;
 }
 
+/* Right of the end of the subline. */
 .ball2 {
-  top: 7%;
-  right: 5%;
+  top: 33%;
+  left: 76%;
 }
 
+/* Right of the teaser text. */
 .ball3 {
-  bottom: 6%;
-  left: 7%;
+  top: 58%;
+  left: 86%;
 }
 
+/* In the bottom padding, below the teaser. */
 .ball4 {
-  bottom: 7%;
-  right: 4%;
+  bottom: 16px;
+  left: 45%;
 }
 
-/* On a phone the panel is narrow and tall, so the balls sit along the top and bottom padding. */
-@media (max-width: 700px) {
+/* On a narrower desktop window the name and subline wrap and fill the width, so the two upper balls move into the padding bands. */
+@media (max-width: 1100px) {
   .ball1 {
-    top: 2.5%;
-    left: 8%;
+    top: 16px;
+    left: 55%;
   }
 
   .ball2 {
-    top: 2.5%;
-    right: 8%;
+    top: 33%;
+    left: auto;
+    right: 20px;
   }
 
   .ball3 {
-    bottom: 2.5%;
-    left: 20%;
+    top: 62%;
+    left: auto;
+    right: 20px;
+  }
+}
+
+/* On a phone the content fills the panel width: two balls in the top padding (not the corners), one in the empty space right of the project label, one in the bottom padding. */
+@media (max-width: 700px) {
+  .ball1 {
+    top: 16px;
+    left: 30%;
+  }
+
+  .ball2 {
+    top: 16px;
+    left: 66%;
+  }
+
+  .ball3 {
+    top: 53%;
+    left: 74%;
+    right: auto;
   }
 
   .ball4 {
-    bottom: 2.5%;
-    right: 20%;
+    bottom: 16px;
+    left: 45%;
   }
 }

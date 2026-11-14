@@ -170,9 +170,16 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
 
   // Each ball sits inside the glass, in an empty spot: topmost at its centre, clear of the content and the fixed controls.
   const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  const subline = page.getByText('Full-stack Azure .NET Developer');
+  const textBox = (el: Locator): Promise<Rect> =>
+    el.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
   const content = [
     page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
-    page.getByText('Full-stack Azure .NET Developer'),
     page.getByRole('region', { name: 'CardiPaw' }).getByRole('img'),
     page.getByRole('region', { name: 'CardiPaw' }).getByRole('heading', { level: 2 }),
     page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' }),
@@ -194,6 +201,8 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
     for (const other of [...content, ...fixed]) {
       expect(overlaps(rect, await box(other)), `Poké Ball ${i + 1} overlaps content or a fixed control`).toBe(false);
     }
+    // The subline is a full-width block, so also check the text it actually draws.
+    expect(overlaps(rect, await textBox(subline)), `Poké Ball ${i + 1} overlaps the subline text`).toBe(false);
   }
 
   // The counter shows after the first find, in white, just above the glass and clear of every ball and the menu.
@@ -209,6 +218,43 @@ test('the intro and the featured project fit and leave every Poké Ball reachabl
     expect(overlaps(counter, await box(balls.nth(i))), `counter overlaps ball ${i + 1}`).toBe(false);
   }
   await expect(status).toHaveCSS('color', 'rgb(255, 255, 255)');
+});
+
+test('the Poké Balls stay in empty spots of the glass at in-between window widths', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'sets its own window widths');
+  await openSite(page);
+  const glass = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..');
+  const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  const teaser = page.getByRole('region', { name: 'CardiPaw' });
+
+  for (const width of [701, 900, 1100]) {
+    await page.setViewportSize({ width, height: 800 });
+    const clear = [
+      page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
+      teaser.getByRole('img'),
+      teaser.getByRole('link', { name: 'View projects' }),
+      width <= 700 ? page.getByRole('button', { name: 'Menu' }) : page.getByRole('navigation', { name: 'Site' }),
+      page.getByRole('navigation', { name: 'Social and about' }),
+      page.getByRole('button', { name: 'Game Boy' }),
+    ];
+    const g = await box(glass);
+    for (let i = 0; i < 4; i++) {
+      const ball = balls.nth(i);
+      const rect = await box(ball);
+      const where = `Poké Ball ${i + 1} at ${width}px`;
+      expect(
+        rect.x >= g.x && rect.y >= g.y && rect.x + rect.width <= g.x + g.width && rect.y + rect.height <= g.y + g.height,
+        `${where} is not inside the glass`,
+      ).toBe(true);
+      for (const other of clear) expect(overlaps(rect, await box(other)), `${where} overlaps an element`).toBe(false);
+      const covered = await ball.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return top !== el && !el.contains(top);
+      });
+      expect(covered, `${where} is covered`).toBe(false);
+    }
+  }
 });
 
 test('does not scroll sideways and allows zoom', async ({ page }) => {

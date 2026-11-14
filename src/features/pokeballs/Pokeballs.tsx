@@ -10,8 +10,8 @@ const POSITIONS = [styles.ball1, styles.ball2, styles.ball3, styles.ball4];
 /**
  * Hidden Poké Balls to find. Must be rendered inside a positioned container: the balls and
  * the counter are placed relative to it. On the home page that is the glass panel
- * (`.glass` in HomePage.module.css): the balls sit in empty spots inside its padding, clear of
- * the name, subline and teaser, and the counter sits just above its top edge, absolutely
+ * (`.glass` in HomePage.module.css): the balls are scattered over empty spots inside it (the free right part and the padding),
+ * clear of the name button, the project link and the screenshot, and the counter sits just above its top edge, absolutely
  * positioned so the glass geometry is unchanged. They stay clear of the fixed menu, bar and
  * Game Boy; e2e "leave every Poké Ball reachable" guards this when the page content changes.
  */

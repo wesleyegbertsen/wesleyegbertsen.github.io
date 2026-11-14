@@ -15,7 +15,6 @@ export function HomePage() {
     <>
       <main className={styles.page}>
         <div className={styles.glass}>
-          <Pokeballs />
           <h1 className={styles.name}>
             <CatToggle catVisible={cat.visible} onClick={cat.toggleVisible}>
               Wesley Egbertsen
@@ -24,6 +23,8 @@ export function HomePage() {
           {/* The no-break space keeps the dot on the first line when the text wraps. */}
           <p className={styles.subline}>Full-stack Azure .NET Developer&nbsp;· I also build open-source apps</p>
           {featured && <FeaturedProject project={featured} />}
+          {/* Last, so Tab reaches the name and the project link first; the balls are absolutely positioned inside the glass. */}
+          <Pokeballs />
         </div>
       </main>
       <Cat visible={cat.visible} glasses={cat.glasses} onClick={cat.toggleGlasses} />
