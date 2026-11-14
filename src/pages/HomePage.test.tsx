@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { MemoryRouter } from 'react-router';
 import { render, screen } from '@testing-library/react';
 import { projects } from '../data/projects.ts';
@@ -19,7 +21,15 @@ describe('HomePage intro', () => {
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent('Wesley Egbertsen');
-    expect(headings[0]!.className).not.toMatch(/visuallyHidden/);
+  });
+
+  it('does not hide the name with CSS', () => {
+    // Vitest runs with `css: false`, so a class-name check proves nothing; read the stylesheet instead.
+    const css = readFileSync(resolve(process.cwd(), 'src/pages/HomePage.module.css'), 'utf8');
+    const block = css.slice(css.indexOf('.name {'), css.indexOf('}', css.indexOf('.name {')));
+    expect(block).toContain('.name');
+    expect(block).not.toMatch(/clip-path|display:\s*none|visibility:\s*hidden|width:\s*1px/);
+    expect(css).not.toContain('visuallyHidden');
   });
 
   it('says what Wesley does', () => {

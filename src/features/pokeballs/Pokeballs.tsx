@@ -9,7 +9,10 @@ const POSITIONS = [styles.ball1, styles.ball2, styles.ball3, styles.ball4];
 
 /**
  * Hidden Poké Balls to find. Must be rendered inside a positioned container:
- * the balls and the counter are placed relative to it.
+ * the balls and the counter are placed relative to it. The percentages in
+ * Pokeballs.module.css are tuned to the home card's content (logo, intro,
+ * Pikachu, teaser), so if that content changes, re-check that no ball lands on
+ * the logo or the teaser; e2e "leave every Poké Ball reachable" guards this.
  */
 export function Pokeballs() {
   const { found, remaining, anyFound, allFound, find } = usePokeballs();
