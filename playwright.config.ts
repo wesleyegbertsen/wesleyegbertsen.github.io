@@ -26,8 +26,10 @@ export default defineConfig({
   // Tests run against a fresh production build, like the deployed site. Never reuse a running
   // server: a leftover `vite preview` would silently serve an old build and skip the rebuild.
   // If the port is taken, the run fails loudly instead.
+  // CI sets E2E_SKIP_BUILD=1 after downloading the build job's dist, so it tests the exact bundle
+  // that deploys. Do not set it locally: a stale dist would pass tests against old code.
   webServer: {
-    command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
+    command: `${process.env.E2E_SKIP_BUILD ? '' : 'npm run build && '}npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
