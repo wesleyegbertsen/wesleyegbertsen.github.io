@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  # Keeps the workflow's actions on supported (Node 24) majors.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  # Dependencies: minor and patch updates arrive together; majors get their own pull request.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
