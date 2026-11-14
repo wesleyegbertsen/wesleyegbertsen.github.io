@@ -1,4 +1,4 @@
-/* Sits on the light sky/grass card, so it carries its own dark backing to stay readable. */
+/* Sits inside the home glass panel, set off from the intro by a thin accent line. */
 .teaser {
   position: relative;
   display: flex;
@@ -6,13 +6,11 @@
   gap: 1rem;
 
   box-sizing: border-box;
-  width: min(100%, 460px);
+  width: 100%;
   margin-top: 1.5rem;
-  padding: 0.9rem 1rem;
+  padding: 1.25rem 0 0;
 
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border-radius: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   text-align: left;
 }
 
@@ -21,6 +19,7 @@
   width: 64px;
   height: auto;
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .text {
@@ -42,6 +41,7 @@
 .name {
   margin: 0;
   font-size: 1.2rem;
+  color: var(--accent);
 }
 
 .tagline {
