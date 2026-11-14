@@ -27,6 +27,8 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+          # Since v4 dotfiles are left out by default; keep them so a future .well-known/ or .nojekyll ships.
+          include-hidden-files: true
 
   e2e:
     runs-on: ubuntu-latest

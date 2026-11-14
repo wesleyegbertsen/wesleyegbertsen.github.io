@@ -1,7 +1,8 @@
 version: 2
 
 updates:
-  # Keeps the workflow's actions on supported (Node 24) majors.
+  # Keeps the workflow's actions current. Minor and patch updates are grouped; a major gets its own
+  # pull request, because the deploy job only runs on main and a pull request cannot exercise it.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -11,6 +12,7 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
+        update-types: [minor, patch]
 
   # Dependencies: minor and patch updates arrive together; majors get their own pull request.
   - package-ecosystem: npm
