@@ -76,13 +76,19 @@ export function useMatrixRain(canvasRef: RefObject<HTMLCanvasElement | null>, co
     resize();
     start();
 
-    window.addEventListener('resize', resize);
+    // Phones fire resize when the URL bar shows or hides; only restart if the size really changed.
+    const onResize = () => {
+      if (canvas.width === window.innerWidth && canvas.height === window.innerHeight) return;
+      resize();
+    };
+
+    window.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.addEventListener('change', onMotionChange);
 
     return () => {
       stop();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       reducedMotion.removeEventListener('change', onMotionChange);
     };

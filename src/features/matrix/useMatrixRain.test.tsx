@@ -119,10 +119,19 @@ describe('useMatrixRain', () => {
     expect(frames).toBeLessThanOrEqual(21);
   });
 
-  it('refills the canvas on resize', () => {
+  it('refills the canvas when the window size changes', () => {
+    render(<Harness />);
+    const before = context.fillRect.mock.calls.length;
+    vi.stubGlobal('innerWidth', window.innerWidth + 100);
+    act(() => void window.dispatchEvent(new Event('resize')));
+    expect(context.fillRect.mock.calls.length).toBe(before + 1);
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the rain going when a resize event does not change the size', () => {
     render(<Harness />);
     const before = context.fillRect.mock.calls.length;
     act(() => void window.dispatchEvent(new Event('resize')));
-    expect(context.fillRect.mock.calls.length).toBe(before + 1);
+    expect(context.fillRect.mock.calls.length).toBe(before);
   });
 });
