@@ -5,3 +5,5 @@ dist/
 coverage/
 docs/plans/
 .archify/
+test-results/
+playwright-report/

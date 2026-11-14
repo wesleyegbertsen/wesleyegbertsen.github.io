@@ -11,6 +11,7 @@ npm test           # unit and component tests
 npm run typecheck
 npm run lint
 npm run build      # production build into dist/
+npm run e2e        # real-browser tests with Playwright (see .claude/skills/site-e2e)
 ```
 
 Node 22 or newer (see `.nvmrc`).
