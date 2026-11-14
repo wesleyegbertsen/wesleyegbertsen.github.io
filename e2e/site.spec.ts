@@ -20,7 +20,7 @@ test('loads cleanly with every part of the page', async ({ page }) => {
     'mailto:wesleyegbertsen@gmail.com',
   );
   await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
-  await expect(page.getByText('Full-stack .NET & Azure developer · I also build open-source apps')).toBeVisible();
+  await expect(page.getByText('Full-stack Azure .NET Developer · I also build open-source apps')).toBeVisible();
 
   const featured = page.getByRole('region', { name: 'CardiPaw' });
   await featured.scrollIntoViewIfNeeded();
@@ -71,14 +71,19 @@ test('the home content is a glass panel like the projects page', async ({ page }
   }
 });
 
-test('the home glass and the projects glass share width, top and font', async ({ page }) => {
+test('the home glass and the projects glass share width, position and font', async ({ page }) => {
   const measure = (name: string) =>
     page
       .getByRole('heading', { level: 1, name })
       .locator('..')
       .evaluate((el) => {
         const r = el.getBoundingClientRect();
-        return { x: r.x, width: r.width, top: r.top + window.scrollY, font: getComputedStyle(el).fontFamily };
+        return {
+          x: r.x,
+          width: r.width,
+          centreY: r.top + window.scrollY + r.height / 2,
+          font: getComputedStyle(el).fontFamily,
+        };
       });
 
   await openSite(page);
@@ -92,9 +97,19 @@ test('the home glass and the projects glass share width, top and font', async ({
 
     expect(home.width, `width at ${width}`).toBe(projects.width);
     expect(home.x, `x at ${width}`).toBe(projects.x);
-    expect(home.top, `top at ${width}`).toBe(projects.top);
     expect(home.font).toBe(projects.font);
     expect(home.font).toContain('monospace');
+  }
+
+  // Both pages sit in the vertical middle of the window the same way. That is only
+  // visible when both fit, so use a window tall enough for the Projects page.
+  for (const width of [1100, 1440]) {
+    await page.setViewportSize({ width, height: 1600 });
+    await page.goto('/#/');
+    const home = await measure('Wesley Egbertsen');
+    await page.goto('/#/projects');
+    const projects = await measure('Projects');
+    expect(Math.abs(home.centreY - projects.centreY), `vertical centre at ${width}`).toBeLessThanOrEqual(1);
   }
 });
 

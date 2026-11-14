@@ -1,4 +1,4 @@
-/* Click-through like the Projects page, with the same padding so both glass panels start at the same spot. The Poké Balls sit in the padding bands above and below the glass. */
+/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window the same way. The Poké Balls sit in the padding bands above and below the glass. */
 .page {
   width: 100%;
   position: relative;
@@ -6,8 +6,6 @@
   box-sizing: border-box;
   padding: 50px 170px 120px;
   pointer-events: none;
-  /* The body centres its content; the free space goes below instead, so the glass starts at the top like on Projects. */
-  margin-bottom: auto;
 }
 
 .glass {

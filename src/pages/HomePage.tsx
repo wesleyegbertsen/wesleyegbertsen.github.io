@@ -22,7 +22,7 @@ export function HomePage() {
             </CatToggle>
           </h1>
           {/* The no-break space keeps the dot on the first line when the text wraps. */}
-          <p className={styles.subline}>Full-stack .NET &amp; Azure developer&nbsp;· I also build open-source apps</p>
+          <p className={styles.subline}>Full-stack Azure .NET Developer&nbsp;· I also build open-source apps</p>
           {featured && <FeaturedProject project={featured} />}
         </div>
       </main>

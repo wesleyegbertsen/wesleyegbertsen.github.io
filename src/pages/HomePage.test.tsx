@@ -60,7 +60,7 @@ describe('HomePage intro', () => {
   it('says what Wesley does', () => {
     setup();
     expect(
-      screen.getByText('Full-stack .NET & Azure developer · I also build open-source apps'),
+      screen.getByText('Full-stack Azure .NET Developer · I also build open-source apps'),
     ).toBeInTheDocument();
   });
 
@@ -73,7 +73,7 @@ describe('HomePage intro', () => {
   it('keeps the name, intro and featured project in one container, apart from the Poké Balls', () => {
     setup();
     const h1 = screen.getByRole('heading', { level: 1 });
-    const subline = screen.getByText(/Full-stack \.NET/);
+    const subline = screen.getByText(/Full-stack Azure \.NET Developer/);
     const region = screen.getByRole('region', { name: projects[0]!.name });
     expect(follows(h1, subline)).toBe(true);
     expect(follows(subline, region)).toBe(true);
