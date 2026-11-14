@@ -7,3 +7,7 @@ docs/plans/
 .archify/
 test-results/
 playwright-report/
+*.finalize.json
+*.finalize-summary.json
+*.browser-check.json
+*.delivery.json

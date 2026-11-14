@@ -18,6 +18,8 @@ Node 24 or newer (see `.nvmrc`).
 
 ## Layout
 
+An architecture overview drawn from the code, with source citations, is in [docs/architecture/overview.html](docs/architecture/overview.html) (open it in a browser).
+
 - `src/features/*`: the hobby easter eggs (matrix backdrop, Pikachu, Poké Balls, cat, Game Boy), each with its hooks and tests
 - `src/components/*`: the social bar and its skills/work-experience panels
 - `src/data/*`: skills and work experience as typed data, edit these to update the CV
