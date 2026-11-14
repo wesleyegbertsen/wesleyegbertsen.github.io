@@ -17,15 +17,23 @@
   opacity: 0.9;
 }
 
-.visuallyHidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+/* Dark text on the light sky, with a pale halo so it stays readable over the clouds. */
+.name {
+  margin: 0.75rem 0 0;
+  color: #111;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  text-align: center;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+.subline {
+  margin: 0.25rem 0 1rem;
+  color: #111;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+  font-weight: 600;
+  text-align: center;
+  text-wrap: balance;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
 }
 
 /* Keep the card clear of the left site menu, which is about 130px wide. */

@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.tsx';
+import { projects } from './data/projects.ts';
 
 beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -51,6 +52,17 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Cat', hidden: true })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument();
     expectBottomIcons();
+
+    const featured = screen.getByRole('region', { name: projects[0]!.name });
+    expect(within(featured).getByRole('heading', { level: 2, name: projects[0]!.name })).toBeInTheDocument();
+  });
+
+  it('opens the projects page from the featured project', async () => {
+    renderAt('/');
+
+    await userEvent.click(screen.getByRole('link', { name: 'View projects' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
   });
 
   it('shows the projects page with the shared menu and bottom icons, without the home content', () => {

@@ -9,6 +9,7 @@ const MODULES = [
   'src/components/ExperienceTimeline.module.css',
   'src/components/Panel.module.css',
   'src/components/SocialBar.module.css',
+  'src/components/FeaturedProject.module.css',
   'src/pages/ProjectsPage.module.css',
 ];
 
@@ -53,6 +54,12 @@ describe('themed CSS modules', () => {
     const css = read('src/components/SocialBar.module.css');
     expect(css.match(/color: var\(--accent\)/g)).toHaveLength(1);
     expect(css).toContain('.mail:hover');
+  });
+
+  it('gives the featured project link a focus ring and no motion when reduced motion is asked for', () => {
+    const css = read('src/components/FeaturedProject.module.css');
+    expect(css).toContain('.link:focus-visible');
+    expect(css).toContain('prefers-reduced-motion');
   });
 
   it('leaves the GitHub and LinkedIn brand hovers alone', () => {
