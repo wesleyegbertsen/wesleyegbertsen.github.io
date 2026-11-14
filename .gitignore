@@ -3,3 +3,5 @@ docs/reviews/
 node_modules/
 dist/
 coverage/
+docs/plans/
+.archify/
