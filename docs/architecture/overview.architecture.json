@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "83df54f6240dd802777705faee4c297b4a313e55"
+      "revision": "87c7ec06ac6d4377b770f43f1b2dde2c707874b3"
     },
     "legend": {
       "entries": {
@@ -169,7 +169,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/features/pokeballs/Pokeballs.tsx", "line": 36, "end_line": 60, "label": "counter and four ball buttons" },
-        { "path": "src/features/pokeballs/Pokeballs.module.css", "line": 48, "end_line": 71, "label": "balls scattered over empty spots" },
+        { "path": "src/features/pokeballs/Pokeballs.module.css", "line": 48, "end_line": 71, "label": "balls spread over the whole panel" },
         { "path": "src/features/cat/useCat.ts", "line": 10, "end_line": 30, "label": "cat and rap" }
       ]
     },
@@ -400,7 +400,7 @@
     { "id": "app-to-gameboy", "from": "app", "to": "gameboy" },
     { "id": "matrix-to-themeprov", "from": "matrix", "to": "themeprov", "label": "useTheme()" },
     { "id": "menu-to-navdata", "from": "menu", "to": "navdata", "label": "reads" },
-    { "id": "home-to-eggs", "from": "home", "to": "eggs", "label": "balls last in glass" },
+    { "id": "home-to-eggs", "from": "home", "to": "eggs", "label": "balls spread, last in glass" },
     { "id": "home-to-featured", "from": "home", "to": "featured", "label": "projects[0]" },
     { "id": "projects-to-card", "from": "projectspage", "to": "card" },
     { "id": "social-to-content", "from": "social", "to": "contentdata", "label": "reads" },
@@ -432,7 +432,7 @@
         "A HashRouter serves / and /projects; unknown addresses go home",
         "Both pages use the same symmetric page padding (120px top and bottom) and the body has none, so the home and Projects glass panels are centred on the window's middle line, level with the centred site menu",
         "Both glass panels share one .glass: same width, left edge and monospace font. The home panel has roomier inner padding; it holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
-        "The four hidden Poke Balls are scattered over empty spots of the home glass panel (not its corners), clear of the name, link and screenshot. They come last in document and tab order, with the counter just above the panel's top edge",
+        "The four hidden Poke Balls are spread over the whole home glass panel: one in the top padding, one in the left padding, one in the bottom padding and one beside the subline text. Below 1300px and under 700px each gets a narrower-window position so none sits on the name, link or screenshot. They come last in document and tab order, with the counter just above the panel's top edge",
         "The only persisted state is the colour index in localStorage"
       ]
     },
