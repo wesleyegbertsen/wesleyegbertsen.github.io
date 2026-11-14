@@ -2,19 +2,19 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "wesleyegbertsen.nl: routed, themed React site and delivery pipeline",
+    "title": "wesleyegbertsen.nl: routed, themed React site with a terminal, and its delivery pipeline",
     "output": "docs/architecture/overview.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "c2b8f105b74947c496bcea227a197d503805d08c"
+      "revision": "ac5137847f8e53e21038cc7331a69131007f0453"
     },
     "legend": {
       "entries": {
         "frontend": { "label": "UI (React components)" },
-        "backend": { "label": "Hooks and tooling" },
+        "backend": { "label": "Hooks, logic and tooling" },
         "database": { "label": "Browser storage and bundled data" },
         "cloud": { "label": "Hosting and CI" },
         "external": { "label": "Outside this repo" }
@@ -61,7 +61,7 @@
       "pos": [470, 330],
       "size": [170, 70],
       "sources": [
-        { "path": "src/App.tsx", "line": 11, "end_line": 25, "label": "ThemeProvider around the shell and Routes" },
+        { "path": "src/App.tsx", "line": 13, "end_line": 29, "label": "both providers around the shell and Routes" },
         { "path": "src/styles/global.css", "line": 5, "end_line": 17, "label": "body centres content, no padding" }
       ]
     },
@@ -69,12 +69,13 @@
       "id": "themeprov",
       "type": "frontend",
       "label": "ThemeProvider",
-      "sublabel": "one colour index, useTheme()",
+      "sublabel": "stored index, preview, select",
       "pos": [470, 170],
       "size": [170, 70],
       "sources": [
-        { "path": "src/features/theme/ThemeProvider.tsx", "line": 8, "end_line": 27, "label": "index from storage, layout effect, cycle" },
-        { "path": "src/features/theme/ThemeContext.ts", "line": 4, "end_line": 17, "label": "ThemeState and useTheme" }
+        { "path": "src/features/theme/ThemeProvider.tsx", "line": 12, "end_line": 21, "label": "stored index, previewed index, layout effect" },
+        { "path": "src/features/theme/ThemeProvider.tsx", "line": 25, "end_line": 40, "label": "cycle, select and preview" },
+        { "path": "src/features/theme/ThemeContext.ts", "line": 4, "end_line": 25, "label": "ThemeState and useTheme" }
       ]
     },
     {
@@ -109,7 +110,7 @@
       "pos": [360, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 29, "label": "glass-panel: name, subline, teaser, balls last" },
+        { "path": "src/pages/HomePage.tsx", "line": 12, "end_line": 33, "label": "glass-panel: name, role, teaser, balls last" },
         { "path": "src/pages/HomePage.module.css", "line": 11, "end_line": 17, "label": "home-only glass additions, roomier padding" }
       ]
     },
@@ -134,9 +135,9 @@
       "pos": [700, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/components/SocialBar.tsx", "line": 11, "end_line": 20, "label": "one panel open at a time" },
-        { "path": "src/components/SocialBar.tsx", "line": 71, "end_line": 78, "label": "mailto link, no panel" },
-        { "path": "src/components/SocialBar.tsx", "line": 91, "end_line": 110, "label": "skills, experience, education panels" }
+        { "path": "src/components/SocialBar.tsx", "line": 14, "end_line": 21, "label": "one panel open at a time" },
+        { "path": "src/components/SocialBar.tsx", "line": 72, "end_line": 79, "label": "mailto link from profile, no panel" },
+        { "path": "src/components/SocialBar.tsx", "line": 92, "end_line": 111, "label": "skills, experience, education panels" }
       ]
     },
     {
@@ -154,11 +155,11 @@
       "id": "navdata",
       "type": "database",
       "label": "Navigation data",
-      "sublabel": "Home, Projects",
+      "sublabel": "Home, Projects, Terminal",
       "pos": [190, 620],
       "size": [150, 60],
       "sources": [
-        { "path": "src/data/navigation.ts", "line": 1, "end_line": 12, "label": "navItems" }
+        { "path": "src/data/navigation.ts", "line": 8, "end_line": 13, "label": "navItems" }
       ]
     },
     {
@@ -218,7 +219,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/components/FeaturedProject.tsx", "line": 7, "end_line": 34, "label": "name, tagline, screenshot, Link to /projects" },
-        { "path": "src/pages/HomePage.tsx", "line": 26, "label": "rendered when projects[0] exists" }
+        { "path": "src/pages/HomePage.tsx", "line": 29, "label": "rendered when projects[0] exists" }
       ]
     },
     {
@@ -254,6 +255,19 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/data/projects.ts", "line": 14, "end_line": 49, "label": "Project type and CardiPaw entry" }
+      ]
+    },
+    {
+      "id": "profile",
+      "type": "database",
+      "label": "Profile data",
+      "sublabel": "read by Home, bar, terminal",
+      "pos": [700, 740],
+      "size": [180, 60],
+      "sources": [
+        { "path": "src/data/profile.ts", "line": 1, "end_line": 11, "label": "name, role, tagline and links" },
+        { "path": "src/pages/HomePage.tsx", "line": 22, "end_line": 27, "label": "Home shows name, role and tagline" },
+        { "path": "src/components/SocialBar.tsx", "line": 28, "label": "GitHub link from profile" }
       ]
     },
     {
@@ -309,13 +323,13 @@
       "id": "modules",
       "type": "frontend",
       "label": "Themed CSS files",
-      "sublabel": "nine CSS files read them",
+      "sublabel": "eleven CSS files read them",
       "pos": [210, 40],
       "size": [200, 70],
       "sources": [
         { "path": "src/components/SiteMenu.module.css", "line": 64, "end_line": 72, "label": "link accent and glow" },
         { "path": "src/styles/glass.css", "line": 12, "end_line": 14, "label": "shared glass border reads --accent" },
-        { "path": "src/styles/themeTokens.test.ts", "line": 5, "end_line": 15, "label": "the nine files that must read tokens" }
+        { "path": "src/styles/themeTokens.test.ts", "line": 5, "end_line": 17, "label": "the eleven files that must read tokens" }
       ]
     },
     {
@@ -326,9 +340,57 @@
       "pos": [880, 170],
       "size": [110, 70],
       "sources": [
-        { "path": "src/styles/themeTokens.test.ts", "line": 33, "end_line": 37, "label": "files read tokens, no old accents" },
+        { "path": "src/styles/themeTokens.test.ts", "line": 35, "end_line": 39, "label": "files read tokens, no old accents" },
         { "path": "e2e/theme.spec.ts", "line": 32, "end_line": 42, "label": "click moves theme and menu" },
         { "path": "e2e/theme.spec.ts", "line": 116, "end_line": 136, "label": "stored theme before React renders" }
+      ]
+    },
+    {
+      "id": "terminalpage",
+      "type": "frontend",
+      "label": "Terminal page",
+      "sublabel": "route /terminal, glass",
+      "pos": [1010, 330],
+      "size": [140, 60],
+      "sources": [
+        { "path": "src/pages/TerminalPage.tsx", "line": 6, "end_line": 14, "label": "glass-panel with the Terminal view" },
+        { "path": "src/features/terminal/Terminal.tsx", "line": 102, "end_line": 116, "label": "submit: execute the line, apply its effects" },
+        { "path": "src/features/terminal/Terminal.tsx", "line": 81, "end_line": 98, "label": "theme, matrix and clear effects" }
+      ]
+    },
+    {
+      "id": "session",
+      "type": "frontend",
+      "label": "Terminal session",
+      "sublabel": "memory-only session",
+      "pos": [1010, 480],
+      "size": [140, 70],
+      "sources": [
+        { "path": "src/features/terminal/SessionProvider.tsx", "line": 7, "end_line": 29, "label": "scrollback and shell state, capped" }
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "backend",
+      "label": "Shell logic",
+      "sublabel": "parser, commands, Tab",
+      "pos": [1010, 620],
+      "size": [140, 70],
+      "sources": [
+        { "path": "src/features/terminal/shell.ts", "line": 18, "end_line": 44, "label": "execute: parse, run, record history, apply cd" },
+        { "path": "src/features/terminal/commands.ts", "line": 14, "end_line": 34, "label": "effects and the context a command may read" },
+        { "path": "src/features/terminal/complete.ts", "line": 46, "end_line": 64, "label": "Tab completion" }
+      ]
+    },
+    {
+      "id": "vfs",
+      "type": "backend",
+      "label": "Virtual filesystem",
+      "sublabel": "built from the data modules",
+      "pos": [1010, 870],
+      "size": [140, 70],
+      "sources": [
+        { "path": "src/features/terminal/fs.ts", "line": 49, "end_line": 79, "label": "home folder generated from the data" }
       ]
     },
     {
@@ -391,7 +453,7 @@
   "connections": [
     { "id": "visitor-to-pages", "from": "visitor", "to": "pages", "label": "HTTPS", "variant": "emphasis" },
     { "id": "pages-to-entry", "from": "pages", "to": "entry", "label": "dist/", "variant": "emphasis" },
-    { "id": "entry-to-app", "from": "entry", "to": "app", "label": "mounts in router" },
+    { "id": "entry-to-app", "from": "entry", "to": "app" },
     { "id": "app-to-themeprov", "from": "app", "to": "themeprov", "label": "wraps all" },
     { "id": "app-to-matrix", "from": "app", "to": "matrix" },
     { "id": "app-to-menu", "from": "app", "to": "menu" },
@@ -399,9 +461,10 @@
     { "id": "app-to-projects", "from": "app", "to": "projectspage", "label": "/projects" },
     { "id": "app-to-social", "from": "app", "to": "social" },
     { "id": "app-to-gameboy", "from": "app", "to": "gameboy" },
+    { "id": "app-to-terminal", "from": "app", "to": "terminalpage", "label": "/terminal" },
     { "id": "matrix-to-themeprov", "from": "matrix", "to": "themeprov", "label": "useTheme()" },
     { "id": "menu-to-navdata", "from": "menu", "to": "navdata", "label": "reads" },
-    { "id": "home-to-eggs", "from": "home", "to": "eggs", "label": "balls spread, last in glass" },
+    { "id": "home-to-eggs", "from": "home", "to": "eggs", "label": "balls spread, last in glass", "labelAt": [428, 592] },
     { "id": "home-to-featured", "from": "home", "to": "featured", "label": "projects[0]" },
     { "id": "projects-to-card", "from": "projectspage", "to": "card" },
     { "id": "social-to-content", "from": "social", "to": "contentdata", "label": "reads" },
@@ -417,6 +480,12 @@
     { "id": "tokens-to-modules", "from": "tokens", "to": "modules", "label": "var(--accent)" },
     { "id": "themetests-to-applytheme", "from": "themetests", "to": "applytheme", "label": "asserts" },
     { "id": "hooks-to-storage", "from": "hooks", "to": "storage", "label": "persists colour" },
+    { "id": "terminal-to-themeprov", "from": "terminalpage", "to": "themeprov", "label": "select, preview" },
+    { "id": "terminal-to-session", "from": "terminalpage", "to": "session", "label": "scrollback, history" },
+    { "id": "terminal-to-shell", "from": "terminalpage", "to": "shell", "label": "execute(line)" },
+    { "id": "shell-to-vfs", "from": "shell", "to": "vfs", "label": "ls, cd, cat" },
+    { "id": "vfs-to-projects", "from": "vfs", "to": "projectdata", "label": "projects" },
+    { "id": "vfs-to-profile", "from": "vfs", "to": "profile", "label": "about, contact" },
     { "id": "dev-to-actions", "from": "dev", "to": "actions", "label": "push / PR" },
     { "id": "actions-to-check", "from": "actions", "to": "check", "label": "check job" },
     { "id": "actions-to-build", "from": "actions", "to": "build", "label": "build job" },
@@ -430,11 +499,23 @@
       "title": "Runtime",
       "items": [
         "A client-only single-page app: no server code in this repo",
-        "A HashRouter serves / and /projects; unknown addresses go home",
-        "Both pages use the same symmetric page padding (120px top and bottom) and the body has none, so the home and Projects glass panels are centred on the window's middle line, level with the centred site menu",
-        "Both pages put their panel on one shared glass-panel class from the plain stylesheet src/styles/glass.css (no CSS Modules composes across files): same width, blur, border and monospace font. The home panel adds roomier inner padding; it holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
+        "A HashRouter serves /, /projects and /terminal; unknown addresses go home",
+        "Home, Projects and Terminal use the same symmetric page padding (120px top and bottom) and the body has none, so each glass panel is centred on the window's middle line, level with the centred site menu",
+        "All three pages put their panel on one shared glass-panel class from the plain stylesheet src/styles/glass.css (no CSS Modules composes across files): same width, blur, border and monospace font. The home panel adds roomier inner padding; it holds the name, the role subline and the newest project (projects[0]); the name button toggles the cat",
         "The four hidden Poke Balls are spread over the whole home glass panel: one in the top padding, one in the left padding, one in the bottom padding and one beside the subline text. Below 1300px and under 700px each gets a narrower-window position so none sits on the name, link or screenshot. They come last in document and tab order, with the counter just above the panel's top edge",
+        "Home and the social bar read the name, role and links from src/data/profile.ts, the same file the terminal's about and contact use",
         "The only persisted state is the colour index in localStorage"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Terminal",
+      "items": [
+        "A fake shell in plain React on /terminal, with no new dependency: type a command, read the answer",
+        "The logic is pure and unit-tested: parser, commands, shell, virtual filesystem and Tab completion import nothing from React; Terminal.tsx is only the view",
+        "The scrollback (500 lines), the folder and the history (500 commands) live in a SessionProvider above the routes, so they survive a visit to another page. They are memory-only: a reload starts a fresh session",
+        "The virtual filesystem is generated from the data modules, so a new project, job or school becomes a file with no further change",
+        "open <page or project> navigates through the menu list and the project ids; theme <colour> sets the real site theme; matrix only previews the other colours and never stores them, so a reload mid-run keeps the visitor's own colour"
       ]
     },
     {
@@ -442,6 +523,7 @@
       "title": "Theme",
       "items": [
         "The matrix colour and the site theme are one index, owned by ThemeProvider",
+        "cycle and select store the index; preview shows a theme for now without storing it, and a real choice ends it",
         "main.tsx applies the stored theme before React renders, then turns the fade on",
         "CSS files read --accent tokens on html, the shared glass stylesheet included; clicking the rain changes them all"
       ]
@@ -459,8 +541,8 @@
       "dot": "violet",
       "title": "Tests",
       "items": [
-        "Vitest unit tests sit beside the code in src/, including theme contrast and token use",
-        "Playwright tests the exact dist the build job produced, on desktop and mobile"
+        "Vitest unit tests sit beside the code in src/, including theme contrast and token use, and every terminal module",
+        "Playwright tests the exact dist the build job produced, on desktop and mobile, terminal page included"
       ]
     }
   ]
