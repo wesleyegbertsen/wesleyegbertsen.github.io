@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from './App.tsx';
 
 beforeEach(() => {
@@ -24,7 +25,20 @@ function expectBottomIcons() {
   expect(screen.getByRole('button', { name: 'Work experience' })).toBeInTheDocument();
 }
 
+afterEach(() => {
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('style');
+});
+
 describe('App', () => {
+  it('follows the matrix colour with the site theme', async () => {
+    renderAt('/');
+    expect(document.documentElement.dataset.theme).toBe('green');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Change background colour' }));
+    expect(document.documentElement.dataset.theme).toBe('red');
+  });
+
   it('renders every part of the home page', () => {
     renderAt('/');
 

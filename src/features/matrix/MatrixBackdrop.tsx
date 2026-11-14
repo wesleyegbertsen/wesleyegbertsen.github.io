@@ -1,17 +1,14 @@
 import { useRef } from 'react';
-import { useLocalStorage } from '../../hooks/useLocalStorage.ts';
-import { STORAGE_KEY, nextColorIndex, parseColorIndex } from './matrix.ts';
+import { useTheme } from '../theme/ThemeContext.ts';
 import { useMatrixRain } from './useMatrixRain.ts';
 import styles from './MatrixBackdrop.module.css';
 
-/** Falling-characters background. Pressing the exposed background cycles its colour. */
+/** Falling-characters background. Pressing the exposed background moves to the next colour, and the theme with it. */
 export function MatrixBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [colorIndex, setColorIndex] = useLocalStorage(STORAGE_KEY, 0, { parse: parseColorIndex });
+  const { index, cycle } = useTheme();
 
-  useMatrixRain(canvasRef, colorIndex);
-
-  const cycle = () => setColorIndex(nextColorIndex(colorIndex));
+  useMatrixRain(canvasRef, index);
 
   return (
     <>

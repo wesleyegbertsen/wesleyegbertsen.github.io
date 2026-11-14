@@ -4,13 +4,14 @@ import { MailLink } from './components/MailLink.tsx';
 import { MatrixBackdrop } from './features/matrix/MatrixBackdrop.tsx';
 import { SiteMenu } from './components/SiteMenu.tsx';
 import { SocialBar } from './components/SocialBar.tsx';
+import { ThemeProvider } from './features/theme/ThemeProvider.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { ProjectsPage } from './pages/ProjectsPage.tsx';
 
-/** What every page shares: the backdrop, the menu and the bottom icons. */
+/** What every page shares: the theme, the backdrop, the menu and the bottom icons. */
 export default function App() {
   return (
-    <>
+    <ThemeProvider>
       <MatrixBackdrop />
       <SiteMenu />
       <Routes>
@@ -21,6 +22,6 @@ export default function App() {
       <MailLink />
       <GameBoy />
       <SocialBar />
-    </>
+    </ThemeProvider>
   );
 }
