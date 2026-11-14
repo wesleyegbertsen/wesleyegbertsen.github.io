@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "87c7ec06ac6d4377b770f43f1b2dde2c707874b3"
+      "revision": "c2b8f105b74947c496bcea227a197d503805d08c"
     },
     "legend": {
       "entries": {
@@ -109,20 +109,21 @@
       "pos": [360, 480],
       "size": [150, 60],
       "sources": [
-        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 28, "label": "name, subline, teaser, then balls last" },
-        { "path": "src/pages/HomePage.module.css", "line": 11, "end_line": 21, "label": "glass anchors balls, roomier padding" }
+        { "path": "src/pages/HomePage.tsx", "line": 10, "end_line": 29, "label": "glass-panel: name, subline, teaser, balls last" },
+        { "path": "src/pages/HomePage.module.css", "line": 11, "end_line": 17, "label": "home-only glass additions, roomier padding" }
       ]
     },
     {
       "id": "projectspage",
       "type": "frontend",
       "label": "Projects page",
-      "sublabel": "route /projects, owns .glass",
+      "sublabel": "route /projects, glass-panel",
       "pos": [530, 480],
       "size": [140, 60],
       "sources": [
-        { "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 16, "label": "a card per project" },
-        { "path": "src/pages/ProjectsPage.module.css", "line": 1, "end_line": 24, "label": "120px page padding, shared glass" }
+        { "path": "src/pages/ProjectsPage.tsx", "line": 6, "end_line": 18, "label": "glass-panel with a card per project" },
+        { "path": "src/pages/ProjectsPage.module.css", "line": 1, "end_line": 9, "label": "120px page padding, click-through" },
+        { "path": "src/styles/glass.css", "line": 6, "end_line": 18, "label": "shared glass-panel rules" }
       ]
     },
     {
@@ -217,7 +218,7 @@
       "size": [140, 60],
       "sources": [
         { "path": "src/components/FeaturedProject.tsx", "line": 7, "end_line": 34, "label": "name, tagline, screenshot, Link to /projects" },
-        { "path": "src/pages/HomePage.tsx", "line": 25, "label": "rendered when projects[0] exists" }
+        { "path": "src/pages/HomePage.tsx", "line": 26, "label": "rendered when projects[0] exists" }
       ]
     },
     {
@@ -307,14 +308,14 @@
     {
       "id": "modules",
       "type": "frontend",
-      "label": "Themed CSS modules",
-      "sublabel": "nine CSS modules read them",
+      "label": "Themed CSS files",
+      "sublabel": "nine CSS files read them",
       "pos": [210, 40],
       "size": [200, 70],
       "sources": [
         { "path": "src/components/SiteMenu.module.css", "line": 64, "end_line": 72, "label": "link accent and glow" },
-        { "path": "src/components/ProjectCard.module.css", "line": 56, "end_line": 61, "label": "primary button" },
-        { "path": "src/styles/themeTokens.test.ts", "line": 5, "end_line": 15, "label": "the nine modules that must read tokens" }
+        { "path": "src/styles/glass.css", "line": 12, "end_line": 14, "label": "shared glass border reads --accent" },
+        { "path": "src/styles/themeTokens.test.ts", "line": 5, "end_line": 15, "label": "the nine files that must read tokens" }
       ]
     },
     {
@@ -325,7 +326,7 @@
       "pos": [880, 170],
       "size": [110, 70],
       "sources": [
-        { "path": "src/styles/themeTokens.test.ts", "line": 33, "end_line": 37, "label": "modules read tokens, no old accents" },
+        { "path": "src/styles/themeTokens.test.ts", "line": 33, "end_line": 37, "label": "files read tokens, no old accents" },
         { "path": "e2e/theme.spec.ts", "line": 32, "end_line": 42, "label": "click moves theme and menu" },
         { "path": "e2e/theme.spec.ts", "line": 116, "end_line": 136, "label": "stored theme before React renders" }
       ]
@@ -431,7 +432,7 @@
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves / and /projects; unknown addresses go home",
         "Both pages use the same symmetric page padding (120px top and bottom) and the body has none, so the home and Projects glass panels are centred on the window's middle line, level with the centred site menu",
-        "Both glass panels share one .glass: same width, left edge and monospace font. The home panel has roomier inner padding; it holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
+        "Both pages put their panel on one shared glass-panel class from the plain stylesheet src/styles/glass.css (no CSS Modules composes across files): same width, blur, border and monospace font. The home panel adds roomier inner padding; it holds the name, the Betabit role subline and the newest project (projects[0]); the name button toggles the cat",
         "The four hidden Poke Balls are spread over the whole home glass panel: one in the top padding, one in the left padding, one in the bottom padding and one beside the subline text. Below 1300px and under 700px each gets a narrower-window position so none sits on the name, link or screenshot. They come last in document and tab order, with the counter just above the panel's top edge",
         "The only persisted state is the colour index in localStorage"
       ]
@@ -442,7 +443,7 @@
       "items": [
         "The matrix colour and the site theme are one index, owned by ThemeProvider",
         "main.tsx applies the stored theme before React renders, then turns the fade on",
-        "CSS modules read --accent tokens on html; clicking the rain changes them all"
+        "CSS files read --accent tokens on html, the shared glass stylesheet included; clicking the rain changes them all"
       ]
     },
     {
