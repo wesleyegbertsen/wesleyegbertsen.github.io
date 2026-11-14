@@ -1,8 +1,16 @@
 .counter {
+  /* Hugs the panel: just above its top edge, left aligned. Absolute, so the glass geometry is unchanged. */
   position: absolute;
-  top: 20px;
-  left: 50px;
-  color: #555;
+  bottom: calc(100% + 8px);
+  left: 0;
+  white-space: nowrap;
+  pointer-events: none;
+
+  color: #fff;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  /* A dark halo, like the site menu, keeps it readable over the bright rain. */
+  text-shadow: 0 0 2px #000, 0 0 4px #000;
 }
 
 .pokeball {
@@ -13,6 +21,10 @@
   -webkit-tap-highlight-color: transparent;
 
   position: absolute;
+  /* Above the intro and the teaser, so a ball is never covered. */
+  z-index: 1;
+  /* Explicit, so the balls take presses whatever their container does. */
+  pointer-events: auto;
   display: block;
   width: 32px;
   height: 32px;
@@ -33,22 +45,61 @@
   outline-offset: 2px;
 }
 
+/* Inside the glass panel (the home .glass is its positioned container), spread out over its empty spots rather than the corners or one side, so they take some finding. Spots in the top, bottom and left padding use px, so they stay put when the panel grows taller; the one that follows the content sits on the free right part of the panel, where no interactive element is at any height. */
+/* In the top padding, left of centre. */
 .ball1 {
-  left: 3%;
-  bottom: 3%;
+  top: 16px;
+  left: 22%;
 }
 
+/* Right of the end of the subline. */
 .ball2 {
-  left: 10%;
-  top: 25%;
+  top: 28%;
+  left: 82%;
 }
 
+/* In the left padding, about half way down. */
 .ball3 {
-  right: 20%;
-  top: 3%;
+  top: 52%;
+  left: 20px;
 }
 
+/* In the bottom padding, right of centre. */
 .ball4 {
-  right: 10%;
-  bottom: 25%;
+  bottom: 16px;
+  left: 68%;
+}
+
+/* The panel only reaches its full 960px at about 1300px. Below that the name and subline fill its width, so the ball that sat beside the text moves into the right padding. */
+@media (max-width: 1299px) {
+  .ball2 {
+    top: 30%;
+    left: auto;
+    right: 20px;
+  }
+}
+
+/* On a phone the content fills the panel width: two balls in the top padding (not the corners), one in the empty space right of the project label, one in the bottom padding. */
+@media (max-width: 700px) {
+  .ball1 {
+    top: 16px;
+    left: 20%;
+  }
+
+  .ball2 {
+    top: 16px;
+    left: 70%;
+    right: auto;
+  }
+
+  .ball3 {
+    top: 53%;
+    left: 74%;
+    right: auto;
+  }
+
+  .ball4 {
+    bottom: 16px;
+    left: 45%;
+  }
 }

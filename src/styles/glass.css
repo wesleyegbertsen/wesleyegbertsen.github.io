@@ -1,0 +1,24 @@
+/* The glass panel both pages sit on: width, blur, border, colours and the monospace font.
+   A plain stylesheet with a global class, not a CSS module composed from another module:
+   `composes ... from './Other.module.css'` makes Vite's dev server warn that a PostCSS plugin
+   did not pass the `from` option. Imported by HomePage and ProjectsPage. */
+.glass-panel {
+  pointer-events: auto;
+  box-sizing: border-box;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  background: rgba(10, 20, 10, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 16px;
+  color: #f2f7e8;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+@media (max-width: 700px) {
+  .glass-panel {
+    padding: 1.25rem 1rem;
+  }
+}

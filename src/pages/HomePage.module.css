@@ -1,44 +1,48 @@
-.container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-
-  box-sizing: border-box;
-  margin: 50px 10%;
-  padding: 3rem;
+/* Click-through, with the same padding as the Projects page, so both glass panels are centred in the window, level with the centred site menu. The glass is the positioned container of the Poké Balls and their counter, which sit inside its roomy padding. */
+.page {
+  width: 100%;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  padding: 120px 170px;
+  pointer-events: none;
+}
 
-  background-image: url('../assets/images/bg.png');
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  border-radius: 50px;
+/* Home-only additions to the shared glass (src/styles/glass.css, the `glass-panel` class). The extra .page in the selector outranks the shared padding rules, whichever stylesheet loads last; width, left edge and font stay the shared glass's. */
+.page .glass {
+  /* Anchors the Poké Balls (inside) and their counter (just above). */
+  position: relative;
+  /* More room than the Projects glass, for the balls and to breathe. Mobile padding is set in the media query below. */
+  padding: 4rem 4.5rem;
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.subline {
+  margin: 0.75rem 0 0;
   opacity: 0.9;
+  text-wrap: balance;
 }
 
-.visuallyHidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+/* The featured project: more air above its divider than its own default. */
+.glass > section {
+  margin-top: 2.25rem;
 }
 
-/* Keep the card clear of the left site menu, which is about 130px wide. */
-@media (min-width: 701px) {
-  .container {
-    margin: 50px max(10%, 150px);
+@media (max-width: 700px) {
+  .page {
+    padding: 120px 4%;
   }
-}
 
-@media (max-width: 600px) {
-  .container {
-    margin: 24px 4%;
-    padding: 2rem 1rem;
-    border-radius: 28px;
+  .page .glass {
+    padding: 3.25rem 1.5rem;
+  }
+
+  .glass > section {
+    margin-top: 1.75rem;
   }
 }

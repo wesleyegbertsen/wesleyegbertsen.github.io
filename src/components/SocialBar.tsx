@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBuilding, faUserGraduate, faToolbox } from '@fortawesome/free-solid-svg-icons';
+import { faBuilding, faEnvelope, faUserGraduate, faToolbox } from '@fortawesome/free-solid-svg-icons';
 import { faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
 import { EducationTimeline } from './EducationTimeline.tsx';
 import { ExperienceTimeline } from './ExperienceTimeline.tsx';
@@ -68,6 +68,14 @@ export function SocialBar() {
         >
           <FontAwesomeIcon icon={faUserGraduate} />
         </button>
+        <a
+          className={`${styles.item} ${styles.mail}`}
+          href="mailto:wesleyegbertsen@gmail.com"
+          aria-label="Email Wesley"
+          title="Email"
+        >
+          <FontAwesomeIcon icon={faEnvelope} />
+        </a>
         <a
           className={`${styles.item} ${styles.linkedin}`}
           href="https://www.linkedin.com/in/wesleyegbertsen/"

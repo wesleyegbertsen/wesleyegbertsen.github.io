@@ -1,16 +1,289 @@
-import { expect, test } from '@playwright/test';
-import { litPixels, openSite, playsOf } from './helpers.ts';
+import { expect, test, type Locator } from '@playwright/test';
+import { THEMES } from '../src/features/theme/themes.ts';
+import { box, litPixels, openSite, overlaps, playsOf, type Rect } from './helpers.ts';
 
 test('loads cleanly with every part of the page', async ({ page }) => {
   const { errors } = await openSite(page);
 
   await expect(page).toHaveTitle('Wesley Egbertsen');
-  await expect(page.getByRole('button', { name: 'Wesley Egbertsen logo' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button', { name: 'Wesley Egbertsen' }),
+  ).toBeVisible();
+  await expect(page.getByRole('img', { name: /logo/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Pikachu' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Poké Ball \d$/ })).toHaveCount(4);
   await expect(page.getByRole('button', { name: 'Game Boy' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Email Wesley' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Social and about' })).toBeVisible();
+  const bar = page.getByRole('navigation', { name: 'Social and about' });
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole('link', { name: 'Email Wesley' })).toHaveAttribute(
+    'href',
+    'mailto:wesleyegbertsen@gmail.com',
+  );
+  await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
+  await expect(page.getByText('Full-stack Azure .NET Developer · I also build open-source apps')).toBeVisible();
+
+  const featured = page.getByRole('region', { name: 'CardiPaw' });
+  await featured.scrollIntoViewIfNeeded();
+  await expect(featured).toBeVisible();
+  await expect
+    .poll(() => featured.getByRole('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
   expect(errors).toEqual([]);
+});
+
+test("the featured project's View projects link opens the projects page", async ({ page }) => {
+  await openSite(page);
+  const link = page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' });
+  await link.scrollIntoViewIfNeeded();
+  await link.click();
+
+  await expect(page).toHaveURL(/#\/projects$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+});
+
+test('the home content is a glass panel like the projects page', async ({ page }) => {
+  await openSite(page);
+  const read = (glass: Locator) =>
+    glass.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        backdropFilter: s.backdropFilter,
+        backgroundColor: s.backgroundColor,
+        borderTopWidth: s.borderTopWidth,
+        borderRadius: s.borderRadius,
+        fontFamily: s.fontFamily,
+      };
+    });
+  const home = await read(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..'));
+  expect(home.backdropFilter).toContain('blur');
+  expect(home.fontFamily).toContain('monospace');
+
+  const hasCardImage = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].some((el) => getComputedStyle(el).backgroundImage.includes('/assets/bg')),
+  );
+  expect(hasCardImage).toBe(false);
+
+  await page.goto('/#/projects');
+  await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+  const projects = await read(page.getByRole('heading', { level: 1, name: 'Projects' }).locator('..'));
+  for (const key of ['backdropFilter', 'backgroundColor', 'borderTopWidth', 'borderRadius'] as const) {
+    expect(home[key], key).toBe(projects[key]);
+  }
+});
+
+test('the home glass and the projects glass share width, position and font', async ({ page }) => {
+  const measure = (name: string) =>
+    page
+      .getByRole('heading', { level: 1, name })
+      .locator('..')
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.x,
+          width: r.width,
+          centreY: r.top + window.scrollY + r.height / 2,
+          font: getComputedStyle(el).fontFamily,
+        };
+      });
+
+  await openSite(page);
+  // The two device sizes plus widths in between, around the 700px breakpoint.
+  for (const width of [360, 700, 701, 900, 1100, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/#/');
+    const home = await measure('Wesley Egbertsen');
+    await page.goto('/#/projects');
+    const projects = await measure('Projects');
+
+    expect(home.width, `width at ${width}`).toBe(projects.width);
+    expect(home.x, `x at ${width}`).toBe(projects.x);
+    expect(home.font).toBe(projects.font);
+    expect(home.font).toContain('monospace');
+  }
+
+  // Both panels sit in the vertical middle of the window, on the same line as the
+  // centred site menu. That is only visible when the page fits, so use a window
+  // tall enough for the Projects page.
+  for (const width of [1100, 1440]) {
+    await page.setViewportSize({ width, height: 1600 });
+    const menuCentre = async () =>
+      page
+        .getByRole('navigation', { name: 'Site' })
+        .evaluate((el) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2);
+    await page.goto('/#/');
+    const home = await measure('Wesley Egbertsen');
+    const homeMenu = await menuCentre();
+    await page.goto('/#/projects');
+    const projects = await measure('Projects');
+    const projectsMenu = await menuCentre();
+
+    expect(Math.abs(home.centreY - 800), `home centre at ${width}`).toBeLessThanOrEqual(1);
+    expect(Math.abs(projects.centreY - 800), `projects centre at ${width}`).toBeLessThanOrEqual(1);
+    expect(Math.abs(home.centreY - homeMenu), `home vs menu at ${width}`).toBeLessThanOrEqual(2);
+    expect(Math.abs(projects.centreY - projectsMenu), `projects vs menu at ${width}`).toBeLessThanOrEqual(2);
+  }
+});
+
+test('the home glass stays readable in all four themes', async ({ page }) => {
+  await openSite(page);
+  const h1 = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' });
+  const glass = h1.locator('..');
+  const teaserName = page.getByRole('region', { name: 'CardiPaw' }).getByRole('heading', { level: 2 });
+  const rgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
+
+  for (const [index, theme] of THEMES.entries()) {
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme.name);
+    expect(await glass.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(10, 20, 10, 0.55)');
+    expect(await glass.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain('blur');
+    expect(await h1.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(242, 247, 232)');
+    await expect
+      .poll(() => teaserName.evaluate((el) => getComputedStyle(el).color), { timeout: 3000 })
+      .toBe(rgb(theme.accent));
+    if (index < THEMES.length - 1) await page.mouse.click(3, 3);
+  }
+});
+
+/** No two Poké Balls may sit close together, or the hunt is too easy and the layout looks clumped. */
+async function expectSpread(balls: Locator, minDistance: number, where: string) {
+  const centres: { x: number; y: number }[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await box(balls.nth(i));
+    centres.push({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+  }
+  for (let a = 0; a < 4; a++) {
+    for (let b = a + 1; b < 4; b++) {
+      const d = Math.hypot(centres[a]!.x - centres[b]!.x, centres[a]!.y - centres[b]!.y);
+      expect(d, `Poké Balls ${a + 1} and ${b + 1} are ${Math.round(d)}px apart ${where}`).toBeGreaterThanOrEqual(minDistance);
+    }
+  }
+}
+
+test('the intro and the featured project fit and leave every Poké Ball reachable', async ({ page, isMobile }) => {
+  await openSite(page);
+
+  for (const target of [
+    page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }),
+    page.getByRole('region', { name: 'CardiPaw' }),
+  ]) {
+    await target.scrollIntoViewIfNeeded();
+    await expect(target).toBeInViewport();
+  }
+  const sideways = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(sideways).toBeLessThanOrEqual(0);
+
+  const glass = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..');
+  const fixed = [
+    isMobile ? page.getByRole('button', { name: 'Menu' }) : page.getByRole('navigation', { name: 'Site' }),
+    page.getByRole('navigation', { name: 'Social and about' }),
+    page.getByRole('button', { name: 'Game Boy' }),
+  ];
+
+  // Each ball sits inside the glass, in an empty spot: topmost at its centre, clear of the content and the fixed controls.
+  const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  const subline = page.getByText('Full-stack Azure .NET Developer');
+  const textBox = (el: Locator): Promise<Rect> =>
+    el.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  const content = [
+    page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('img'),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('heading', { level: 2 }),
+    page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' }),
+  ];
+  const inside = (a: Rect, b: Rect) =>
+    a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
+  for (let i = 0; i < 4; i++) {
+    const ball = balls.nth(i);
+    await ball.scrollIntoViewIfNeeded();
+    const covered = await ball.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return top !== el && !el.contains(top);
+    });
+    expect(covered, `Poké Ball ${i + 1} is covered`).toBe(false);
+
+    const rect = await box(ball);
+    expect(inside(rect, await box(glass)), `Poké Ball ${i + 1} is not inside the glass`).toBe(true);
+    for (const other of [...content, ...fixed]) {
+      expect(overlaps(rect, await box(other)), `Poké Ball ${i + 1} overlaps content or a fixed control`).toBe(false);
+    }
+    // The subline is a full-width block, so also check the text it actually draws.
+    expect(overlaps(rect, await textBox(subline)), `Poké Ball ${i + 1} overlaps the subline text`).toBe(false);
+  }
+
+  await expectSpread(balls, isMobile ? 120 : 250, 'on the home page');
+
+  // The counter shows after the first find, in white, just above the glass and clear of every ball and the menu.
+  await balls.nth(0).click();
+  const status = page.getByRole('status');
+  await expect(status).toBeVisible();
+  const counter = await box(status);
+  const glassBox = await box(glass);
+  expect(counter.y + counter.height, 'counter is above the glass top edge').toBeLessThanOrEqual(glassBox.y + 1);
+  expect(overlaps(counter, glassBox)).toBe(false);
+  expect(overlaps(counter, await box(fixed[0]!)), 'counter overlaps the menu').toBe(false);
+  for (let i = 0; i < 4; i++) {
+    expect(overlaps(counter, await box(balls.nth(i))), `counter overlaps ball ${i + 1}`).toBe(false);
+  }
+  await expect(status).toHaveCSS('color', 'rgb(255, 255, 255)');
+});
+
+test('the Poké Balls stay in empty spots of the glass at in-between window widths', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'sets its own window widths');
+  await openSite(page);
+  const glass = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..');
+  const balls = page.getByRole('button', { name: /^Poké Ball \d$/ });
+  const teaser = page.getByRole('region', { name: 'CardiPaw' });
+
+  // The panel only reaches its full 960px at about 1300px, so sample both sides of every layout change.
+  const subline = page.getByText('Full-stack Azure .NET Developer');
+  const textBox = (el: Locator): Promise<Rect> =>
+    el.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  for (const width of [701, 900, 1100, 1101, 1200, 1299, 1300]) {
+    await page.setViewportSize({ width, height: 800 });
+    const clear = [
+      page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).getByRole('button'),
+      teaser.getByRole('img'),
+      teaser.getByRole('heading', { level: 2 }),
+      teaser.getByRole('link', { name: 'View projects' }),
+      width <= 700 ? page.getByRole('button', { name: 'Menu' }) : page.getByRole('navigation', { name: 'Site' }),
+      page.getByRole('navigation', { name: 'Social and about' }),
+      page.getByRole('button', { name: 'Game Boy' }),
+    ];
+    const g = await box(glass);
+    for (let i = 0; i < 4; i++) {
+      const ball = balls.nth(i);
+      const rect = await box(ball);
+      const where = `Poké Ball ${i + 1} at ${width}px`;
+      expect(
+        rect.x >= g.x && rect.y >= g.y && rect.x + rect.width <= g.x + g.width && rect.y + rect.height <= g.y + g.height,
+        `${where} is not inside the glass`,
+      ).toBe(true);
+      for (const other of clear) expect(overlaps(rect, await box(other)), `${where} overlaps an element`).toBe(false);
+      expect(overlaps(rect, await textBox(subline)), `${where} overlaps the subline text`).toBe(false);
+      const covered = await ball.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return top !== el && !el.contains(top);
+      });
+      expect(covered, `${where} is covered`).toBe(false);
+    }
+    await expectSpread(balls, 150, `at ${width}px`);
+  }
 });
 
 test('does not scroll sideways and allows zoom', async ({ page }) => {
@@ -87,19 +360,6 @@ test.describe('panels', () => {
 });
 
 test.describe('easter eggs', () => {
-  test('Pikachu cries and flashes until it ends', async ({ page }) => {
-    await openSite(page);
-    const pikachu = page.getByRole('button', { name: 'Pikachu' });
-    await pikachu.click();
-
-    await expect(pikachu).toHaveAttribute('data-playing', 'true');
-    const [cry] = await playsOf(page, 'pikachu');
-    expect(cry?.volume).toBe(1);
-    await expect.poll(async () => (await playsOf(page, 'pikachu'))[0]?.ok).toBe(true);
-    // The real clip is short, so the flashing stops by itself.
-    await expect(pikachu).toHaveAttribute('data-playing', 'false', { timeout: 15_000 });
-  });
-
   test('finding all four Poké Balls counts down and then celebrates', async ({ page }) => {
     await openSite(page);
     const status = page.getByRole('status');
@@ -126,13 +386,18 @@ test.describe('easter eggs', () => {
     await expect.poll(async () => (await playsOf(page, 'victory'))[0]?.ok).toBe(true);
   });
 
-  test('the logo brings the cat; the cat puts on glasses and raps', async ({ page }) => {
+  test('the name brings the cat; the cat puts on glasses and raps', async ({ page }) => {
     await openSite(page);
     // includeHidden: role queries skip hidden elements, and this cat is hidden at first.
     const cat = page.getByRole('button', { name: 'Cat', exact: true, includeHidden: true });
     await expect(cat).toBeHidden();
 
-    await page.getByRole('button', { name: 'Wesley Egbertsen logo' }).click();
+    const toggle = page
+      .getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })
+      .getByRole('button', { name: 'Wesley Egbertsen' });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     await expect(cat).toBeVisible();
     await expect(cat).toBeInViewport({ ratio: 1 });
     expect((await playsOf(page, 'cat-'))[0]?.volume).toBe(1);
@@ -144,9 +409,17 @@ test.describe('easter eggs', () => {
     await expect.poll(async () => (await playsOf(page, 'cat_rap'))[0]?.ok).toBe(true);
 
     // Hiding the cat takes the glasses off again.
-    await page.getByRole('button', { name: 'Wesley Egbertsen logo' }).click();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await expect(cat).toBeHidden();
     await expect(cat).toHaveAttribute('data-glasses', 'false');
+
+    // The keyboard works too.
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(cat).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(cat).toBeHidden();
   });
 
   test('the Game Boy beeps, and a double-click slides the video in and out', async ({ page }) => {
@@ -185,7 +458,7 @@ test.describe('matrix backdrop', () => {
     expect(await key()).toBe('2');
 
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Pikachu' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
     expect(await key()).toBe('2');
   });
 

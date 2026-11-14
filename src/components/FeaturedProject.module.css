@@ -1,0 +1,77 @@
+/* Sits inside the home glass panel, set off from the intro by a thin accent line. */
+.teaser {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 1.25rem 0 0;
+
+  border-top: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  text-align: left;
+}
+
+.shot {
+  flex: none;
+  width: 64px;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.label {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.name {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.tagline {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.link {
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease-in-out;
+}
+
+.link:hover {
+  background: var(--accent-hover);
+}
+
+.link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+}

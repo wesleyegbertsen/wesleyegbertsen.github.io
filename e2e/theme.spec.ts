@@ -89,6 +89,16 @@ test.describe('the matrix colour is the site theme', () => {
     await expect.poll(() => style(glass, 'borderTopColor')).not.toBe(greenBorder);
   });
 
+  test('the home glass border follows the theme', async ({ page }) => {
+    await openSite(page);
+    const glass = page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..');
+    const greenBorder = await style(glass, 'borderTopColor');
+
+    await nextColour(page);
+
+    await expect.poll(() => style(glass, 'borderTopColor')).not.toBe(greenBorder);
+  });
+
   test('the theme survives a reload', async ({ page }) => {
     await openSite(page, '/#/projects');
     await nextColour(page);
@@ -180,7 +190,22 @@ test.describe('the matrix colour is the site theme', () => {
       await expect
         .poll(() => style(bar.getByRole('button', { name: 'Skills' }), 'color'), { timeout: 3000 })
         .toBe(rgb(theme.accent));
+      await bar.getByRole('link', { name: 'Email Wesley' }).hover();
+      await expect
+        .poll(() => style(bar.getByRole('link', { name: 'Email Wesley' }), 'color'), { timeout: 3000 })
+        .toBe(rgb(theme.accent));
     }
+  });
+
+  test('the featured project button follows the theme accent', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openSite(page);
+    await nextColour(page);
+    await expect.poll(() => themeName(page)).toBe('red');
+
+    const link = page.getByRole('region', { name: 'CardiPaw' }).getByRole('link', { name: 'View projects' });
+    await link.scrollIntoViewIfNeeded();
+    await expect.poll(() => style(link, 'backgroundColor')).toBe(rgb(RED.accent));
   });
 });
 

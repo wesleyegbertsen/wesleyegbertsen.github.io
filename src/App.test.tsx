@@ -1,8 +1,9 @@
 import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.tsx';
+import { projects } from './data/projects.ts';
 
 beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -20,7 +21,9 @@ function renderAt(path: string) {
 
 function expectBottomIcons() {
   expect(screen.getByRole('button', { name: 'Game Boy' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: 'Email Wesley' })).toHaveLength(1);
+  const bar = screen.getByRole('navigation', { name: 'Social and about' });
+  expect(within(bar).getByRole('link', { name: 'Email Wesley' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Skills' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Work experience' })).toBeInTheDocument();
 }
@@ -42,13 +45,23 @@ describe('App', () => {
   it('renders every part of the home page', () => {
     renderAt('/');
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Wesley Egbertsen logo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pikachu' })).toBeInTheDocument();
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' });
+    expect(within(h1).getByRole('button', { name: 'Wesley Egbertsen' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Poké Ball \d$/ })).toHaveLength(4);
     expect(screen.getByRole('button', { name: 'Cat', hidden: true })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument();
     expectBottomIcons();
+
+    const featured = screen.getByRole('region', { name: projects[0]!.name });
+    expect(within(featured).getByRole('heading', { level: 2, name: projects[0]!.name })).toBeInTheDocument();
+  });
+
+  it('opens the projects page from the featured project', async () => {
+    renderAt('/');
+
+    await userEvent.click(screen.getByRole('link', { name: 'View projects' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
   });
 
   it('shows the projects page with the shared menu and bottom icons, without the home content', () => {
@@ -59,7 +72,8 @@ describe('App', () => {
     expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Social and about' })).toBeInTheDocument();
     expectBottomIcons();
-    expect(screen.queryByRole('button', { name: 'Pikachu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Wesley Egbertsen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Poké Ball \d$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cat', hidden: true })).not.toBeInTheDocument();
   });
 

@@ -9,7 +9,9 @@ const MODULES = [
   'src/components/ExperienceTimeline.module.css',
   'src/components/Panel.module.css',
   'src/components/SocialBar.module.css',
-  'src/pages/ProjectsPage.module.css',
+  'src/components/FeaturedProject.module.css',
+  'src/styles/glass.css',
+  'src/pages/HomePage.module.css',
 ];
 
 /** Hard-coded accent colours from before the theme: none may be left in a themed module. */
@@ -49,9 +51,47 @@ describe('themed CSS modules', () => {
     expect(alpha).toBeGreaterThanOrEqual(0.8);
   });
 
-  it('keeps one hover rule for the three bottom bar icons that follow the theme', () => {
+  it('keeps one hover rule for the four bottom bar icons that follow the theme', () => {
     const css = read('src/components/SocialBar.module.css');
     expect(css.match(/color: var\(--accent\)/g)).toHaveLength(1);
+    expect(css).toContain('.mail:hover');
+  });
+
+  it('gives the featured project link a focus ring and no motion when reduced motion is asked for', () => {
+    const css = read('src/components/FeaturedProject.module.css');
+    expect(css).toContain('.link:focus-visible');
+    expect(css).toContain('prefers-reduced-motion');
+  });
+
+  it('draws the Poké Ball counter in white monospace so it reads over the rain', () => {
+    const css = read('src/features/pokeballs/Pokeballs.module.css');
+    const start = css.indexOf('.counter {');
+    const block = css.slice(start, css.indexOf('}', start));
+    expect(block).not.toContain('#555');
+    expect(block).toContain('monospace');
+    expect(block).toContain('#fff');
+  });
+
+  it('lets the balls take presses through the click-through home page', () => {
+    const css = read('src/features/pokeballs/Pokeballs.module.css');
+    const start = css.indexOf('.pokeball {');
+    const block = css.slice(start, css.indexOf('}', start));
+    expect(block).toContain('pointer-events: auto');
+  });
+
+  it('gives the name button a focus ring and adds no motion to the home page', () => {
+    const toggle = read('src/features/cat/CatToggle.module.css');
+    expect(toggle).toContain(':focus-visible');
+    for (const css of [toggle, read('src/pages/HomePage.module.css')]) {
+      expect(css).not.toMatch(/transition|animation/);
+    }
+  });
+
+  it('sits the featured project in the glass without a backing of its own', () => {
+    const css = read('src/components/FeaturedProject.module.css');
+    expect(css).not.toContain('rgba(0, 0, 0, 0.7)');
+    const start = css.indexOf('.name {');
+    expect(css.slice(start, css.indexOf('}', start))).toContain('var(--accent)');
   });
 
   it('leaves the GitHub and LinkedIn brand hovers alone', () => {

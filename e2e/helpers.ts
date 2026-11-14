@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export type PlayLog = { src: string; volume: number; startAt: number; ok: boolean };
 
@@ -46,7 +46,7 @@ export async function stubYouTube(page: Page) {
 /**
  * Opens the site with audio recording on, YouTube stubbed, and fails on console errors.
  * `path` is where to go (the site routes by hash, for example `/#/projects`); the page is ready when
- * its own content shows: the Projects heading on the projects page, Pikachu everywhere else.
+ * its own content shows: the Projects heading on the projects page, the name heading everywhere else.
  */
 export async function openSite(page: Page, path = '/') {
   const errors: string[] = [];
@@ -60,7 +60,7 @@ export async function openSite(page: Page, path = '/') {
   if (path.includes('#/projects')) {
     await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
   } else {
-    await expect(page.getByRole('button', { name: 'Pikachu' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
   }
   return { errors };
 }
@@ -74,4 +74,17 @@ export async function litPixels(page: Page) {
     for (let i = 0; i < data.length; i += 4) if (data[i]! + data[i + 1]! + data[i + 2]! > 0) lit++;
     return lit;
   });
+}
+
+export type Rect = { x: number; y: number; width: number; height: number };
+
+/** The bounding box of a visible element, or an error if it has none. */
+export async function box(locator: Locator): Promise<Rect> {
+  const rect = await locator.boundingBox();
+  if (!rect) throw new Error('element has no box');
+  return rect;
+}
+
+export function overlaps(a: Rect, b: Rect) {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }

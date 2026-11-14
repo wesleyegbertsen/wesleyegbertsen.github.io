@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { litPixels, openSite } from './helpers.ts';
+import { box, litPixels, openSite, overlaps } from './helpers.ts';
 
 /** Goes to the projects page through the site menu, opening it first on a narrow screen. */
 async function openProjectsFromMenu(page: Page, isMobile: boolean) {
@@ -7,18 +7,6 @@ async function openProjectsFromMenu(page: Page, isMobile: boolean) {
     await page.getByRole('button', { name: 'Menu' }).click();
   }
   await page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: 'Projects' }).click();
-}
-
-type Rect = { x: number; y: number; width: number; height: number };
-
-async function box(locator: Locator): Promise<Rect> {
-  const rect = await locator.boundingBox();
-  if (!rect) throw new Error('element has no box');
-  return rect;
-}
-
-function overlaps(a: Rect, b: Rect) {
-  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
 test.describe('projects page', () => {
@@ -53,7 +41,7 @@ test.describe('projects page', () => {
     // The first entry is the bare address the browser opened, which is home without a hash.
     await page.goBack();
     await expect(page).toHaveURL(/\/(#\/)?$/);
-    await expect(page.getByRole('button', { name: 'Pikachu' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' })).toBeVisible();
 
     await page.goForward();
     await expect(page).toHaveURL(/#\/projects$/);
@@ -70,7 +58,9 @@ test.describe('projects page', () => {
     expect(await page.evaluate(() => localStorage.getItem('currentMatrixFontColorIndex'))).toBe('1');
 
     await expect(page.getByRole('button', { name: 'Game Boy' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Email Wesley' })).toBeVisible();
+    await expect(
+      page.getByRole('navigation', { name: 'Social and about' }).getByRole('link', { name: 'Email Wesley' }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Skills' }).click();
     await expect(page.getByRole('dialog', { name: 'My Technical Skills' })).toBeVisible();
@@ -174,15 +164,14 @@ test.describe('site menu', () => {
       expect(3 >= nav.x && 3 <= nav.x + nav.width && 3 >= nav.y && 3 <= nav.y + nav.height).toBe(false);
 
       const others = [
-        page.getByRole('link', { name: 'Email Wesley' }),
         page.getByRole('navigation', { name: 'Social and about' }),
         page.getByRole('button', { name: 'Game Boy' }),
         ...(path === '/'
           ? [
-              page.getByRole('button', { name: 'Wesley Egbertsen logo' }),
-              page.getByRole('button', { name: 'Pikachu' }),
-              page.getByRole('button', { name: /^Poké Ball \d$/ }).first(),
-              page.getByRole('button', { name: /^Poké Ball \d$/ }).last(),
+              page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }),
+              page.getByRole('region', { name: 'CardiPaw' }),
+              page.getByRole('heading', { level: 1, name: 'Wesley Egbertsen' }).locator('..'),
+              ...[0, 1, 2, 3].map((i) => page.getByRole('button', { name: /^Poké Ball \d$/ }).nth(i)),
             ]
           : [page.getByRole('heading', { level: 1, name: 'Projects' }).locator('..')]),
       ];
