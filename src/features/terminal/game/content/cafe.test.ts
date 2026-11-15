@@ -11,7 +11,7 @@ import { coinsFor, money } from '../engine/shop.ts';
 import { COLS, ROWS, fold, wrap } from '../engine/text.ts';
 import { NO_INPUT, type Action, type GameMap, type GameState, type Input } from '../engine/types.ts';
 import { DELTA, resolveSpot } from '../engine/world.ts';
-import { AREAS, BOSS_MIN_LEVEL, ECONOMY, ITEMS, SHOPS, START_ITEMS } from './battles.ts';
+import { AREAS, BOSS_MIN_LEVEL, ECONOMY, FINAL_BOSSES, ITEMS, REWARDS, SHOPS, START_ITEMS } from './battles.ts';
 import { CAFE_TEXT } from './story.ts';
 import { buildWorld } from './world.ts';
 
@@ -331,9 +331,65 @@ describe('the money of the game', () => {
     expect(coinsFor(1, true, world)).toBeLessThan(coffee);
   });
 
-  it('is handed out here and there: for the errand of the postman and for every gold star', () => {
-    const handed = Object.values(world.maps).flatMap((map) => map.objects.flatMap((object) => object.branches.flatMap((branch) => deep(branch.do).flatMap((action) => ('coins' in action ? [`${object.id}:${action.coins}`] : [])))));
-    expect(handed.sort()).toEqual(['library:R:20', 'town:?:50']);
+  /** Who hands out coins, and how many: `<object>:<amount>`, each once however many of its branches do it. */
+  const handed = () => [...new Set(Object.values(world.maps).flatMap((map) => map.objects.flatMap((object) => object.branches.flatMap((branch) => deep(branch.do).flatMap((action) => ('coins' in action ? [`${object.id}:${action.coins}`] : []))))))].sort();
+
+  it('is handed out here and there: for the two errands, the full stamp card, in a few chests and at the very end', () => {
+    expect(handed()).toEqual(
+      [
+        `library:R:${REWARDS.letter}`,
+        `town:?:${REWARDS.stars}`,
+        `hills:?:${REWARDS.rally}`,
+        `contact:H:${REWARDS.finale}`,
+        `east:C:${REWARDS.chests['chest:east']}`,
+        `west:C:${REWARDS.chests['chest:west']}`,
+        `cave:E:${REWARDS.chests['chest:cave']}`,
+        `cave:G:${REWARDS.chests['chest:cave3']}`,
+      ].sort(),
+    );
+    // Some chests, not all of them: the ones off the main path.
+    const chests = Object.values(world.maps).flatMap((map) => map.objects.filter((object) => object.sprite === 'chest'));
+    expect(Object.keys(REWARDS.chests).length).toBeGreaterThanOrEqual(2);
+    expect(Object.keys(REWARDS.chests).length).toBeLessThan(chests.length);
+    // Every amount that is written down is handed out by someone: a chest that was renamed does not lose its coins unseen.
+    expect(handed()).toHaveLength(4 + Object.keys(REWARDS.chests).length);
+    for (const amount of [REWARDS.letter, REWARDS.stars, REWARDS.rally, REWARDS.finale, ...Object.values(REWARDS.chests)]) expect(Number.isInteger(amount) && amount > 0, String(amount)).toBe(true);
+  });
+
+  it('stays modest: a chest holds less than the first boss drops, and all the gifts together less than the four badge bosses', () => {
+    const drop = (id: string) => coinsFor(world.enemies[id]!.level, false, world);
+    for (const [flag, amount] of Object.entries(REWARDS.chests)) expect(amount, flag).toBeLessThan(drop('exam'));
+    const gifts = REWARDS.letter + REWARDS.stars + REWARDS.rally + Object.values(REWARDS.chests).reduce((sum, amount) => sum + amount, 0);
+    expect(gifts).toBeLessThanOrEqual(drop('exam') + drop('legacy') + drop('scope') + drop('deadline'));
+    // The pay at the very end is no more than the last boss drops, and no gift is worth more than it.
+    expect(REWARDS.finale).toBeLessThanOrEqual(drop(FINAL_BOSSES.at(-1)!));
+    expect(Math.max(REWARDS.letter, REWARDS.stars, REWARDS.rally)).toBeLessThanOrEqual(REWARDS.finale);
+  });
+
+  it('lies in a chest beside its item: opened once, the item first, then the coins with a line and a sound', () => {
+    const chest = thing(world.maps.east!, 'C');
+    const amount = REWARDS.chests['chest:east']!;
+    const before = goTo({ ...started(), ...resolveSpot(world, { map: 'east', at: '(', dx: 1 }) }, 'east:C');
+    // Whatever the wild things on the way there dropped is in the purse already.
+    const purse = before.coins;
+    const opened = told(before, { a: true });
+    expect(opened.events.at(-1)?.text).toMatch(/^You got the ENERGY DRINK!/);
+    expect(opened.state.coins).toBe(purse);
+    let paid = told(opened.state, { a: true });
+    for (let i = 0; i < 5 && paid.state.coins === purse && paid.state.dialogue; i++) paid = told(paid.state, { a: true });
+    expect(paid.events.at(-1)).toEqual({ kind: 'item', text: `You got ${money(amount, world)}!` });
+    expect(paid.cues).toContain('coin');
+    expect(paid.state.coins).toBe(purse + amount);
+    const done = settle(paid.state);
+    expect(done.flags['chest:east']).toBe(true);
+    expect(chest.spriteWhen).toEqual({ flag: 'chest:east', sprite: 'chest-open' });
+    // Again: it is empty.
+    const again = told(done, { a: true });
+    expect(again.events.at(-1)?.text).toBe('It is empty.');
+    expect(settle(again.state).coins).toBe(purse + amount);
+    // A chest without coins says nothing about them.
+    const plain = thing(town, 'C').branches.flatMap((branch) => branch.do);
+    expect(plain.some((action) => 'coins' in action)).toBe(false);
   });
 
   it('is never needed: no door, boss, badge or ending asks for a coin, and the only one who takes any is the shop', () => {

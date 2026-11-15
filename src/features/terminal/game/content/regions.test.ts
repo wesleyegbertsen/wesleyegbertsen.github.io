@@ -13,9 +13,10 @@ import { NO_INPUT, type Action, type Dir, type GameMap, type GameObject, type Ga
 import { placeOf } from '../engine/wander.ts';
 import { BOSS_TICKS, QUICK_TICKS, curtainOf } from '../engine/transition.ts';
 import { DELTA, landing, resolveSpot } from '../engine/world.ts';
-import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, STAMP } from './battles.ts';
+import { coinsFor } from '../engine/shop.ts';
+import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, REWARDS, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
-import { DEEP_FLAGS, DEEP_TEXT, HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
+import { DEEP_FLAGS, DEEP_TEXT, FINALE, HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -443,17 +444,21 @@ describe('Hobby Hills', () => {
     expect(again.items[STAMP]).toBe(1);
   });
 
-  it('rewards a full card with a charm and a lunch, once', () => {
+  it('rewards a full card with a charm, a lunch and some coins, once', () => {
     let state = at('hills', '(', {}, 1);
     state = talk(state, 'hills:?');
     expect(state.items.omamori).toBeUndefined();
     for (const stop of HOBBIES) state = talk(state, `hills:${stop.at}`);
     expect(state.items[STAMP]).toBe(10);
+    const purse = state.coins;
     state = talk(state, 'hills:?');
     expect(state.items).toMatchObject({ omamori: 1, bento: 1 });
     expect(state.flags['rally:done']).toBe(true);
+    expect(REWARDS.rally).toBeGreaterThan(0);
+    expect(state.coins).toBe(purse + REWARDS.rally);
     state = talk(state, 'hills:?');
     expect(state.items).toMatchObject({ omamori: 1, bento: 1 });
+    expect(state.coins).toBe(purse + REWARDS.rally);
     expect(world.items.bento!.heal).toBeGreaterThan(0);
   });
 });
@@ -1055,6 +1060,22 @@ describe('the last fight', () => {
     expect(text.indexOf('JOB INTERVIEW wants to battle!')).toBeLessThan(text.indexOf('YEARLY REVIEW wants to battle!'));
     expect(text.indexOf('YEARLY REVIEW wants to battle!')).toBeLessThan(text.indexOf('THE IMPOSTOR wants to battle!'));
     for (const id of FINAL_BOSSES) expect(state.flags[`beat:${id}`]).toBe(true);
+  });
+
+  it('pays out after the third battle, before the contact details: once, with a line of its own', () => {
+    const { state, said } = watch(facing());
+    const pay = `You got ${REWARDS.finale} COINS!`;
+    expect(said.filter((line) => line === pay)).toHaveLength(1);
+    const text = said.join('\n');
+    expect(text.indexOf(pay)).toBeGreaterThan(text.indexOf(world.enemies.impostor!.defeat));
+    expect(text.indexOf(pay)).toBeLessThan(text.indexOf('how to reach me'));
+    // Wesley says what it is for, right before it.
+    expect(said[said.indexOf(pay) - 1]).toBe(fold(FINALE.pay.at(-1)!));
+    const drops = FINAL_BOSSES.reduce((sum, id) => sum + coinsFor(world.enemies[id]!.level, false, world), 0);
+    expect(state.coins).toBe(facing().coins + drops + REWARDS.finale);
+    // Coming back after a defeat pays the same, once.
+    const back = watch(facing({ flags: { 'beat:interview': true, 'beat:review': true } }));
+    expect(back.said.filter((line) => line === pay)).toHaveLength(1);
   });
 
   it('plays the whole transition for the first battle and the short one for those that follow, and never flashes', () => {

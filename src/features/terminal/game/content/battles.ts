@@ -21,6 +21,9 @@ import type { BadgeDef, Economy, EnemyDef, ItemDef, Levels, MoveDef, ShopDef } f
  *   one, and a boss), and how many of one item the bag takes when buying. SHOPS is what each shop sells and for
  *   how much: an entry needs an item from ITEMS. An item can restore energy (`heal`), the PP of every move
  *   (`restore`) or keep wild enemies away for a number of steps in the tall grass (`repel`).
+ * - REWARDS is the money that is handed out instead of dropped: for the two errands, for a full stamp card, in a
+ *   few chests (by the flag of the chest in story.ts) and by Wesley after the last battle. Keep it modest: a test
+ *   (cafe.test.ts) fails when a chest holds as much as a boss drops, or the gifts outgrow the four badge bosses.
  * - Nothing in a shop may ever be needed: the balance promise above is made for a player who buys nothing, and
  *   the bot that proves the game can be finished never spends a coin.
  */
@@ -360,6 +363,20 @@ export const STAMP = 'stamp';
  * leaves 6 COINS, the FINAL EXAM 30. `bagLimit` is how many of one item the shop will sell you.
  */
 export const ECONOMY: Economy = { currency: 'COINS', start: 15, wildCoins: 2, bossCoins: 10, bagLimit: 9 };
+
+/**
+ * Coins that are handed out, with the line "You got N COINS!". `chests`: the chests that hold coins beside their
+ * item, by their flag (the first argument of `chest(...)` in story.ts); a chest that is not listed holds none.
+ * `letter` and `stars` are the two errands in town, `rally` the full stamp card of Hobby Hills, and `finale` what
+ * Wesley pays after the third battle of the last fight (the game ends there, so it is a score, not shopping money).
+ */
+export const REWARDS = {
+  chests: { 'chest:east': 10, 'chest:west': 10, 'chest:cave': 15, 'chest:cave3': 20 } as Record<string, number>,
+  letter: 20,
+  stars: 50,
+  rally: 40,
+  finale: 100,
+};
 
 /** The shops: what is on the shelf, in this order, and the price. `bye` is said on the way out. */
 export const SHOPS: Record<string, ShopDef> = {

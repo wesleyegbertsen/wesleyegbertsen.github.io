@@ -5,7 +5,7 @@ import { contactLines } from '../../content.ts';
 import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
-import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ECONOMY, ENEMIES, FINAL_BOSSES, SHOPS, STAMP } from './battles.ts';
+import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ECONOMY, ENEMIES, FINAL_BOSSES, REWARDS, SHOPS, STAMP } from './battles.ts';
 import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
@@ -22,7 +22,8 @@ import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY,
  * - The CAFE in town is the place to rest: the barista restores energy and moves, and a defeat in town brings
  *   the player back to her (`respawn` on the town). CAFE_TEXT is what is said there: a draft, rewrite it. The
  *   shopkeeper opens the shop (`{ shop: 'cafe' }`); what it sells and the prices are SHOPS in battles.ts.
- *   `{ coins: 20 }` hands over money. Nothing in the shop may be needed for the main path.
+ *   `{ coins: 20 }` hands over money; the amounts that are handed out (errands, the stamp card, some chests, the
+ *   pay after the last fight) are REWARDS in battles.ts. Nothing in the shop may be needed for the main path.
  * - The main path is the four badges and the contact office. Everything else (the townsfolk, the signposts, the
  *   gold stars, the errands, the roads east and west, Hobby Hills, the cave) is extra: a test fails when a door,
  *   a boss or the ending starts to depend on it.
@@ -98,13 +99,17 @@ const star = (id: string, under?: string): ObjectSpec => ({
 /** A spot on the map that is just a name (the start, an unused seat). */
 const marker = (under?: string): ObjectSpec => ({ solid: false, trigger: 'interact', branches: [], under });
 
+/**
+ * A chest with an item in it. `flag` must be unique (it remembers that the chest was opened). A chest whose flag
+ * is listed in REWARDS.chests (battles.ts) holds that many coins too.
+ */
 const chest = (flag: string, item: string, under?: string): ObjectSpec => ({
   sprite: 'chest',
   spriteWhen: { flag, sprite: 'chest-open' },
   solid: true,
   trigger: 'interact',
   under,
-  branches: [{ when: { notFlag: flag }, do: [{ flag }, { give: item }] }, { do: [{ say: ['It is empty.'] }] }],
+  branches: [{ when: { notFlag: flag }, do: [{ flag }, { give: item }, ...(REWARDS.chests[flag] ? [{ coins: REWARDS.chests[flag] }] : [])] }, { do: [{ say: ['It is empty.'] }] }],
 });
 
 /**
@@ -371,6 +376,7 @@ export const PUZZLES: { name: string; from: Spot; needs: string[]; goal: { flag:
 /**
  * What Wesley says in the Contact Office, in his own voice. A DRAFT: rewrite it. `before` introduces each of the
  * three bosses (in the order of FINAL_BOSSES in battles.ts), `after` is said with the coffee once it is beaten.
+ * `pay` is said after the third, right before he hands over REWARDS.finale coins (battles.ts); then `goodbye`.
  */
 export const FINALE = {
   welcome: (name: string, role: string) => [
@@ -388,6 +394,7 @@ export const FINALE = {
     'Exceeds expectations! Another coffee. One more to go.',
     'It never goes away for good. But now you know it can be beaten.',
   ],
+  pay: ['One more thing. Nobody works for free: here is your pay.'],
   goodbye: ['That is all of it. Thanks for walking through my career. Want to talk? This is how to reach me:'],
 };
 
@@ -398,7 +405,7 @@ export const FINALE = {
  * marked `quick` and get the short one.
  */
 function lastFight(data: FsData): ObjectSpec['branches'] {
-  const goodbye: Action[] = [{ say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { ending: true }];
+  const goodbye: Action[] = [{ say: FINALE.pay }, { coins: REWARDS.finale }, { say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { ending: true }];
   const from = (round: number, quick = false): Action[] => {
     const enemy = FINAL_BOSSES[round];
     if (!enemy) return goodbye;
@@ -722,7 +729,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
               { take: 'letter' },
               { flag: 'errand:letter:done' },
               { give: 'energydrink' },
-              { coins: 20 },
+              { coins: REWARDS.letter },
             ],
           },
           { do: [{ say: [`Welcome. ${plural(data.skills.length, 'skill')} on the shelves, and not one of them overdue. Quiet, please.`] }] },
@@ -772,7 +779,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       { when: { flag: 'errand:stars' }, do: [{ say: ['A fellow collector! Wear that TROPHY with pride.'] }] },
       {
         when: { count: { item: COLLECT, min: total } },
-        do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }, { coins: 50 }],
+        do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }, { coins: REWARDS.stars }],
       },
       { do: [{ say: [`I collect GOLD STARs. ${total} are hidden in and around town.`, 'Bring them all and my TROPHY is yours. START shows how many you have.'] }] },
     ],
@@ -834,10 +841,11 @@ export function buildMaps(data: FsData): BuiltMap[] {
           {
             when: { count: { item: STAMP, min: stamps } },
             do: [
-              { say: [`All ${stamps} stamps! That is every hobby in the hills.`, 'A full card earns a lucky charm, and lunch.'] },
+              { say: [`All ${stamps} stamps! That is every hobby in the hills.`, 'A full card earns a lucky charm, lunch, and something for the CAFE.'] },
               { flag: 'rally:done' },
               { give: 'omamori' },
               { give: 'bento' },
+              { coins: REWARDS.rally },
             ],
           },
           { do: [{ say: [`Welcome to the HOBBY HILLS stamp rally! ${stamps} stops, one stamp each.`, 'Fill your card and come back to me. START shows how many you have.'] }] },
