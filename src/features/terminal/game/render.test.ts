@@ -174,10 +174,17 @@ describe('drawGame', () => {
     expect(textAt(draws, 120)).toBe('youdo?ITEM');
   });
 
-  it('lists the moves with their PP, and the line of a battle step', () => {
+  it('lists the moves with their PP in a box that hugs them, with what the move under the cursor does at its foot', () => {
     const moves = play(started(), 'down', 'right', 'a', 'a');
-    expect(textAt(drawn(moves).draws, 78)).toBe('>HIT2/2');
-    expect(textAt(drawn(moves).draws, 88)).toBe('NAP1/1');
+    const { draws, fills } = drawn(moves);
+    // Two moves: the box starts 44 pixels and two rows above the bottom, and there is no empty space under them.
+    expect(fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 80, w: SCREEN_W, h: SCREEN_H - 80 });
+    expect(textAt(draws, 86)).toBe('MOVEPP');
+    expect(textAt(draws, 101)).toBe('>HIT2/2');
+    expect(textAt(draws, 111)).toBe('NAP1/1');
+    expect(textAt(draws, 129)).toMatch(/^POW\d+HIT\d+%$/);
+    // The second move heals: the foot says how much.
+    expect(textAt(drawn(play(moves, 'down')).draws, 129)).toMatch(/^HEALS\d+$/);
     const intro = play(started(), 'down', 'right');
     expect(textAt(drawn(intro).draws, 110)).toBe('AwildRATappeared!');
   });
@@ -410,7 +417,8 @@ describe('the battle screen', () => {
     const menu = drawn(battle());
     expect(menu.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 104, w: 100, h: 40 });
     const moves = drawn(play(battle(), 'a'));
-    expect(moves.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 56, w: SCREEN_W, h: 88 });
+    // The list of moves hugs its rows: two moves, the box from 80 down. The enemy's box stays in view above it.
+    expect(moves.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 80, w: SCREEN_W, h: 64 });
     expect(textAt(moves.draws, 6)).toBe('RATLv2');
     expect(dark(moves.fills)).toContainEqual({ shade: PALETTE[3], x: 4, y: 6, w: 2, h: 22 });
   });
@@ -1024,6 +1032,6 @@ describe('levels on the screen', () => {
   it('lists the moves the player knows now in a battle, not the ones of the start', () => {
     const swapped = { ...play(initialGame(levelWorld, 7), 'a', 'a'), moves: ['hit', 'zap'], pp: { hit: 2, zap: 3 } };
     const moves = playIn(levelWorld, swapped, 'down', 'right', 'a', 'a');
-    expect(textAt(drawn(moves, undefined, levelWorld).draws, 88)).toBe('ZAP3/3');
+    expect(textAt(drawn(moves, undefined, levelWorld).draws, 111)).toBe('ZAP3/3');
   });
 });

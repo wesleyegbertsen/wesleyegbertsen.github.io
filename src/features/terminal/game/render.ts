@@ -7,7 +7,7 @@ import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
 import { curtainOf, type Curtain } from './engine/transition.ts';
-import { SETTINGS, type Dir, type GameObject, type GameState, type MoveDef, type World } from './engine/types.ts';
+import { SETTINGS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
 
@@ -463,21 +463,36 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
     });
     return;
   }
-  // The moves or the items: a taller box, one entry per line.
-  box(ctx, 0, 56, SCREEN_W, SCREEN_H - 56);
-  const entries =
-    battle.phase === 'moves'
-      ? state.moves.map((id) => [world.moves[id]!.name, `${state.pp[id] ?? 0}/${world.moves[id]!.pp}`] as const)
-      : usableItems(state, world).map((id) => [world.items[id]!.name, `x${state.items[id]}`] as const);
-  drawText(ctx, sheets, battle.phase === 'moves' ? 'MOVE' : 'ITEM', 16, 62);
-  drawText(ctx, sheets, battle.phase === 'moves' ? 'PP' : '', 128, 62);
-  rect(ctx, 8, 72, SCREEN_W - 16, 1, DARK);
-  entries.slice(0, 6).forEach(([name, amount], i) => {
-    if (i === battle.cursor) drawText(ctx, sheets, '>', 8, 78 + i * LINE);
-    drawText(ctx, sheets, name, 16, 78 + i * LINE);
-    drawText(ctx, sheets, amount, SCREEN_W - 8 - amount.length * FONT.cellW, 78 + i * LINE);
+  // The moves or the items: a box that hugs its rows, one entry per line, and at its foot what the entry under the
+  // cursor does (power and accuracy, or what it restores).
+  const ids = battle.phase === 'moves' ? state.moves : usableItems(state, world);
+  const entries = (battle.phase === 'moves'
+    ? ids.map((id) => [world.moves[id]!.name, `${state.pp[id] ?? 0}/${world.moves[id]!.pp}`] as const)
+    : ids.map((id) => [world.items[id]!.name, `x${state.items[id]}`] as const)
+  ).slice(0, PICKER_ROWS);
+  const top = SCREEN_H - 44 - entries.length * LINE;
+  box(ctx, 0, top, SCREEN_W, SCREEN_H - top);
+  drawText(ctx, sheets, battle.phase === 'moves' ? 'MOVE' : 'ITEM', 16, top + 6);
+  drawText(ctx, sheets, battle.phase === 'moves' ? 'PP' : '', 128, top + 6);
+  rect(ctx, 8, top + 16, SCREEN_W - 16, 1, DARK);
+  entries.forEach(([name, amount], i) => {
+    if (i === battle.cursor) drawText(ctx, sheets, '>', 8, top + 21 + i * LINE);
+    drawText(ctx, sheets, name, 16, top + 21 + i * LINE);
+    drawText(ctx, sheets, amount, SCREEN_W - 8 - amount.length * FONT.cellW, top + 21 + i * LINE);
   });
+  rect(ctx, 8, SCREEN_H - 20, SCREEN_W - 16, 1, DARK);
+  const picked = ids[Math.min(battle.cursor, ids.length - 1)];
+  if (picked) drawText(ctx, sheets, battle.phase === 'moves' ? moveLine(world.moves[picked]!) : itemLine(world.items[picked]!), 16, SCREEN_H - 15);
 }
+
+/** How many entries the move and item pickers of a battle show. */
+const PICKER_ROWS = 6;
+
+/** A move at the foot of the picker: what it does in a few capitals. */
+const moveLine = (move: MoveDef) => (move.heal !== undefined ? `HEALS ${move.heal}` : `POW ${move.power}  HIT ${Math.round(move.accuracy * 100)}%`);
+
+/** An item at the foot of the picker: what it restores. */
+const itemLine = (item: ItemDef) => (item.restore ? 'RESTORES ALL PP' : item.heal !== undefined && item.heal >= 99 ? 'RESTORES ALL HP' : `RESTORES ${item.heal ?? 0} HP`);
 
 /**
  * The way into a battle, over the map. A blink washes the whole screen out to the lightest shade; then the dark
