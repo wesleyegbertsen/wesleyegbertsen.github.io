@@ -1345,37 +1345,51 @@ describe('small things that looked wrong', () => {
     }
   });
 
-  it('rims the duck pond in town with a sandy shore all the way round, like the pond of the hills', () => {
-    const pond = pondOf(town!);
-    const wet = new Set(pond.map(keyOf));
+  it('rims the duck pond in town with a sandy shore, open in one place where the pond runs into the stream', () => {
+    // The shore marks out the pond: the water inside the box of the sand is the pond, the rest is the stream.
+    const shore = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'shore');
+    expect(shore.length).toBeGreaterThanOrEqual(16);
+    const [left, right] = [Math.min(...shore.map((c) => c.x)), Math.max(...shore.map((c) => c.x))];
+    const [top, bottom] = [Math.min(...shore.map((c) => c.y)), Math.max(...shore.map((c) => c.y))];
+    const water = pondOf(town!);
+    const inBox = (cell: Cell) => cell.x >= left && cell.x <= right && cell.y >= top && cell.y <= bottom;
+    const pond = water.filter(inBox);
+    const wet = new Set(water.map(keyOf));
     expect(pond.length).toBeGreaterThanOrEqual(18);
+    // The pond and the stream are one water now: the duck's water reaches the stream under the bridge.
+    const bridge = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'bridge')[0]!;
+    expect(wet.has(`${bridge.x + 1},${bridge.y}`)).toBe(true);
+    // It runs out through exactly one gap in the rim, on the edge of the box, straight into the stream below it.
+    const gaps = pond.filter((cell) => cell.x === left || cell.x === right || cell.y === top || cell.y === bottom);
+    expect(gaps).toHaveLength(1);
+    const gap = gaps[0]!;
+    expect(gap.y).toBe(bottom);
+    expect(WET).toContain(tileOf(town!, gap.x, gap.y + 1)!.sprite);
+    expect(inBox({ x: gap.x, y: gap.y + 1 })).toBe(false);
+    // Water is never walked on, the gap included.
+    for (const cell of water) expect(tileOf(town!, cell.x, cell.y)!.solid, keyOf(cell)).toBe(true);
     const AROUND = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => ({ dx, dy }))).filter(({ dx, dy }) => dx !== 0 || dy !== 0);
-    // Every cell of the water has more water or the shore on all four sides, and across its corners too: a full ring.
+    // Every other cell of the pond has more water or the shore on all sides, across its corners too.
     for (const cell of pond) {
-      for (const { dx, dy } of Object.values(DELTA)) {
-        expect([...WET, 'shore'], `beside ${keyOf(cell)}: ${cell.x + dx},${cell.y + dy}`).toContain(tileOf(town!, cell.x + dx, cell.y + dy)!.sprite);
-      }
       for (const { dx, dy } of AROUND) {
         const next = { x: cell.x + dx, y: cell.y + dy };
         if (!wet.has(keyOf(next))) expect(tileOf(town!, next.x, next.y)!.sprite, `round ${keyOf(cell)}: ${keyOf(next)}`).toBe('shore');
       }
     }
-    // The pond is its own water: the stream south of it is not part of it.
-    const bridge = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'bridge')[0]!;
-    expect(wet.has(`${bridge.x + 1},${bridge.y}`)).toBe(false);
-    // The shore is that ring and nothing else: every cell of it lies at the water, can be stood on (no lamp, sign
-    // or bench is left on it) and is walked to from the start of the game.
-    const shore = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'shore');
-    expect(shore.length).toBeGreaterThanOrEqual(16);
+    // The shore is that rim and nothing else: every cell of it lies at the pond, can be stood on (no lamp, sign or
+    // bench is left on it) and is walked to from the start of the game. It is a ring cut once: the two cells at the
+    // gap are its ends, every other cell has two neighbours on the sand.
     const reach = dryReach(town!, resolveSpot(world, world.start));
+    const ends: Cell[] = [];
     for (const cell of shore) {
-      expect(AROUND.some(({ dx, dy }) => wet.has(`${cell.x + dx},${cell.y + dy}`)), keyOf(cell)).toBe(true);
+      expect(AROUND.some(({ dx, dy }) => pond.some((p) => p.x === cell.x + dx && p.y === cell.y + dy)), keyOf(cell)).toBe(true);
       expect(standable(town!, cell.x, cell.y), keyOf(cell)).toBe(true);
       expect(reach.has(keyOf(cell)), keyOf(cell)).toBe(true);
-      // A closed loop: each cell of it has exactly two neighbours on the sand.
       const onSand = Object.values(DELTA).filter(({ dx, dy }) => tileOf(town!, cell.x + dx, cell.y + dy)!.sprite === 'shore');
-      expect(onSand, keyOf(cell)).toHaveLength(2);
+      if (onSand.length === 1) ends.push(cell);
+      else expect(onSand, keyOf(cell)).toHaveLength(2);
     }
+    expect(ends.map(keyOf).sort()).toEqual([`${gap.x - 1},${gap.y}`, `${gap.x + 1},${gap.y}`].sort());
     // What stood in the way stands beside it now: the signpost by the main road, where it is read from the road
     // and from the sand, the bench east of the pond, and the lamps in their line along the road.
     const sign = town!.objects.find((object) => object.id === 'town:9')!;
