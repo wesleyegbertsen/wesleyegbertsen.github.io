@@ -63,7 +63,9 @@ describe('matrixLine', () => {
 describe('the command logic is pure', () => {
   it.each([
     'parser', 'content', 'fs', 'commands', 'shell', 'art', 'complete',
-    'game/engine', 'game/level', 'game/map', 'game/physics',
+    'game/engine/engine', 'game/engine/battle', 'game/engine/world', 'game/engine/text', 'game/engine/rng',
+    'game/engine/types', 'game/engine/bot', 'game/content/maps', 'game/content/battles', 'game/content/story',
+    'game/content/world',
   ])(
     '%s.ts imports nothing from React or the DOM',
     (name) => {
@@ -81,7 +83,7 @@ describe('play', () => {
 
   it('is in the fun group and help explains it', () => {
     expect(commands.find((command) => command.name === 'play')?.group).toBe('fun');
-    expect(run('help play').lines.join(' ')).toMatch(/platformer/);
+    expect(run('help play').lines.join(' ')).toMatch(/Game Boy adventure/);
     expect(run('help').lines.join('\n')).toMatch(/fun .*play/);
   });
 

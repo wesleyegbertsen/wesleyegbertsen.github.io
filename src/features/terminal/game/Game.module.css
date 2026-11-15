@@ -16,57 +16,292 @@
 /* The same height as the log, which the game replaces. */
 .area {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: min(55vh, 28rem);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-/* Pixel art scaled to the panel's width: crisp edges, and a 30 x 12 tile picture that fits a 360px phone. */
-.canvas {
-  display: block;
+/* The Game Boy's body. The paddings and sizes below are mirrored by CHROME and UNDER in scale.ts: change both. */
+.console {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
   width: 100%;
-  height: auto;
+  height: 100%;
+  padding: 6px 8px;
+  border-radius: 10px 10px 34px 10px;
+  background: #c9c7bd;
+  box-shadow:
+    inset 0 2px 0 #e4e2da,
+    inset 0 -3px 0 #a09e94;
+  color: #2b2d42;
+}
+
+.console[data-wide='true'] {
+  flex-direction: row;
+  gap: 8px;
+  width: auto;
+  padding: 2px;
+}
+
+/* The dark frame around the screen. */
+.bezel {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 6px;
+  border-radius: 8px 8px 22px 8px;
+  background: #53566a;
+  line-height: 0;
+}
+
+.console[data-wide='true'] .bezel {
+  padding: 6px 14px;
+}
+
+/* 160 x 144 game pixels, enlarged without smoothing. Its size in CSS pixels is set by the component. */
+.screen {
+  display: block;
+  background: #88c070;
   image-rendering: pixelated;
-}
-
-.status {
-  min-height: 1.5em;
-  color: inherit;
-}
-
-.contact {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 .hint {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  opacity: 0.7;
-  font-size: 0.85rem;
+  top: 10px;
+  right: 18px;
+  padding: 0 0.4rem;
+  background: #081820;
+  color: #e0f8d0;
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
-/* Touch devices only: the component does not render the pad otherwise. */
-.pad {
+/* Beside the screen (wide) or under it (narrow): the name plate and the buttons or the key list. */
+.side {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  touch-action: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+  flex: 0 0 auto;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
 }
 
-.padButton {
-  flex: 1;
-  min-height: 2.75rem;
-  border: 1px solid var(--accent);
-  border-radius: 0.4rem;
-  background: transparent;
-  color: inherit;
+.console[data-wide='true'] .side {
+  align-self: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 240px;
+  padding: 14px 14px 18px 6px;
+}
+
+/* The speaker slits in the corner, as on the real thing. */
+.console[data-wide='true'] .side::after {
+  align-self: flex-end;
+  width: 64px;
+  height: 40px;
+  margin-right: 6px;
+  background: repeating-linear-gradient(115deg, transparent 0 6px, #a09e94 6px 9px);
+  border-radius: 4px;
+  content: '';
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 14px;
+  color: #33358a;
+  font-size: 0.65rem;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  line-height: 14px;
+}
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c8102e;
+}
+
+/* The keyboard, for devices without the on-screen buttons. */
+.keys {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.keys > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 0.5rem;
+  border-bottom: 1px dotted #8f8d84;
+}
+
+.keys dt {
+  font-weight: 700;
+}
+
+.keys dd {
+  margin: 0;
+}
+
+.console[data-wide='false'] .keys {
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.75rem;
+  height: 44px;
+  overflow: hidden;
+  font-size: 0.6rem;
+}
+
+.console[data-wide='false'][data-touch='false'] .brand {
+  display: none;
+}
+
+.contact {
+  overflow: auto;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.console[data-wide='false'] .contact {
+  max-height: 126px;
+}
+
+/* Touch devices only: the component does not render these otherwise. */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 126px;
+}
+
+.console[data-wide='true'] .controls {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  height: auto;
+}
+
+.controls button {
+  padding: 0;
+  border: 0;
   font: inherit;
+  cursor: pointer;
   touch-action: none;
   user-select: none;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.controls button:active {
+  filter: brightness(0.8);
+}
+
+.dpad {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, 38px);
+  grid-template-rows: repeat(3, 38px);
+}
+
+/* The middle of the cross. */
+.dpad::before {
+  grid-area: 2 / 2;
+  background: #2b2c36;
+  content: '';
+}
+
+.dpad button {
+  background: #2b2c36;
+}
+
+.up {
+  grid-area: 1 / 2;
+  border-radius: 6px 6px 0 0;
+}
+
+.left {
+  grid-area: 2 / 1;
+  border-radius: 6px 0 0 6px;
+}
+
+.right {
+  grid-area: 2 / 3;
+  border-radius: 0 6px 6px 0;
+}
+
+.down {
+  grid-area: 3 / 2;
+  border-radius: 0 0 6px 6px;
+}
+
+.small {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-self: flex-end;
+  gap: 8px;
+}
+
+.small button {
+  min-width: 50px;
+  min-height: 26px;
+  border-radius: 999px;
+  background: #7d7f8c;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ab {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100px;
+  height: 92px;
+}
+
+.ab button {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #9a2257;
+  color: #f6dce7;
+  font-weight: 700;
+}
+
+.a {
+  top: 0;
+  right: 0;
+}
+
+.b {
+  bottom: 0;
+  left: 0;
+}
+
+/* What happens, for screen readers: the canvas shows the same text to everyone else. */
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Laid out like the command line it replaces (same prompt width, same wrapping), so the panel keeps its size. */

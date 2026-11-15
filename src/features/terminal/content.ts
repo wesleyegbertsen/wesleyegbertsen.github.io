@@ -80,7 +80,7 @@ export function projectMarkdownLines(project: Project): string[] {
   ];
 }
 
-/** The whole career as plain text: what the platformer's skip path prints. */
+/** The whole career as plain text: what the game's skip path prints. */
 export function careerLines(data: FsData): string[] {
   return [
     'Experience',

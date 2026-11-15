@@ -1,13 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
+import { education } from '../src/data/education.ts';
 import { profile } from '../src/data/profile.ts';
-import { openSite } from './helpers.ts';
+import { box, openSite } from './helpers.ts';
+import { Pilot, gameOf as game } from './pilot.ts';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Command' });
 const log = (page: Page) => page.getByRole('log', { name: 'Terminal output' });
-const game = (page: Page) => page.getByRole('application');
 const status = (page: Page) => page.getByRole('status');
+const canvas = (page: Page) => game(page).locator('canvas');
 const glass = (page: Page) => page.getByRole('heading', { level: 1, name: 'Terminal' }).locator('..');
-const playerX = async (page: Page) => Number(await game(page).getAttribute('data-player-x'));
+const BUTTONS = ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'Start', 'Select'];
 
 async function run(page: Page, line: string) {
   await input(page).fill(line);
@@ -19,62 +21,200 @@ const glassSize = async (page: Page) => {
   return `${Math.round(rect!.width)}x${Math.round(rect!.height)}`;
 };
 
-test.describe('the platformer in the terminal', () => {
+/** The colours on the game's canvas, as `r,g,b` strings. */
+const colours = (page: Page) =>
+  canvas(page).evaluate((el) => {
+    const { data } = (el as HTMLCanvasElement).getContext('2d')!.getImageData(0, 0, 160, 144);
+    const seen = new Set<string>();
+    for (let i = 0; i < data.length; i += 4) seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+    return [...seen].sort();
+  });
+
+/** The text types itself; A shows the rest and then turns the page. Presses A until the box is closed. */
+async function closeText(page: Page, pressA: () => Promise<void>) {
+  for (let i = 0; i < 60 && (await game(page).getAttribute('data-dialogue')) === 'true'; i++) {
+    await pressA();
+    await page.waitForTimeout(50);
+  }
+  await expect(game(page)).toHaveAttribute('data-dialogue', 'false');
+}
+
+/** Opens the terminal with reduced motion (one key is one whole move) and starts the game. */
+async function play(page: Page) {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const opened = await openSite(page, '/#/terminal');
+  await run(page, 'play');
+  await expect(game(page)).toBeFocused();
+  return { pilot: new Pilot(page), errors: opened.errors };
+}
+
+test.describe('the adventure in the terminal', () => {
   test('play opens the game on the same page, in a panel of the same size', async ({ page }) => {
-    await openSite(page, '/#/terminal');
+    const { errors } = await openSite(page, '/#/terminal');
     const empty = await glassSize(page);
 
     await run(page, 'play');
 
     await expect(game(page)).toBeVisible();
     await expect(game(page)).toBeFocused();
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
     await expect(input(page)).toHaveCount(0);
     await expect(log(page)).toHaveCount(0);
     await expect(page).toHaveURL(/#\/terminal$/);
     expect(await glassSize(page)).toBe(empty);
-    await expect(game(page).locator('canvas')).toHaveAttribute('aria-hidden', 'true');
-    await expect(game(page).locator('pre')).toHaveCount(0);
+    await expect(canvas(page)).toHaveCount(1);
+    await expect(canvas(page)).toHaveAttribute('aria-hidden', 'true');
+    await expect(canvas(page)).toHaveAttribute('width', '160');
+    await expect(canvas(page)).toHaveAttribute('height', '144');
+    expect(errors).toEqual([]);
   });
 
-  test('does not scroll sideways while playing', async ({ page }) => {
-    await openSite(page, '/#/terminal');
-    await run(page, 'play');
-    await expect(game(page)).toBeFocused();
-    await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(400);
-    await page.keyboard.up('ArrowRight');
+  test('draws the screen from the sprite sheets, in four shades of green', async ({ page }) => {
+    const { pilot } = await play(page);
+    // The title: light paper, dark letters, the grass and the trees.
+    await expect.poll(() => colours(page)).toEqual(['136,192,112', '224,248,208', '52,104,86', '8,24,32']);
 
+    await pilot.start();
+    const town = await colours(page);
+    expect(town).toEqual(['136,192,112', '224,248,208', '52,104,86', '8,24,32']);
+  });
+
+  test('scales the screen up crisply and fills the panel with the Game Boy', async ({ page, isMobile }) => {
+    await play(page);
+    await expect(canvas(page)).toHaveCSS('image-rendering', 'pixelated');
+    const screen = await box(canvas(page));
+    const dpr = await page.evaluate(() => window.devicePixelRatio);
+    // A whole number of device pixels per game pixel, and the 10:9 shape of the real screen.
+    const perPixel = (screen.width / 160) * dpr;
+    expect(Math.abs(perPixel - Math.round(perPixel))).toBeLessThan(0.02);
+    expect(screen.width / screen.height).toBeCloseTo(160 / 144, 2);
+    expect(screen.width).toBeGreaterThanOrEqual(isMobile ? 230 : 480);
+
+    // The frame is inside the panel and takes (nearly) all of its height or width.
+    const frame = await box(canvas(page).locator('xpath=ancestor::div[@data-wide]'));
+    const panel = await box(glass(page));
+    expect(frame.x).toBeGreaterThanOrEqual(panel.x);
+    expect(frame.x + frame.width).toBeLessThanOrEqual(panel.x + panel.width);
+    const area = await box(canvas(page).locator('xpath=ancestor::div[@data-wide]/..'));
+    if (isMobile) expect(frame.width).toBeGreaterThan(area.width - 2);
+    expect(frame.height).toBeGreaterThan(area.height - 2);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test('runs while ArrowRight is held and the page does not scroll', async ({ page }) => {
+  test('walks while an arrow key is held, and the page does not scroll', async ({ page }) => {
     await openSite(page, '/#/terminal');
     await run(page, 'play');
     await expect(game(page)).toBeFocused();
-    const before = await playerX(page);
+    await page.keyboard.press('z');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    await closeText(page, () => page.keyboard.press('z'));
+    const y = Number(await game(page).getAttribute('data-y'));
 
-    await page.keyboard.down('ArrowRight');
-    await expect.poll(() => playerX(page)).toBeGreaterThan(before + 1);
-    await page.keyboard.up('ArrowRight');
+    await page.keyboard.down('ArrowUp');
+    await expect.poll(async () => Number(await game(page).getAttribute('data-y'))).toBeLessThan(y - 1);
+    await page.keyboard.up('ArrowUp');
 
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test('announces the first item, labelled from the data, and nothing per frame', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openSite(page, '/#/terminal');
-    await run(page, 'play');
-    await expect(game(page)).toBeFocused();
+  test('tells the story in the live region: the intro, then a teacher from the data', async ({ page }) => {
+    const { pilot } = await play(page);
     await expect(status(page)).toHaveText('');
 
-    for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('ArrowRight');
-      if ((await status(page).textContent()) !== '') break;
-    }
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    await expect(status(page)).toContainText('Welcome to Career Town!');
+    await pilot.read();
 
-    await expect(status(page)).toHaveText('Collected Betabit');
-    await expect(game(page)).toHaveAttribute('data-collected', '1');
+    await pilot.goTo('town:A');
+    await expect(game(page)).toHaveAttribute('data-map', 'academy');
+    await expect(status(page)).toHaveText('Academy');
+
+    await pilot.goTo('academy:1');
+    await pilot.press('a');
+    await expect(status(page)).toContainText(education.at(-1)!.school);
+  });
+
+  test('keeps the office shut without a diploma', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:O');
+    await expect(game(page)).toHaveAttribute('data-map', 'town');
+    await expect(status(page)).toContainText('THE OFFICE only hires graduates.');
+  });
+
+  test('a battle starts, is won with the default choice, and earns the badge that opens the office', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:A');
+    await pilot.goTo('academy:E');
+    await pilot.press('a');
+    await pilot.read();
+    await expect(game(page)).toHaveAttribute('data-battle', 'exam');
+    await expect(status(page)).toHaveText('FINAL EXAM wants to battle!');
+
+    await pilot.press('a');
+    await pilot.press('a');
+    await pilot.press('a');
+    await expect(status(page)).toContainText(/You use DEBUG! FINAL EXAM loses \d HP\./);
+
+    await pilot.fight();
+    await expect(game(page)).toHaveAttribute('data-battle', '');
+    await expect(game(page)).toHaveAttribute('data-badges', '1');
+    await expect(game(page)).toHaveAttribute('data-hp', '35');
+
+    await pilot.press('start');
+    await expect(game(page)).toHaveAttribute('data-menu', 'items');
+    await pilot.press('b');
+    await pilot.goTo('academy:m');
+    await pilot.goTo('town:O');
+    await expect(game(page)).toHaveAttribute('data-map', 'office');
+  });
+
+  test('can be played to the end, where the contact details are shown', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    const beat = async (boss: string) => {
+      await pilot.goTo(boss);
+      await pilot.press('a');
+      await pilot.read();
+      await pilot.fight();
+    };
+    await pilot.goTo('town:A');
+    await beat('academy:E');
+    await pilot.goTo('academy:m');
+    await pilot.goTo('town:O');
+    await pilot.goTo('office:1');
+    await pilot.press('a');
+    await pilot.read();
+    await pilot.goTo('office:D');
+    await beat('office:B');
+    await pilot.goTo('office:D');
+    await pilot.goTo('office:m');
+    await pilot.goTo('town:S');
+    await beat('workshop:B');
+    await pilot.goTo('workshop:m');
+    await pilot.goTo('town:L');
+    await beat('library:B');
+    await pilot.goTo('library:m');
+    await expect(game(page)).toHaveAttribute('data-badges', '4');
+    await pilot.goTo('town:P');
+    await pilot.goTo('contact:H');
+    await pilot.press('a');
+    await pilot.read();
+
+    await expect(game(page)).toHaveAttribute('data-finished', 'true');
+    await expect(game(page)).toContainText(profile.links.email);
+    await expect(status(page)).toContainText('THE END');
+    expect(errors).toEqual([]);
+
+    // A finished game starts again.
+    await page.keyboard.press('Escape');
+    await run(page, 'play');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
   });
 
   test('Escape returns to the shell with the command line focused', async ({ page }) => {
@@ -86,21 +226,19 @@ test.describe('the platformer in the terminal', () => {
     await page.keyboard.press('Escape');
 
     await expect(input(page)).toBeFocused();
-    await expect(log(page)).toContainText("Left the run. Type 'play' to carry on.");
+    await expect(log(page)).toContainText("Left the game. Type 'play' to carry on.");
     await expect(log(page)).toContainText(/whoami\s*guest/);
     await run(page, 'whoami');
     await expect(log(page)).toContainText(/whoami\s*guest\s*(.|\n)*whoami\s*guest/);
   });
 
   test('with reduced motion a press moves the game once and then it stands still', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openSite(page, '/#/terminal');
-    await run(page, 'play');
-    await expect(game(page)).toBeFocused();
-    const picture = () => game(page).locator('canvas').evaluate((el) => (el as HTMLCanvasElement).toDataURL());
+    const { pilot } = await play(page);
+    await pilot.start();
+    const picture = () => canvas(page).evaluate((el) => (el as HTMLCanvasElement).toDataURL());
     const before = await picture();
 
-    await page.keyboard.press('ArrowRight');
+    await pilot.press('up');
     const after = await picture();
     expect(after).not.toBe(before);
 
@@ -108,43 +246,63 @@ test.describe('the platformer in the terminal', () => {
     expect(await picture()).toBe(after);
   });
 
-  test('shows the Left, Right and Jump buttons on touch devices only', async ({ page, isMobile }) => {
-    await openSite(page, '/#/terminal');
-    await run(page, 'play');
-    await expect(game(page)).toBeVisible();
-
-    for (const name of ['Left', 'Right', 'Jump']) {
+  test('shows the D-pad and the buttons on touch devices only, and the keyboard list elsewhere', async ({ page, isMobile }) => {
+    await play(page);
+    for (const name of BUTTONS) {
       await expect(page.getByRole('button', { name, exact: true })).toHaveCount(isMobile ? 1 : 0);
     }
+    await expect(page.getByText('Arrows or WASD')).toHaveCount(isMobile ? 0 : 1);
   });
 
-  test('holding the Right button moves the player on a touch device', async ({ page, isMobile }) => {
+  test('the on-screen buttons play the game on a touch device and stay inside the panel', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'The buttons exist on touch devices only');
     await openSite(page, '/#/terminal');
     await run(page, 'play');
-    const before = await playerX(page);
-    const right = page.getByRole('button', { name: 'Right', exact: true });
-    const box = (await right.boundingBox())!;
+    const press = async (name: string, hold = 0) => {
+      const rect = await box(page.getByRole('button', { name, exact: true }));
+      await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      await page.mouse.down();
+      if (hold) await page.waitForTimeout(hold);
+      await page.mouse.up();
+    };
 
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await expect.poll(() => playerX(page)).toBeGreaterThan(before);
-    await page.mouse.up();
+    const panel = await box(glass(page));
+    const screen = await box(canvas(page));
+    for (const name of BUTTONS) {
+      const button = page.getByRole('button', { name, exact: true });
+      await expect(button).toBeInViewport({ ratio: 1 });
+      const rect = await box(button);
+      expect(rect.x).toBeGreaterThanOrEqual(panel.x);
+      expect(rect.x + rect.width).toBeLessThanOrEqual(panel.x + panel.width);
+      expect(rect.y).toBeGreaterThanOrEqual(screen.y + screen.height);
+      expect(Math.min(rect.width, rect.height)).toBeGreaterThanOrEqual(26);
+    }
+
+    await press('A');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    await closeText(page, () => press('A'));
+    const y = Number(await game(page).getAttribute('data-y'));
+    await press('Up', 600);
+    await expect.poll(async () => Number(await game(page).getAttribute('data-y'))).toBeLessThan(y);
+
+    await press('Start');
+    await expect(game(page)).toHaveAttribute('data-menu', 'items');
+    await press('B');
+    await expect(game(page)).toHaveAttribute('data-menu', '');
+    await press('Select');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
   });
 
-  test('resumes where it was after a visit to another page, and writes nothing to storage', async ({
-    page,
-    isMobile,
-  }) => {
+  test('resumes where it was after a visit to another page, and writes nothing to storage', async ({ page, isMobile }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await openSite(page, '/#/terminal');
     const storageBefore = await page.evaluate(() => Object.keys(localStorage).sort());
     await run(page, 'play');
     await expect(game(page)).toBeFocused();
-    await page.keyboard.down('ArrowRight');
-    await expect.poll(() => playerX(page)).toBeGreaterThan(5);
-    await page.keyboard.up('ArrowRight');
-    await page.waitForTimeout(300);
-    const x = await playerX(page);
+    const pilot = new Pilot(page);
+    await pilot.start();
+    await pilot.goTo('town:k');
+    const place = { x: String(pilot.state.x), y: String(pilot.state.y) };
 
     const goTo = async (name: string) => {
       if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
@@ -155,23 +313,26 @@ test.describe('the platformer in the terminal', () => {
     await goTo('Terminal');
 
     await expect(game(page)).toBeVisible();
-    expect(await playerX(page)).toBe(x);
+    await expect(game(page)).toHaveAttribute('data-scene', 'world');
+    await expect(game(page)).toHaveAttribute('data-x', place.x);
+    await expect(game(page)).toHaveAttribute('data-y', place.y);
+    // The picture is back too, not a blank screen.
+    await expect.poll(async () => (await colours(page)).length).toBe(4);
     expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual(storageBefore);
+    expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
   });
 
-  test('a reload brings the shell back, and play starts at the beginning', async ({ page }) => {
-    await openSite(page, '/#/terminal');
-    await run(page, 'play');
-    await page.keyboard.down('ArrowRight');
-    await expect.poll(() => playerX(page)).toBeGreaterThan(5);
-    await page.keyboard.up('ArrowRight');
+  test('a reload brings the shell back, and play starts at the title again', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:k');
 
     await page.reload();
     await expect(input(page)).toBeVisible();
     await run(page, 'play');
 
     await expect(game(page)).toBeVisible();
-    await expect.poll(() => playerX(page)).toBeLessThanOrEqual(4);
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
   });
 
   test('play skip prints the career as text', async ({ page }) => {

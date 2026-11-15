@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { MAX_ENTRIES, SessionContext, type Entry } from './SessionContext.ts';
-import type { GameState } from './game/engine.ts';
+import type { GameState } from './game/engine/types.ts';
 import { initialState } from './shell.ts';
 
 const WELCOME: Entry = { id: 0, kind: 'output', text: "Welcome. Type 'help' to see the commands." };

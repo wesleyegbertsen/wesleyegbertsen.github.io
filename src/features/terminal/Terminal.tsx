@@ -12,9 +12,9 @@ import { complete } from './complete.ts';
 import { careerLines, contactLines } from './content.ts';
 import type { Effect } from './commands.ts';
 import { buildFileSystem, displayPath } from './fs.ts';
-import { initialGame } from './game/engine.ts';
+import { buildWorld } from './game/content/world.ts';
+import { initialGame } from './game/engine/engine.ts';
 import { Game } from './game/Game.tsx';
-import { buildLevel } from './game/level.ts';
 import { useTerminalSession, type Entry } from './SessionContext.ts';
 import { execute, type Env } from './shell.ts';
 import styles from './Terminal.module.css';
@@ -22,7 +22,7 @@ import { useMatrixRun } from './useMatrixRun.ts';
 
 const data = { profile, skills, experience, education, projects };
 const fs = buildFileSystem(data);
-const level = buildLevel(data);
+const world = buildWorld(data);
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 const TOUCH = '(pointer: coarse)';
 
@@ -100,8 +100,11 @@ export function Terminal() {
         break;
       case 'game':
         matrix.cancel();
-        // A finished run starts again; an unfinished one is picked up where it was left.
-        if (progressRef.current?.finished) progressRef.current = initialGame(level);
+        // A finished game starts again; an unfinished one is picked up where it was left. The seed makes the
+        // battles differ from visit to visit.
+        if (!progressRef.current || progressRef.current.finished) {
+          progressRef.current = initialGame(world, Math.floor(Math.random() * 0x7fffffff));
+        }
         setMode('game');
         break;
       case 'cd':
@@ -134,7 +137,7 @@ export function Terminal() {
     setMode('shell');
     setEntries((current) => [...current, ...newEntries('output', lines)]);
   };
-  const leave = () => leaveGame(["Left the run. Type 'play' to carry on."]);
+  const leave = () => leaveGame(["Left the game. Type 'play' to carry on."]);
   const skip = () => leaveGame(careerLines(data));
 
   const recall = (direction: 'up' | 'down') => {
@@ -190,7 +193,7 @@ export function Terminal() {
       <div ref={containerRef} className={styles.terminal}>
         <Game
           focusRef={gameRef}
-          level={level}
+          world={world}
           storeRef={progressRef}
           reducedMotion={reducedMotion}
           touch={touch}

@@ -1,84 +1,94 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
-import { initialGame, NO_INPUT, step, type GameEvent, type GameState, type Input } from './engine.ts';
-import type { Level } from './level.ts';
-import { MAX_FRAME_MS, RUN_SPEED, STEP_MS } from './physics.ts';
+import { initialGame, step } from './engine/engine.ts';
+import { NO_INPUT, type Dir, type GameEvent, type GameState, type Input, type World } from './engine/types.ts';
 
-export type Key = keyof Input;
+export type Button = 'a' | 'b' | 'start' | 'select';
+
+/** The engine runs 60 ticks a second, whatever the display does. */
+export const STEP_MS = 1000 / 60;
+/** A stalled frame (a busy tab) counts for this much at most, so the game does not jump. */
+export const MAX_FRAME_MS = 100;
 
 type Options = {
-  level: Level;
+  world: World;
   /** Where the live state is kept: above the routes, so it outlasts a visit to another page. */
   storeRef: RefObject<GameState | null>;
   reducedMotion: boolean;
-  /** Called when the picture changes (the player moved, an item went), not on every frame. */
+  /** Called when the state changed, not on every frame. */
   onFrame: (state: GameState) => void;
   onEvents: (events: GameEvent[]) => void;
 };
 
-const DT = STEP_MS / 1000;
-
 /**
- * Runs the game: a fixed-step loop on requestAnimationFrame that calls the pure `step`, keeps the keys that are held,
- * pauses while the tab is hidden and stops on unmount. With reduced motion there is no loop at all: each press
- * advances the game by one discrete move and redraws once.
+ * Runs the game: a fixed-step loop on requestAnimationFrame that calls the pure `step`, keeps the direction that
+ * is held, pauses while the tab is hidden and stops on unmount. With reduced motion there is no loop at all:
+ * each press advances the game by one whole move and redraws once.
  */
-export function useGameLoop({ level, storeRef, reducedMotion, onFrame, onEvents }: Options) {
-  const keys = useRef<Input>({ ...NO_INPUT });
-  const drawn = useRef('');
+export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents }: Options) {
+  /** The directions held down, the newest last. */
+  const held = useRef<Dir[]>([]);
+  /** What was pressed since the last tick. */
+  const pending = useRef<Omit<Input, 'dir'>>({ ...NO_INPUT });
+  const drawn = useRef<GameState | null>(null);
   const callbacks = useRef({ onFrame, onEvents });
   useEffect(() => {
     callbacks.current = { onFrame, onEvents };
   });
 
+  const current = useCallback(() => (storeRef.current ??= initialGame(world)), [storeRef, world]);
+
   const emit = useCallback(
     (events: GameEvent[]) => {
-      const state = (storeRef.current ??= initialGame(level));
-      // Quantised, so a player standing still does not redraw.
-      const signature = [state.x.toFixed(3), state.y.toFixed(3), state.collected.length, state.finished].join('|');
-      if (signature !== drawn.current) {
-        drawn.current = signature;
+      const state = current();
+      if (state !== drawn.current) {
+        drawn.current = state;
         callbacks.current.onFrame(state);
       }
       if (events.length > 0) callbacks.current.onEvents(events);
     },
-    [level, storeRef],
+    [current],
+  );
+
+  /**
+   * One tick with what is held and what was pressed; the presses are used up. A button pressed in the middle of
+   * a step is kept until the step is done, so it is not lost.
+   */
+  const advance = useCallback(
+    (instant: boolean): GameEvent[] => {
+      const state = current();
+      const input: Input = { ...pending.current, dir: held.current.at(-1) ?? null };
+      pending.current = state.walk ? { ...pending.current, pressed: null } : { ...NO_INPUT };
+      const result = step(state, input, world, { instant });
+      storeRef.current = result.state;
+      return result.events;
+    },
+    [current, storeRef, world],
   );
 
   const release = useCallback(() => {
-    keys.current = { ...NO_INPUT };
+    held.current = [];
+    pending.current = { ...NO_INPUT };
   }, []);
 
-  const setKey = useCallback((key: Key, down: boolean) => {
-    keys.current = { ...keys.current, [key]: down };
-  }, []);
-
-  /** Reduced motion: one move per press. Left and right run one tile; jump plays the whole arc, in place. */
-  const press = useCallback(
-    (key: Key) => {
-      let state = (storeRef.current ??= initialGame(level));
-      const events: GameEvent[] = [];
-      const run = (input: Input, until: (s: GameState, i: number) => boolean, max: number) => {
-        for (let i = 0; i < max && !state.finished; i++) {
-          const result = step(state, input, DT, level);
-          state = result.state;
-          events.push(...result.events);
-          if (until(state, i)) break;
-        }
-      };
-      const settle = () => run(NO_INPUT, (s) => s.grounded, 60);
-      if (key === 'jump') {
-        if (state.grounded) run({ ...NO_INPUT, jump: true }, () => false, 1);
-        settle();
-      } else {
-        const from = state.x;
-        const ticks = Math.ceil(30 / RUN_SPEED);
-        run({ ...NO_INPUT, [key]: true }, (s) => Math.abs(s.x - from) >= 1, ticks * 2);
-        settle();
-      }
-      storeRef.current = state;
-      emit(events);
+  /** A direction went down or up. */
+  const dir = useCallback(
+    (which: Dir, down: boolean) => {
+      held.current = held.current.filter((other) => other !== which);
+      if (!down) return;
+      pending.current = { ...pending.current, pressed: which };
+      if (reducedMotion) emit(advance(true));
+      else held.current.push(which);
     },
-    [emit, level, storeRef],
+    [advance, emit, reducedMotion],
+  );
+
+  /** A, B, Start or Select was pressed. */
+  const button = useCallback(
+    (which: Button) => {
+      pending.current = { ...pending.current, [which]: true };
+      if (reducedMotion) emit(advance(true));
+    },
+    [advance, emit, reducedMotion],
   );
 
   useEffect(() => {
@@ -95,19 +105,11 @@ export function useGameLoop({ level, storeRef, reducedMotion, onFrame, onEvents 
       previous = time;
 
       const events: GameEvent[] = [];
-      let state = (storeRef.current ??= initialGame(level));
-      let stepped = false;
       while (accumulated >= STEP_MS - 1e-6) {
-        const result = step(state, keys.current, DT, level);
-        state = result.state;
-        events.push(...result.events);
+        events.push(...advance(false));
         accumulated -= STEP_MS;
-        stepped = true;
       }
-      if (stepped) {
-        storeRef.current = state;
-        emit(events);
-      }
+      emit(events);
       raf = requestAnimationFrame(frame);
     };
 
@@ -133,7 +135,7 @@ export function useGameLoop({ level, storeRef, reducedMotion, onFrame, onEvents 
       document.removeEventListener('visibilitychange', visibility);
       stop();
     };
-  }, [emit, level, reducedMotion, release, storeRef]);
+  }, [advance, emit, reducedMotion, release]);
 
-  return useMemo(() => ({ setKey, press, release }), [setKey, press, release]);
+  return useMemo(() => ({ dir, button, release }), [dir, button, release]);
 }
