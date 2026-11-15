@@ -314,7 +314,12 @@ export const DEEP_TEXT = {
   /** The bricked-up doorway on the first floor, where the last chamber used to be. */
   bricked: ['A doorway, bricked up. The mortar is still fresh.', 'Chalked on a brick: "INCIDENT ROOM moved. People kept walking in."'],
   /** The note in the hall of the boulders, and what its gate and its lever say. */
-  boulders: ['A note: "Two plates in the floor, two boulders. Walk into a boulder to push it."', '"Hold both plates down and the gate opens. Stuck? The lever by the way in puts the boulders back."'],
+  boulders: [
+    'A note: "Two plates in the floor, two boulders. Walk into a boulder to push it."',
+    '"Hold both plates down and the gate opens. Stuck? The lever by the way in puts the boulders back."',
+    // For whoever cannot see the hall: where things are, in words.
+    '"The plates: one near the top right corner, one at the lower right. The boulders: one at the top left, one in the middle. A fire bowl and a rock stand in the way."',
+  ],
   platesDown: ['Both plates are down. To the east, a gate rattles open. The boulders settle and will not move again.'],
   gate: ['An iron gate. It will not move. Something in this hall holds it shut.'],
   lever: ['You pull the lever. The boulders roll back to where they started.'],
