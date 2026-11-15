@@ -66,14 +66,22 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
 };
 
+/** The bag shows the items in this order. */
 export const ITEMS: Record<string, ItemDef> = {
   coffee: { name: 'COFFEE', description: 'Restores 20 energy.', heal: 20 },
+  energydrink: { name: 'ENERGY DRINK', description: 'Restores 40 energy.', heal: 40 },
   pizza: { name: 'PIZZA', description: 'Restores all energy.', heal: 99 },
   diploma: { name: 'DIPLOMA', description: 'Proof that the Academy let you go.' },
   keycard: { name: 'KEY CARD', description: 'Opens the server room in the Office.' },
   librarycard: { name: 'LIBRARY CARD', description: 'Opens the Library.' },
   duck: { name: 'RUBBER DUCK', description: 'Explain your problem to it. It listens.' },
+  letter: { name: 'LETTER', description: 'For the head librarian.' },
+  star: { name: 'GOLD STAR', description: 'Shiny. A collector in town wants them all.' },
+  trophy: { name: 'TROPHY', description: 'Proof that you looked under every rock.' },
 };
+
+/** The item that is hidden all over the maps and counted on the Start menu. */
+export const COLLECT = 'star';
 
 /** What the player carries at the start. */
 export const START_ITEMS: Record<string, number> = { coffee: 2 };

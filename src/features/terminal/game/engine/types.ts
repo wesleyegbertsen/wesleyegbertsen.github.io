@@ -47,6 +47,8 @@ export type GameObject = {
   y: number;
   /** A name on the tile or the sprite sheet. Without one the object is an invisible marker. */
   sprite?: string;
+  /** Animated: the sheet also has `<sprite>-b`, and the two take turns (the fountain). */
+  animated?: boolean;
   /** A different sprite once a flag is set (an opened chest). */
   spriteWhen?: { flag: string; sprite: string };
   /** Gone from the map once this holds (a beaten boss). */
@@ -82,6 +84,8 @@ export type GameMap = {
   height: number;
   /** Legend characters, `cells[y][x]`. */
   cells: string[][];
+  /** The legend of this map: what each of those characters is. */
+  tiles: Record<string, TileDef>;
   objects: GameObject[];
   encounters?: { enemies: string[]; rate: number };
 };
@@ -115,7 +119,6 @@ export type World = {
   title: string;
   subtitle: string;
   maps: Record<string, GameMap>;
-  tiles: Record<string, TileDef>;
   start: Spot;
   items: Record<string, ItemDef>;
   startItems: Record<string, number>;

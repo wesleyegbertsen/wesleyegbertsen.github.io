@@ -171,7 +171,7 @@ function arrive(state: GameState, ctx: Ctx): GameState {
   if (object?.trigger === 'step') {
     return runScript({ ...state, script: [...(branchFor(object, state)?.do ?? [])] }, ctx);
   }
-  if (map.encounters && tileAt(world, map, state.x, state.y).grass) {
+  if (map.encounters && tileAt(map, state.x, state.y).grass) {
     const chance = random(state.seed);
     if (chance.value >= map.encounters.rate) return { ...state, seed: chance.seed };
     const pick = random(chance.seed);
@@ -196,7 +196,7 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
     }
     return runScript({ ...turned, script: [...(branchFor(object, turned)?.do ?? [])] }, ctx);
   }
-  if (tileAt(world, map, x, y).solid) {
+  if (tileAt(map, x, y).solid) {
     ctx.cues.push('bump');
     return turned;
   }

@@ -17,7 +17,7 @@ type Cell = { x: number; y: number };
 
 function free(world: World, state: GameState, mapId: string, x: number, y: number): boolean {
   const map = world.maps[mapId]!;
-  return !tileAt(world, map, x, y).solid && !objectAt(map, x, y, state);
+  return !tileAt(map, x, y).solid && !objectAt(map, x, y, state);
 }
 
 /** The shortest walk from `from` to each cell it can reach on a map, never stepping on objects. */
@@ -30,7 +30,7 @@ function walks(world: World, state: GameState, mapId: string, from: Cell, grassO
       const x = cell.x + DELTA[dir].dx;
       const y = cell.y + DELTA[dir].dy;
       if (found.has(`${x},${y}`) || !free(world, state, mapId, x, y)) continue;
-      if (!grassOk && tileAt(world, world.maps[mapId]!, x, y).grass) continue;
+      if (!grassOk && tileAt(world.maps[mapId]!, x, y).grass) continue;
       found.set(`${x},${y}`, [...path, dir]);
       queue.push({ x, y });
     }

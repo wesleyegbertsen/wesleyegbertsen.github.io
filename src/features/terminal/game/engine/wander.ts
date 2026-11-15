@@ -58,7 +58,7 @@ export function stroll(
     const y = from.y + MOVE[dir].dy;
     if (Math.abs(x - object.x) > radius || Math.abs(y - object.y) > radius) return;
     const char = map.cells[y]?.[x];
-    const tile = char === undefined ? undefined : world.tiles[char];
+    const tile = char === undefined ? undefined : map.tiles[char];
     if (!tile || tile.solid || tile.road || tile.grass) return;
     // The player's cell, and the one the player is leaving.
     if ((x === state.x && y === state.y) || (state.walk && x === state.walk.fromX && y === state.walk.fromY)) return;

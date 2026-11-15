@@ -3,7 +3,8 @@ import { BATTLE_MENU, usableItems } from './engine/battle.ts';
 import { WALK_TICKS, ownedItems } from './engine/engine.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
 import type { GameState, World } from './engine/types.ts';
-import { objectAt, spriteOf } from './engine/world.ts';
+import { placeOf, strollProgress } from './engine/wander.ts';
+import { gone, spriteOf } from './engine/world.ts';
 
 /** The Game Boy's screen, in pixels. */
 export const SCREEN_W = 160;
@@ -15,9 +16,20 @@ export type Sheets = { tiles: CanvasImageSource; sprites: CanvasImageSource; fon
 /** What the renderer needs of a 2D context, so a test can hand it a recorder. */
 export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
 
+/** What is shown on top of the game that is not part of its state: whether the sound is off. */
+export type Hud = { muted: boolean };
+
 const [LIGHTEST, , DARK, DARKEST] = PALETTE;
 const LINE = 10;
 const BOX_Y = 104;
+/** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
+export const FRAME_TICKS = 30;
+/** How many items the bag shows at once; a longer list scrolls with the cursor. */
+const BAG_ROWS = 5;
+
+/** The picture to show now: the plain one, or its `-b` twin every other beat when it is animated. */
+const frameOf = (sprite: string, animated: boolean | undefined, clock: number) =>
+  animated && Math.floor(clock / FRAME_TICKS) % 2 === 1 ? `${sprite}-b` : sprite;
 
 function rect(ctx: Painter, x: number, y: number, w: number, h: number, shade: string) {
   ctx.fillStyle = shade;
@@ -101,19 +113,53 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, DARKEST);
   for (let cy = Math.max(0, Math.floor(camY / TILE)); cy < map.height && cy * TILE < camY + SCREEN_H; cy++) {
     for (let cx = Math.max(0, Math.floor(camX / TILE)); cx < map.width && cx * TILE < camX + SCREEN_W; cx++) {
-      const tile = world.tiles[map.cells[cy]![cx]!];
+      const tile = map.tiles[map.cells[cy]![cx]!];
       if (!tile) continue;
       if (tile.under) drawSprite(ctx, sheets, tile.under, cx * TILE - camX, cy * TILE - camY);
-      drawSprite(ctx, sheets, tile.sprite, cx * TILE - camX, cy * TILE - camY);
+      drawSprite(ctx, sheets, frameOf(tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
     }
   }
   for (const object of map.objects) {
     const sprite = spriteOf(object, state);
-    if (!sprite || objectAt(map, object.x, object.y, state) !== object) continue;
-    drawSprite(ctx, sheets, sprite, object.x * TILE - camX, object.y * TILE - camY);
+    if (!sprite || gone(object, state)) continue;
+    const roaming = state.roam[object.id];
+    if (!roaming) {
+      drawSprite(ctx, sheets, frameOf(sprite, object.animated, state.clock), object.x * TILE - camX, object.y * TILE - camY);
+      continue;
+    }
+    // Someone on a stroll: between two cells while the step lasts, with a little bob.
+    const along = strollProgress(roaming, state.clock);
+    const at = placeOf(object, state);
+    const ox = Math.round((roaming.fromX + (at.x - roaming.fromX) * along) * TILE);
+    const oy = Math.round((roaming.fromY + (at.y - roaming.fromY) * along) * TILE);
+    drawSprite(ctx, sheets, sprite, ox - camX, oy - camY - (along < 1 && Math.floor(along * 4) % 2 === 1 ? 1 : 0));
   }
   const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? 1 : 0;
   drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY);
+
+  // The note after a find: the count, in the corner, for a moment.
+  if (state.notice && state.clock < state.notice.until) {
+    const text = `* ${state.notice.text}`;
+    box(ctx, 0, 0, text.length * FONT.cellW + 11, 16);
+    drawText(ctx, sheets, text, 6, 4);
+  }
+}
+
+/** A small speaker in the corner: with sound waves, or crossed out when the sound is off. */
+function drawSpeaker(ctx: Painter, muted: boolean) {
+  const x = 146;
+  const y = 2;
+  rect(ctx, x, y, 13, 11, DARKEST);
+  rect(ctx, x + 1, y + 1, 11, 9, LIGHTEST);
+  rect(ctx, x + 2, y + 4, 2, 3, DARKEST);
+  rect(ctx, x + 4, y + 3, 1, 5, DARKEST);
+  rect(ctx, x + 5, y + 2, 1, 7, DARKEST);
+  if (muted) {
+    for (const [dx, dy] of [[7, 4], [9, 4], [8, 5], [7, 6], [9, 6]] as const) rect(ctx, x + dx, y + dy, 1, 1, DARKEST);
+  } else {
+    rect(ctx, x + 7, y + 4, 1, 3, DARKEST);
+    rect(ctx, x + 9, y + 3, 1, 5, DARKEST);
+  }
 }
 
 function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
@@ -130,7 +176,7 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
   }
 }
 
-function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   const menu = state.menu!;
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
   drawText(ctx, sheets, 'BAG', 14, 8);
@@ -146,8 +192,10 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
   if (menu.tab === 'items') {
     const owned = ownedItems(state, world);
     const cursor = Math.min(menu.cursor, owned.length - 1);
-    owned.slice(0, 6).forEach((id, i) => {
-      if (i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+    // A long bag scrolls: the cursor stays in view.
+    const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, owned.length - BAG_ROWS));
+    owned.slice(top, top + BAG_ROWS).forEach((id, i) => {
+      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
       drawText(ctx, sheets, `${world.items[id]!.name} x${state.items[id]}`, 18, 42 + i * LINE);
     });
     note = owned.length === 0 ? 'Your bag is empty.' : world.items[owned[cursor]!]!.description;
@@ -158,6 +206,15 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
       drawText(ctx, sheets, earned ? `* ${badge.name}` : '- ???', 18, 42 + i * LINE);
     });
     note = `${state.badges.length} of ${world.badges.length} badges.`;
+  }
+  // The foot of the menu: what was found of the things to collect, and whether the sound is on.
+  if (world.collect) {
+    const name = world.items[world.collect.item]?.name.split(' ').at(-1) ?? '';
+    drawText(ctx, sheets, `${name}S ${state.items[world.collect.item] ?? 0}/${world.collect.total}`, 8, 94);
+  }
+  if (hud) {
+    const sound = hud.muted ? 'SOUND OFF' : 'SOUND ON';
+    drawText(ctx, sheets, sound, SCREEN_W - 8 - sound.length * FONT.cellW, 94);
   }
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
@@ -223,6 +280,7 @@ function drawScenery(ctx: Painter, sheets: Sheets, cast: string[]) {
 }
 
 function drawTitle(ctx: Painter, sheets: Sheets, world: World) {
+  // (The speaker is drawn on top by drawGame.)
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
   rect(ctx, 8, 14, SCREEN_W - 16, 2, DARK);
   drawText(ctx, sheets, world.title, centred(world.title, 2), 22, false, 2);
@@ -247,12 +305,19 @@ function drawEnding(ctx: Painter, sheets: Sheets, world: World) {
 }
 
 /** Draws the whole screen for a state: the map, or a battle, with the menu and the text box on top. */
-export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   ctx.imageSmoothingEnabled = false;
-  if (state.scene === 'title') return drawTitle(ctx, sheets, world);
+  if (state.scene === 'title') {
+    drawTitle(ctx, sheets, world);
+    if (hud) drawSpeaker(ctx, hud.muted);
+    return;
+  }
   if (state.scene === 'ending') return drawEnding(ctx, sheets, world);
   if (state.battle) drawBattle(ctx, sheets, state, world);
-  else if (state.menu) drawMenu(ctx, sheets, state, world);
-  else drawWorld(ctx, sheets, state, world);
+  else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
+  else {
+    drawWorld(ctx, sheets, state, world);
+    if (hud) drawSpeaker(ctx, hud.muted);
+  }
   if (state.dialogue) drawDialogue(ctx, sheets, state);
 }

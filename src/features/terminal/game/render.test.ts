@@ -1,8 +1,10 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { WALK_TICKS, initialGame } from './engine/engine.ts';
 import { play, testWorld as world } from './engine/testWorld.ts';
-import type { GameState } from './engine/types.ts';
-import { SCREEN_H, SCREEN_W, camera, drawGame, drawText, type Painter, type Sheets } from './render.ts';
+import type { GameState, TileDef, World } from './engine/types.ts';
+import { STROLL_TICKS } from './engine/wander.ts';
+import { parseMap } from './engine/world.ts';
+import { FRAME_TICKS, SCREEN_H, SCREEN_W, camera, drawGame, drawText, type Hud, type Painter, type Sheets } from './render.ts';
 import { fitScale, layout } from './scale.ts';
 
 type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: number; y: number; w: number; h: number };
@@ -26,9 +28,9 @@ function recorder() {
   return { ctx: ctx as unknown as Painter, draws, fills, smooth: () => ctx.imageSmoothingEnabled };
 }
 
-function drawn(state: GameState) {
+function drawn(state: GameState, hud?: Hud, on: World = world) {
   const record = recorder();
-  drawGame(record.ctx, sheets, state, world);
+  drawGame(record.ctx, sheets, state, on, hud);
   return record;
 }
 
@@ -154,6 +156,105 @@ describe('drawGame', () => {
     const { draws } = drawn(ended);
     expect(draws.filter((draw) => draw.sheet === 'font' && draw.w === 12)).toHaveLength('THEEND'.length);
     expect(spriteDraws(draws, 'wesley')).toHaveLength(1);
+  });
+});
+
+describe('a living map', () => {
+  const legend: Record<string, TileDef> = {
+    '.': { sprite: 'grass', solid: false },
+    '~': { sprite: 'water', solid: true, animated: true },
+  };
+  const park = parseMap(
+    {
+      id: 'park',
+      name: 'Park',
+      ground: '.',
+      rows: ['.~.', '.@.', '.wf'],
+      objects: {
+        '@': { solid: false, trigger: 'interact', branches: [] },
+        w: { sprite: 'cat', solid: true, trigger: 'interact', branches: [], wander: { radius: 1, every: 10 } },
+        f: { sprite: 'fountain', animated: true, solid: true, trigger: 'interact', branches: [] },
+      },
+    },
+    legend,
+  );
+  const letters = 'abcdefg'.split('');
+  const living: World = {
+    ...world,
+    maps: { park },
+    start: { map: 'park', at: '@' },
+    items: Object.fromEntries(letters.map((id) => [id, { name: id.toUpperCase(), description: `Item ${id}.` }])),
+    collect: { item: 'a', total: 3 },
+  };
+  const there = (): GameState => ({ ...initialGame(living), scene: 'world' });
+  const tileDraws = (draws: Draw[], name: keyof typeof tiles) => {
+    const [sx, sy] = tiles[name];
+    return draws.filter((draw) => draw.sheet === 'tiles' && draw.sx === sx && draw.sy === sy);
+  };
+  // The map is 3 x 3 cells, centred on the screen.
+  const left = (SCREEN_W - 3 * TILE) / 2;
+  const top = (SCREEN_H - 3 * TILE) / 2;
+
+  it('shows the two pictures of an animated tile and of an animated thing in turn, on the beat of the clock', () => {
+    const first = drawn(there(), undefined, living).draws;
+    expect(tileDraws(first, 'water')).toHaveLength(1);
+    expect(tileDraws(first, 'water-b')).toHaveLength(0);
+    expect(tileDraws(first, 'fountain')).toHaveLength(1);
+    const second = drawn({ ...there(), clock: FRAME_TICKS }, undefined, living).draws;
+    expect(tileDraws(second, 'water')).toHaveLength(0);
+    expect(tileDraws(second, 'water-b')).toHaveLength(1);
+    expect(tileDraws(second, 'fountain-b')).toHaveLength(1);
+    expect(tileDraws(drawn({ ...there(), clock: 2 * FRAME_TICKS }, undefined, living).draws, 'water')).toHaveLength(1);
+  });
+
+  it('draws someone on a stroll between two cells, and on the new cell when the step is done', () => {
+    const roam = { 'park:w': { x: 0, y: 2, fromX: 1, fromY: 2, at: 100 } };
+    const half = drawn({ ...there(), roam, clock: 100 + STROLL_TICKS / 2 }, undefined, living).draws;
+    expect(spriteDraws(half, 'cat')).toEqual([expect.objectContaining({ x: left + 0.5 * TILE, y: top + 2 * TILE })]);
+    const bob = drawn({ ...there(), roam, clock: 100 + STROLL_TICKS / 4 }, undefined, living).draws;
+    expect(spriteDraws(bob, 'cat')).toEqual([expect.objectContaining({ x: left + 0.75 * TILE, y: top + 2 * TILE - 1 })]);
+    const done = drawn({ ...there(), roam, clock: 100 + STROLL_TICKS }, undefined, living).draws;
+    expect(spriteDraws(done, 'cat')).toEqual([expect.objectContaining({ x: left, y: top + 2 * TILE })]);
+  });
+
+  it('shows the note after a find until its time is up', () => {
+    const noted = { ...there(), clock: 10, notice: { text: '2/3', until: 20 } };
+    expect(textAt(drawn(noted, undefined, living).draws, 4)).toBe('*2/3');
+    expect(textAt(drawn({ ...noted, clock: 20 }, undefined, living).draws, 4)).toBe('');
+  });
+
+  it('draws a speaker in the corner of the map and of the title: with waves, or crossed out', () => {
+    const corner = (fills: Fill[]) => fills.filter((fill) => fill.x >= 146 && fill.y <= 12 && fill.w <= 13);
+    expect(corner(drawn(there(), undefined, living).fills)).toEqual([]);
+    const on = corner(drawn(there(), { muted: false }, living).fills);
+    expect(on[0]).toEqual({ shade: PALETTE[3], x: 146, y: 2, w: 13, h: 11 });
+    expect(on).toContainEqual({ shade: PALETTE[3], x: 155, y: 5, w: 1, h: 5 });
+    const off = corner(drawn(there(), { muted: true }, living).fills);
+    expect(off).toContainEqual({ shade: PALETTE[3], x: 154, y: 7, w: 1, h: 1 });
+    expect(off).not.toContainEqual({ shade: PALETTE[3], x: 155, y: 5, w: 1, h: 5 });
+    expect(corner(drawn(initialGame(living), { muted: true }, living).fills)).toHaveLength(on.length + 3);
+  });
+
+  it('shows the find count and the sound at the foot of the Start menu', () => {
+    const bag = { ...there(), items: { a: 2 }, menu: { tab: 'items' as const, cursor: 0 } };
+    expect(textAt(drawn(bag, { muted: false }, living).draws, 94)).toBe('AS2/3SOUNDON');
+    expect(textAt(drawn(bag, { muted: true }, living).draws, 94)).toBe('AS2/3SOUNDOFF');
+    expect(textAt(drawn(bag, undefined, living).draws, 94)).toBe('AS2/3');
+    expect(textAt(drawn({ ...bag, items: {} }, undefined, living).draws, 94)).toBe('AS0/3');
+  });
+
+  it('scrolls a bag that is longer than the list, keeping the cursor in view', () => {
+    const items = Object.fromEntries(letters.map((id) => [id, 1]));
+    const at = (cursor: number) => drawn({ ...there(), items, menu: { tab: 'items' as const, cursor } }, undefined, living).draws;
+    expect(textAt(at(0), 42)).toBe('>Ax1');
+    expect(textAt(at(0), 82)).toBe('Ex1');
+    expect(textAt(at(3), 42)).toBe('Ax1');
+    expect(textAt(at(3), 72)).toBe('>Dx1');
+    expect(textAt(at(4), 42)).toBe('Bx1');
+    expect(textAt(at(4), 72)).toBe('>Ex1');
+    expect(textAt(at(6), 42)).toBe('Cx1');
+    expect(textAt(at(6), 82)).toBe('>Gx1');
+    expect(textAt(at(6), 92)).toBe('');
   });
 });
 

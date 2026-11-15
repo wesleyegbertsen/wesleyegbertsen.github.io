@@ -54,7 +54,6 @@ const park = parseMap(
 const world: World = {
   ...testWorld,
   maps: { park },
-  tiles: legend,
   start: { map: 'park', at: '@', dir: 'down' },
   items: { ...testWorld.items, star: { name: 'STAR', description: 'Shiny.' } },
   collect: { item: 'star', total: 1 },

@@ -73,7 +73,6 @@ export const testWorld: World = {
   title: 'TEST',
   subtitle: 'test',
   maps: { main, room },
-  tiles: legend,
   start: { map: 'main', at: '@', dir: 'down' },
   items: {
     coffee: { name: 'COFFEE', description: 'Restores 20 energy.', heal: 20 },

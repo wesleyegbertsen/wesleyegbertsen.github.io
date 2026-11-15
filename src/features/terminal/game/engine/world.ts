@@ -47,7 +47,7 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   for (const char of Object.keys(spec.objects)) {
     if (!seen.has(char)) throw new Error(`${spec.id}: object '${char}' is not on the map`);
   }
-  return { id: spec.id, name: spec.name, width, height: cells.length, cells, objects, encounters: spec.encounters };
+  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters };
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {
@@ -64,9 +64,9 @@ export function holds(cond: Cond | undefined, state: GameState): boolean {
 /** Whether an object is off the map by now (a beaten boss, a star that was picked up). */
 export const gone = (object: GameObject, state: GameState) => !!object.hideWhen && holds(object.hideWhen, state);
 
-export function tileAt(world: World, map: GameMap, x: number, y: number): TileDef {
+export function tileAt(map: GameMap, x: number, y: number): TileDef {
   const char = map.cells[y]?.[x];
-  return (char !== undefined && world.tiles[char]) || VOID;
+  return (char !== undefined && map.tiles[char]) || VOID;
 }
 
 /** The object on a cell, unless it is hidden by now. People who stroll are found where they are, not where the map put them. */

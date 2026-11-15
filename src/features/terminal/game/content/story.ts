@@ -3,10 +3,10 @@ import type { Job } from '../../../../data/experience.ts';
 import type { Project } from '../../../../data/projects.ts';
 import { contactLines } from '../../content.ts';
 import type { FsData } from '../../fs.ts';
-import type { Action, Cond, Spot } from '../engine/types.ts';
+import type { Action, Cond, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
-import { BADGES } from './battles.ts';
-import { ACADEMY, CONTACT, LIBRARY, OFFICE, TOWN, WORKSHOP } from './maps.ts';
+import { BADGES, COLLECT } from './battles.ts';
+import { ACADEMY, CONTACT, LIBRARY, OFFICE, OUTDOORS, TOWN, WORKSHOP, indoors } from './maps.ts';
 
 /**
  * Who and what is on the maps, and what they say. HOW TO EDIT
@@ -19,23 +19,59 @@ import { ACADEMY, CONTACT, LIBRARY, OFFICE, TOWN, WORKSHOP } from './maps.ts';
  * - The helpers below (sign, person, chest, door, boss...) cover the usual things. An object is a list of
  *   branches: the first whose `when` holds runs its actions in order (say, give, take, flag, badge, heal, battle,
  *   warp, ending). See engine/types.ts.
+ * - The main path is the four badges and the contact office. Everything else (the townsfolk, the signposts, the
+ *   gold stars, the errands) is extra: a test fails when a door, a boss or the ending starts to depend on it.
+ * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
  * - After a change run `npm test`: a bot plays the whole game and fails if it can no longer be finished.
  */
 
+/** A map as this file hands it over: the grid, the things on it, and the legend its characters are read with. */
+export type BuiltMap = MapSpec & { legend: Record<string, TileDef> };
+
 // --- helpers --------------------------------------------------------------------------------------------------
 
-const sign = (text: string): ObjectSpec => ({
+const sign = (...text: string[]): ObjectSpec => ({
   sprite: 'sign',
   solid: true,
   trigger: 'interact',
-  branches: [{ do: [{ say: [text] }] }],
+  branches: [{ do: [{ say: text }] }],
 });
 
-const person = (sprite: string, lines: string[]): ObjectSpec => ({
+const person = (sprite: string, lines: string[], under?: string): ObjectSpec => ({
   sprite,
   solid: true,
   trigger: 'interact',
+  under,
   branches: [{ do: [{ say: lines }] }],
+});
+
+/**
+ * Makes someone stroll: about every `every` ticks (60 a second) they may take a step, never further than
+ * `radius` cells from where the map puts them. Keep their ranges apart and off the roads.
+ */
+const stroll = (who: ObjectSpec, radius: number, every: number): ObjectSpec => ({ ...who, wander: { radius, every } });
+
+/** A piece of scenery you can look at: it is drawn by its sprite and says something. */
+const thing = (sprite: string, lines: string[], under?: string, animated?: boolean): ObjectSpec => ({
+  sprite,
+  animated,
+  solid: true,
+  trigger: 'interact',
+  under,
+  branches: [{ do: [{ say: lines }] }],
+});
+
+/**
+ * A hidden gold star: walk over it to pick it up, without a text box. `id` must be unique (it is the flag that
+ * remembers the find). The collector in town counts them.
+ */
+const star = (id: string, under?: string): ObjectSpec => ({
+  sprite: 'star',
+  solid: false,
+  trigger: 'step',
+  under,
+  hideWhen: { flag: `star:${id}` },
+  branches: [{ pass: true, do: [{ flag: `star:${id}` }, { give: COLLECT, quiet: true }] }],
 });
 
 /** A spot on the map that is just a name (the start, an unused seat). */
@@ -50,9 +86,12 @@ const chest = (flag: string, item: string, under?: string): ObjectSpec => ({
   branches: [{ when: { notFlag: flag }, do: [{ flag }, { give: item }] }, { do: [{ say: ['It is empty.'] }] }],
 });
 
-/** A door you walk into. With a lock it only lets you through while `when` holds, and says `deny` otherwise. */
-const door = (to: Spot, lock?: { when: Cond; deny: string }): ObjectSpec => ({
-  sprite: 'door',
+/**
+ * A door you walk into. With a lock it only lets you through while `when` holds, and says `deny` otherwise.
+ * `sprite` is the door that fits the building's wall.
+ */
+const door = (to: Spot, lock?: { when: Cond; deny: string }, sprite = 'door'): ObjectSpec => ({
+  sprite,
   solid: true,
   trigger: 'step',
   branches: lock ? [{ when: lock.when, do: [{ warp: to }] }, { do: [{ say: [lock.deny] }] }] : [{ do: [{ warp: to }] }],
@@ -106,6 +145,19 @@ function seat(chars: string[], speeches: string[][], sprites: string[]): Record<
 }
 
 const firstName = (data: FsData) => data.profile.name.split(' ')[0]!;
+const yearOf = (date: string) => date.match(/\d{4}/)?.[0] ?? date;
+const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+
+/** How often an action gives an item, the ones behind a won battle included. */
+const gives = (actions: Action[], item: string): number =>
+  actions.reduce((sum, action) => sum + ('give' in action && action.give === item ? 1 : 'battle' in action ? gives(action.win, item) : 0), 0);
+
+/** How many of the collectible the maps hold: every star on the ground and every star somebody hands out. */
+export const countCollectibles = (maps: MapSpec[]): number =>
+  maps.reduce(
+    (sum, map) => sum + Object.values(map.objects).reduce((inner, object) => inner + Math.max(0, ...object.branches.map((branch) => gives(branch.do, COLLECT))), 0),
+    0,
+  );
 
 // --- the facts, as speech --------------------------------------------------------------------------------------
 
@@ -163,9 +215,32 @@ function shelfSpeeches(data: FsData, shelves: number): string[][] {
 // --- the maps --------------------------------------------------------------------------------------------------
 
 /** Every map with its things, built from the data. */
-export function buildMaps(data: FsData): MapSpec[] {
+export function buildMaps(data: FsData): BuiltMap[] {
   const who = firstName(data);
   const all = BADGES.length;
+  const jobs = employers(data.experience);
+  const oldest = data.experience.at(-1);
+  const current = data.experience.find((job) => job.end === null);
+  const skillNames = data.skills.map((skill) => skill.name);
+
+  // The errand of the postman: a letter for the head librarian.
+  const postman: ObjectSpec = {
+    sprite: 'postman',
+    solid: true,
+    trigger: 'interact',
+    under: '#',
+    branches: [
+      { when: { flag: 'errand:letter:done' }, do: [{ say: ['The letter arrived? Wonderful. Neither snow nor merge conflicts stop the post.'] }] },
+      { when: { flag: 'errand:letter' }, do: [{ say: ['That LETTER is for the head librarian. The LIBRARY is at the bottom right of town.'] }] },
+      {
+        do: [
+          { say: ['Post for the CONTACT OFFICE! Mostly job offers, these days.', 'Say, my round is long. Would you take this to the head librarian?'] },
+          { flag: 'errand:letter' },
+          { give: 'letter' },
+        ],
+      },
+    ],
+  };
 
   const town: MapSpec = {
     id: 'town',
@@ -177,25 +252,76 @@ export function buildMaps(data: FsData): MapSpec[] {
       '@': marker('='),
       A: door(into('academy')),
       a: sign('ACADEMY. Where it all started.'),
-      O: door(into('office'), {
-        when: { item: 'diploma' },
-        deny: 'THE OFFICE only hires graduates. Come back with a DIPLOMA from the ACADEMY.',
-      }),
-      o: sign('THE OFFICE. Graduates only.'),
-      S: door(into('workshop')),
+      O: door(
+        into('office'),
+        { when: { item: 'diploma' }, deny: 'THE OFFICE only hires graduates. Come back with a DIPLOMA from the ACADEMY.' },
+        'door-brick',
+      ),
+      o: sign('THE OFFICE. Graduates only.', current ? `Vacancies: none. ${who} works at ${current.company} now, as ${current.title}.` : 'Vacancies: ask inside.'),
+      S: door(into('workshop'), undefined, 'door-wood'),
       s: sign('WORKSHOP. Side projects are built here.'),
-      L: door(into('library'), {
-        when: { item: 'librarycard' },
-        deny: 'Members only. The WORKSHOP hands out LIBRARY CARDs.',
-      }),
+      L: door(into('library'), { when: { item: 'librarycard' }, deny: 'Members only. The WORKSHOP hands out LIBRARY CARDs.' }, 'door-stone'),
       l: sign('LIBRARY. Members only.'),
-      P: door(into('contact'), {
-        when: { badges: all },
-        deny: `The CONTACT OFFICE opens for holders of ${all} badges.`,
-      }),
+      P: door(into('contact'), { when: { badges: all }, deny: `The CONTACT OFFICE opens for holders of ${all} badges.` }),
       p: sign(`CONTACT OFFICE. Opens for ${all} badges.`),
       k: coffee(),
       C: chest('chest:pizza', 'pizza', '"'),
+
+      // Signposts.
+      '0': sign(
+        `CAREER TOWN. ${plural(jobs.length, 'employer')}, ${plural(data.education.length, 'school')}, ${plural(data.projects.length, 'side project')} and ${plural(data.skills.length, 'skill')} live here.`,
+        'North: the plaza and the CONTACT OFFICE. Over the bridge, that is.',
+      ),
+      '7': sign('STREAM OF CONSCIOUSNESS. Mind the gap between the planks.'),
+      '8': sign(
+        oldest ? `TOWN PLAZA. ${who} has been building software since ${yearOf(oldest.start)}. The fountain is older.` : 'TOWN PLAZA. The fountain is older than the town.',
+      ),
+      '9': sign('DUCK POND. Please do not feed the BUGs.'),
+      F: thing('fountain', ['You toss a coin into the fountain and wish for green builds.', 'Splash. It feels like it worked.'], '#', true),
+      e: thing('well', ['A deep well. Someone dropped a floppy disk down there, long ago.']),
+
+      // The townsfolk. The ones with stroll() walk about.
+      B: postman,
+      '<': person(
+        'maker',
+        [
+          `Fresh skills! Today: ${skillNames.slice(0, 3).join(', ') || 'none, sold out'}.`,
+          'Not for sale, mind you. You earn them. The LIBRARY has the full list.',
+        ],
+        '#',
+      ),
+      H: stroll(person('kid', [`When I grow up I want to be a ${data.profile.role}, just like ${who}!`]), 2, 50),
+      E: stroll(
+        person(
+          'elder',
+          [
+            oldest
+              ? `I remember ${who}'s first job: ${oldest.title} at ${oldest.company.replace(/\s*\(.*\)$/, '')}, back in ${yearOf(oldest.start)}.`
+              : `I remember when ${who} wrote the first line of code.`,
+            'They grow up so fast.',
+          ],
+          '#',
+        ),
+        2,
+        70,
+      ),
+      D: stroll(person('dog', ['Woof! (It sniffs your bag. It is hoping for PIZZA.)']), 3, 40),
+      m: stroll(
+        person('gardener', [
+          data.projects[0] ? `I named this flower bed ${data.projects[0].name}. A side project needs daily care too.` : 'I talk to my plants. They are great listeners.',
+          'Rumour has it gold stars are hidden all over town. Look behind things.',
+        ]),
+        2,
+        60,
+      ),
+
+      // Gold stars, off the beaten path.
+      '1': star('town-1'),
+      '2': star('town-2'),
+      '3': star('town-3', '"'),
+      '4': star('town-4'),
+      '5': star('town-5'),
+      '6': star('town-6'),
     },
   };
 
@@ -217,12 +343,31 @@ export function buildMaps(data: FsData): MapSpec[] {
         ],
       ),
       k: coffee(),
+      '*': star('academy'),
       m: exitTo('A'),
     },
   };
 
   // The first colleague lends the key card, for a coffee.
-  const [first, ...others] = employers(data.experience).map((jobs) => employerSpeech(jobs, who));
+  const [first, ...others] = jobs.map((group) => employerSpeech(group, who));
+  // The errand of the developer who is stuck: lend an ear, or rather a duck. The duck is in the WORKSHOP.
+  const stuck: ObjectSpec = {
+    sprite: 'dev',
+    solid: true,
+    trigger: 'interact',
+    branches: [
+      { when: { flag: 'errand:duck' }, do: [{ say: ['Bug fixed. That duck is a senior engineer.'] }] },
+      {
+        when: { item: 'duck' },
+        do: [
+          { say: ['Is that a RUBBER DUCK? May I? So, duck: the loop starts at one, and... oh. OH.', 'Off by one. Thank you, duck. Here, I found this under my desk.'] },
+          { flag: 'errand:duck' },
+          { give: COLLECT },
+        ],
+      },
+      { do: [{ say: ['This bug makes no sense. If only I had a RUBBER DUCK to explain it to...'] }] },
+    ],
+  };
   const colleagues = seat(['2', '3', '4', '5', '6'], others, ['maker', 'teacher', 'dev', 'librarian']);
   const lender: ObjectSpec = {
     sprite: 'dev',
@@ -265,6 +410,8 @@ export function buildMaps(data: FsData): MapSpec[] {
         [{ badge: 'experience' }, { say: ['Years of experience, earned. The other buildings have badges too.'] }],
       ),
       k: coffee(),
+      J: stuck,
+      '*': star('office'),
       m: exitTo('O'),
     },
   };
@@ -288,6 +435,7 @@ export function buildMaps(data: FsData): MapSpec[] {
         ],
       ),
       k: coffee(),
+      '*': star('workshop'),
       m: exitTo('S'),
     },
   };
@@ -305,6 +453,25 @@ export function buildMaps(data: FsData): MapSpec[] {
         [{ badge: 'skills' }, { say: [`Skills, proven. With ${all} badges the CONTACT OFFICE at the top of town opens.`] }],
       ),
       k: coffee(),
+      // The other end of the postman's errand.
+      R: {
+        sprite: 'librarian',
+        solid: true,
+        trigger: 'interact',
+        branches: [
+          {
+            when: { item: 'letter' },
+            do: [
+              { say: ['A LETTER for me? At last: the overdue notice I sent myself.', 'Take this for your trouble.'] },
+              { take: 'letter' },
+              { flag: 'errand:letter:done' },
+              { give: 'energydrink' },
+            ],
+          },
+          { do: [{ say: [`Welcome. ${plural(data.skills.length, 'skill')} on the shelves, and not one of them overdue. Quiet, please.`] }] },
+        ],
+      },
+      '*': star('library'),
       m: exitTo('L'),
     },
   };
@@ -338,7 +505,30 @@ export function buildMaps(data: FsData): MapSpec[] {
     },
   };
 
-  return [town, academy, office, workshop, library, contact];
+  // The collector counts what the maps above hold, so adding a star needs no other change.
+  const total = countCollectibles([town, academy, office, workshop, library, contact]);
+  town.objects['?'] = {
+    sprite: 'teacher',
+    solid: true,
+    trigger: 'interact',
+    branches: [
+      { when: { flag: 'errand:stars' }, do: [{ say: ['A fellow collector! Wear that TROPHY with pride.'] }] },
+      {
+        when: { count: { item: COLLECT, min: total } },
+        do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }],
+      },
+      { do: [{ say: [`I collect GOLD STARs. ${total} are hidden in and around town.`, 'Bring them all and my TROPHY is yours. START shows how many you have.'] }] },
+    ],
+  };
+
+  return [
+    { ...town, legend: OUTDOORS },
+    { ...academy, legend: indoors('checker') },
+    { ...office, legend: indoors('floor') },
+    { ...workshop, legend: indoors('wood') },
+    { ...library, legend: indoors('carpet') },
+    { ...contact, legend: indoors('wood') },
+  ];
 }
 
 /** The first lines of the game. */

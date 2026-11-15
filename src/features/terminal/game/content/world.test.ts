@@ -29,15 +29,17 @@ const spoken = (w: World) =>
 
 describe('the world', () => {
   it('only names sprites that are on the sheets', () => {
-    for (const tile of Object.values(world.tiles)) {
-      expect(tiles).toHaveProperty([tile.sprite]);
-      if (tile.under) expect(tiles).toHaveProperty([tile.under]);
-    }
     const drawable = { ...tiles, ...sprites };
     for (const map of Object.values(world.maps)) {
+      for (const [char, tile] of Object.entries(map.tiles)) {
+        expect(tiles, `${map.id} '${char}'`).toHaveProperty([tile.sprite]);
+        if (tile.under) expect(tiles, `${map.id} '${char}'`).toHaveProperty([tile.under]);
+        if (tile.animated) expect(tiles, `${map.id} '${char}'`).toHaveProperty([`${tile.sprite}-b`]);
+      }
       for (const object of map.objects) {
         if (object.sprite) expect(drawable, object.id).toHaveProperty([object.sprite]);
         if (object.spriteWhen) expect(drawable, object.id).toHaveProperty([object.spriteWhen.sprite]);
+        if (object.animated) expect(drawable, object.id).toHaveProperty([`${object.sprite}-b`]);
       }
     }
     for (const enemy of Object.values(world.enemies)) expect(sprites).toHaveProperty([enemy.sprite]);
