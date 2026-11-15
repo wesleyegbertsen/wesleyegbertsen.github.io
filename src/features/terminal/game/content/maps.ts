@@ -55,6 +55,8 @@ export const OUTDOORS: Record<string, TileDef> = {
   z: { sprite: 'barrel', under: 'grass', solid: true },
   q: { sprite: 'mailbox', under: 'grass', solid: true },
   g: { sprite: 'flag', under: 'grass', solid: true, animated: true },
+  '!': { sprite: 'flag', under: 'cobble', solid: true, animated: true }, // on the plaza
+  '+': { sprite: 'shore', solid: true }, // the sandy rim of a pond
   // The Academy and the contact office: light walls, tiled roofs
   R: { sprite: 'roof', solid: true },
   V: { sprite: 'roof-bell', solid: true },
@@ -129,16 +131,16 @@ export const CAVE: Record<string, TileDef> = {
  */
 export const TOWN = [
   'TYTTYTTTYTTYTTTTYTTYTYTTTYTTYTTT',
-  'T1RRVRRR.g..RRRRRR.....ZZZZZZ""T',
+  'T1RRVRRR....RRRRRR.....ZZZZZZ""T',
   'T.RRRRRR....------.....GQGGQG"CT',
   'T.wWJAWwa..pw&WPWwq...oGQUOQG""T',
   'T.n.;=;....####:##B#....##:##""T',
   'T.H..=..ff.#F##:####....##:##""T',
-  'T.,..=....8###I:I###...,..=..u.T',
+  'T.,..=....8###I:I#!#...,..=..u.T',
   '(==============================)',
   'T..,i.....i..,.=i..k..i.u...i..T',
-  'T.jjjjjj.x.M<..=.u.....~~~~~.Y.T',
-  'T4jjjjjj.zx..u.=,.E...~~^~d~~.2T',
+  'T.jjjjjj.x..M<.=.u.....~~~~~.Y.T',
+  'T4jjjjjj.zx....=,.E...~~^~d~~.2T',
   'T.v>KSv>s..i,..=.....9~~~~~^~n.T',
   'T....===========7......~~~~~...T',
   'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
@@ -173,7 +175,7 @@ export const EAST = [
 ];
 
 /**
- * Hobby Hills: a ring road around a pond, with ten stops, one per hobby. 1 the telescope, 2 the arcade cabinet,
+ * Hobby Hills: a ring road around a pond with a sandy shore (+), with ten stops, one per hobby. 1 the telescope, 2 the arcade cabinet,
  * 3 the torii gate, 4 the cat, 5 the old console, 6 the rabbit in its pen, 7 the soldering bench, 8 the kanji board,
  * 9 the home server, 0 the flask. ? keeps the stamp rally, s is the signpost, k a coffee machine, m a second cat
  * who strolls. ( leads back to the road.
@@ -184,11 +186,11 @@ export const HILLS = [
   'T.#1#.....#2#......#3#.....T',
   'T.i##..i..###..i...###.i...T',
   'T.========================.T',
-  'T.=..,....hhhhhhhh...,...=.T',
-  'T.=.4,....h~~^~~~h...#5#.=.T',
-  'T.=.......h~~~~d~h.......=.T',
-  'T.=..ff...h~^~~~~h...n...=.T',
-  'T.=..f6...hhhhhhhh.......=.T',
+  'T.=..,....++++++++...,...=.T',
+  'T.=.4,....+~~^~~~+...#5#.=.T',
+  'T.=.......+~~~~d~+.......=.T',
+  'T.=..ff...+~^~~~~+...n...=.T',
+  'T.=..f6...++++++++.......=.T',
   '(==.......,..?...........=.T',
   'T.=....,......s......u...=.T',
   'T.=#7#............m...#8#=.T',
@@ -209,8 +211,8 @@ export const WEST = [
   'ccccccTYTTYTTTYTTYTTTTYTTT',
   'cccccc..""""""...,..""""CT',
   'ccccc...""""""...."""""".T',
-  'cccc..s...""""...........T',
-  'cccc.i.......i..k....i...T',
+  'cccc......""""...........T',
+  'cccc.i.....s.i..k....i...T',
   'cccD=====================)',
   'cccc...i.......i.......i.T',
   'cccc.."""""".......""""..T',
@@ -220,24 +222,29 @@ export const WEST = [
 ];
 
 /**
- * The cave: one long winding tunnel, dark. m is the way out (daylight), k and j are coffee machines, a and b are
- * notes on the wall, E a chest. D is the door to the last chamber, B the boss, C the prize, L a ladder back up.
- * The commas are rubble: wild things hide there.
+ * The cave, dark: rooms and tunnels that branch and meet again. m (on the right) is the way out: you come in
+ * walking left. k and j are coffee machines, a is scratched into the rock and b a paper pinned to it, E F G are
+ * chests, n someone who lost the way. D is the door to the last chamber (walk up to it), B the boss, C the prize,
+ * L a ladder back up. The commas are rubble: wild things hide there, and every way to the door crosses some.
  */
 export const CAVE_MAP = [
-  'XXXXXXXXXXXXXXXXXXXX',
-  'X_______,,_________X',
-  'X_XXXXXXXXXXbXXXXs_X',
-  'X_XX______,_____XX_X',
-  'X_XX_sXXXXXXXXX_XX_X',
-  'X,XX_XX_D_B_CXX_XX_X',
-  'X,XX,XX_XXXLXXX,XX,X',
-  'X_XX_XX_XXXXXXE_XX,X',
-  'X_XX_XX____,____XX_X',
-  'X_aX_jXXXXXXXXXXXX_X',
-  'X_kX_XXXXXXXXXXXXs_X',
-  'XmXX______,,_______X',
-  'XXXXXXXXXXXXXXXXXXXX',
+  'XXXXXXXXXXXXXXXXXXXXXXXX',
+  'XX___FXXXXCXXXXXXXXbXXXX',
+  'XX____XXXXBLXXXXX____EXX',
+  'XXX_XXXXXX_XXXXXXs____XX',
+  'XXX,XXXXXXDXXXXXXXX_XXXX',
+  'XXX_XXXXXX_XXXXXXXX,XXXX',
+  'XX__sXXXs____XXXXaX_XXXX',
+  'XX___XXX_,___XXXX____kXX',
+  'XX___,,_______,,______mX',
+  'XX___XXX___,_XXXXs____XX',
+  'XXj__XXX____sXXXXXX_XXXX',
+  'XXX_XXXX,XXXXXXXXXX,XXXX',
+  'XXX,XX____XXXXXXXXX_XXXX',
+  'XXX_XX_,__XXXXXX______XX',
+  'XXX_________,,____,___XX',
+  'XXXXXXG__sXXXXXXs____nXX',
+  'XXXXXXXXXXXXXXXXXXXXXXXX',
 ];
 
 /** Education: a classroom. 1-3 teachers (one per school), E the examiner, k coffee, * a star, m the way out. */
@@ -262,7 +269,7 @@ export const OFFICE = [
   'XSS__B__SS*X',
   'X__________X',
   'XUXXXDXXWXPX',
-  'X_______v__X',
+  'X_________vX',
   'X1c_2c_3c_kX',
   'X_________JX',
   'X4c_5c_6c_yX',

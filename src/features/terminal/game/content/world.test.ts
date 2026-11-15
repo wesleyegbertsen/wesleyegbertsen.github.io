@@ -11,7 +11,7 @@ import { attackBonus, enemyHpAt, maxHpOf } from '../engine/level.ts';
 import { COLS, ROWS, fold, wrap } from '../engine/text.ts';
 import type { Action, EnemyDef, World } from '../engine/types.ts';
 import { resolveSpot } from '../engine/world.ts';
-import { AREAS, BOSS_MIN_LEVEL, LEARN } from './battles.ts';
+import { AREAS, BOSS_MIN_LEVEL, FINAL_BOSSES, FINAL_LEVEL, LEARN } from './battles.ts';
 import { buildWorld } from './world.ts';
 
 const data: FsData = { profile, skills, experience, education, projects };
@@ -125,8 +125,8 @@ describe('balance', () => {
   const first = world.moves[world.playerMoves[0]!]!;
 
   /** The worst case of a fight with the first move only: what the player has left, and the turns it takes. */
-  function worstCase(enemy: EnemyDef, enemyLevel: number, playerLevel: number) {
-    const energy = maxHpOf(world, { level: playerLevel, badges: [], bonusHp: 0 });
+  function worstCase(enemy: EnemyDef, enemyLevel: number, playerLevel: number, badges = 0) {
+    const energy = maxHpOf(world, { level: playerLevel, badges: world.badges.slice(0, badges).map((badge) => badge.id), bonusHp: 0 });
     const hit = minDamage(first) + attackBonus(playerLevel, world);
     const turns = Math.ceil(enemyHpAt(enemy, enemyLevel, world) / hit);
     // The enemy answers every turn but the last, always hits, always for the most.
@@ -154,9 +154,28 @@ describe('balance', () => {
 
   it.each(Object.entries(BOSS_MIN_LEVEL))('the boss %s can be beaten with the first move alone at the worst luck', (id, minLevel) => {
     const enemy = world.enemies[id]!;
-    const { left, turns } = worstCase(enemy, enemy.level, minLevel);
+    // The last fight is behind a door that asks for every badge, so those count there. Each of its three battles
+    // starts from full energy and full PP: a coffee is handed over in between (regions.test.ts checks that).
+    const badges = FINAL_BOSSES.includes(id) ? world.badges.length : 0;
+    const { left, turns } = worstCase(enemy, enemy.level, minLevel, badges);
     expect(left, `${enemy.name} against a Lv${minLevel} player`).toBeGreaterThan(0);
     expect(turns).toBeLessThanOrEqual(first.pp);
+  });
+
+  it('makes the last fight the hardest, at a level every player has by then', () => {
+    // The four badge bosses must be beaten to get in, and together they are worth the level the proof assumes.
+    const earned = ['exam', 'legacy', 'scope', 'deadline'].reduce((sum, id) => sum + world.enemies[id]!.level * world.levels.bossXp, 0);
+    expect(earned).toBeGreaterThanOrEqual(world.levels.xp[FINAL_LEVEL - 2]!);
+    expect(FINAL_BOSSES).toHaveLength(3);
+    const badge = Math.max(...['exam', 'legacy', 'scope', 'deadline'].map((id) => world.enemies[id]!.hp));
+    let last = badge;
+    for (const id of FINAL_BOSSES) {
+      expect(BOSS_MIN_LEVEL[id]).toBe(FINAL_LEVEL);
+      expect(world.enemies[id]!.hp, id).toBeGreaterThan(last);
+      expect(world.enemies[id]!.moves.length).toBeGreaterThanOrEqual(3);
+      expect(world.enemies[id]!.tune).toBe('final');
+      last = world.enemies[id]!.hp;
+    }
   });
 
   it('covers every enemy: each one lives in one place or is a boss', () => {

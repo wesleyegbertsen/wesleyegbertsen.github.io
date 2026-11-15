@@ -3,9 +3,9 @@ import type { Job } from '../../../../data/experience.ts';
 import type { Project } from '../../../../data/projects.ts';
 import { contactLines } from '../../content.ts';
 import type { FsData } from '../../fs.ts';
-import type { Action, Cond, Spot, TileDef } from '../engine/types.ts';
+import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
-import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ENEMIES, STAMP } from './battles.ts';
+import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ENEMIES, FINAL_BOSSES, STAMP } from './battles.ts';
 import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
@@ -99,15 +99,15 @@ const chest = (flag: string, item: string, under?: string): ObjectSpec => ({
  * A door you walk into. With a lock it only lets you through while `when` holds, and says `deny` otherwise.
  * `sprite` is the door that fits the building's wall.
  */
-const door = (to: Spot, lock?: { when: Cond; deny: string }, sprite = 'door'): ObjectSpec => ({
+const door = (to: Spot, lock?: { when: Cond; deny: string }, sprite = 'door', cue?: Cue): ObjectSpec => ({
   sprite,
   solid: true,
   trigger: 'step',
-  branches: lock ? [{ when: lock.when, do: [{ warp: to }] }, { do: [{ say: [lock.deny] }] }] : [{ do: [{ warp: to }] }],
+  branches: lock ? [{ when: lock.when, do: [{ warp: to, cue }] }, { do: [{ say: [lock.deny] }] }] : [{ do: [{ warp: to, cue }] }],
 });
 
 /** The edge of an outdoor map: walk off it to get to the next map. It lies on the road. */
-const wayOut = (to: Spot): ObjectSpec => ({ solid: false, trigger: 'step', under: '=', branches: [{ do: [{ warp: to }] }] });
+const wayOut = (to: Spot): ObjectSpec => ({ solid: false, trigger: 'step', under: '=', branches: [{ do: [{ warp: to, cue: 'path' }] }] });
 
 /**
  * A stop of the stamp rally in Hobby Hills: look at it to read about the hobby; the first time it also stamps the
@@ -203,6 +203,48 @@ export const countCollectibles = (maps: MapSpec[], item: string): number =>
     (sum, map) => sum + Object.values(map.objects).reduce((inner, object) => inner + Math.max(0, ...object.branches.map((branch) => gives(branch.do, item))), 0),
     0,
   );
+
+// --- the last fight ---------------------------------------------------------------------------------------------
+
+/**
+ * What Wesley says in the Contact Office, in his own voice. A DRAFT: rewrite it. `before` introduces each of the
+ * three bosses (in the order of FINAL_BOSSES in battles.ts), `after` is said with the coffee once it is beaten.
+ */
+export const FINALE = {
+  welcome: (name: string, role: string) => [
+    `You made it! I am ${name}, ${role}.`,
+    'Four badges. You know my career by now. But a career is more than badges.',
+    'Before I give you my details: meet three things every developer has to face. I did. Ready?',
+  ],
+  before: [
+    ['First, the JOB INTERVIEW. Please reverse this linked list. On a whiteboard. While we watch.'],
+    ['Second, the YEARLY REVIEW. "Meets expectations." What does that even mean?'],
+    ['And the last one. The small voice that says everyone else knows what they are doing. THE IMPOSTOR.'],
+  ],
+  after: [
+    'Hired! Here, have a coffee. You will need it.',
+    'Exceeds expectations! Another coffee. One more to go.',
+    'It never goes away for good. But now you know it can be beaten.',
+  ],
+  goodbye: ['That is all of it. Thanks for walking through my career. Want to talk? This is how to reach me:'],
+};
+
+/**
+ * Wesley as the final boss: three battles in a row, energy and moves restored in between; only after the third
+ * come the contact details and the ending. A defeat loses nothing: talk to him again and the fight goes on with
+ * the boss that won.
+ */
+function lastFight(data: FsData): ObjectSpec['branches'] {
+  const goodbye: Action[] = [{ say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { ending: true }];
+  const from = (round: number): Action[] => {
+    const enemy = FINAL_BOSSES[round];
+    if (!enemy) return goodbye;
+    return [{ say: FINALE.before[round] ?? [] }, { battle: enemy, win: [{ flag: `beat:${enemy}` }, { heal: true }, { say: [FINALE.after[round] ?? ''] }, ...from(round + 1)] }];
+  };
+  // The furthest round first: whoever is beaten stays beaten.
+  const resumed = FINAL_BOSSES.map((enemy, round) => ({ when: { flag: `beat:${enemy}` }, do: [{ say: ['Back for more? Good.'] }, ...from(round + 1)] })).reverse();
+  return [...resumed, { do: [{ say: FINALE.welcome(data.profile.name, data.profile.role) }, ...from(0)] }];
+}
 
 // --- the facts, as speech --------------------------------------------------------------------------------------
 
@@ -320,7 +362,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         'North: the plaza and the CONTACT OFFICE. Over the bridge, that is.',
         'The main road leaves town on both sides. East: HOBBY HILLS. West: the mountain and its CAVE.',
       ),
-      '7': sign('BRIDGE. North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.'),
+      '7': sign('STREAM OF COMMITS. It never stops. Mind the merge conflicts between the planks.', 'North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.'),
       '8': sign(
         oldest ? `TOWN PLAZA. ${who} has been building software since ${yearOf(oldest.start)}. The fountain is older.` : 'TOWN PLAZA. The fountain is older than the town.',
       ),
@@ -532,20 +574,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         sprite: 'wesley',
         solid: true,
         trigger: 'interact',
-        branches: [
-          {
-            do: [
-              {
-                say: [
-                  `You made it! I am ${data.profile.name}, ${data.profile.role}.`,
-                  'Thanks for walking through my career. Want to talk? This is how to reach me:',
-                  ...contactLines(data.profile),
-                ],
-              },
-              { ending: true },
-            ],
-          },
-        ],
+        branches: lastFight(data),
       },
       m: exitTo('P'),
     },
@@ -632,10 +661,12 @@ export function buildMaps(data: FsData): BuiltMap[] {
     encounters: wild('west'),
     objects: {
       ')': wayOut({ map: 'town', at: '(', dx: 1, dir: 'right' }),
+      // You walk into the mountain going left, and come out in the cave at its east side, still going left.
       D: door(
-        { map: 'cave', at: 'm', dy: -1, dir: 'up' },
+        { map: 'cave', at: 'm', dx: -1, dir: 'left' },
         { when: { level: CAVE_LEVEL }, deny: `The CAVE is no place for a beginner. Come back at Lv ${CAVE_LEVEL}: wild battles and bosses make you stronger.` },
         'cavemouth',
+        'cave',
       ),
       s: sign(
         `WEST ROAD. Ahead: the mountain and its CAVE. Lv ${CAVE_LEVEL} and up.`,
@@ -654,12 +685,19 @@ export function buildMaps(data: FsData): BuiltMap[] {
     dark: 1,
     encounters: wild('cave'),
     objects: {
-      m: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' } }] }] },
+      m: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
       k: coffee(),
       j: coffee(),
-      a: sign('Scratched into the rock: "It worked on staging."', 'Below it, in another hand: "Everything that goes wrong on production lives down here."'),
-      b: sign('A post-mortem, pinned to the wall. ROOT CAUSE: it was DNS. It is always DNS.'),
+      a: thing('scratches', ['Scratched into the rock: "It worked on staging."', 'Below it, in another hand: "Everything that goes wrong on production lives down here."']),
+      b: thing('notice', ['A post-mortem, pinned to the wall. ROOT CAUSE: it was DNS. It is always DNS.']),
+      // The dead ends and side rooms are worth the walk.
       E: chest('chest:cave', 'energydrink'),
+      F: chest('chest:cave2', 'pizza'),
+      G: chest('chest:cave3', 'energydrink'),
+      n: person('dev', [
+        'I came down here to find the root cause.',
+        'That was three sprints ago. Do you know the way out? No, wait, do not tell me. I can feel that I am close.',
+      ]),
       D: {
         sprite: 'door',
         solid: true,
@@ -681,7 +719,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         trigger: 'interact',
         branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. The ladder beside it leads back up.'] }] }],
       },
-      L: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' } }] }] },
+      L: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
     },
   };
 

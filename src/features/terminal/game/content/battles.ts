@@ -15,7 +15,8 @@ import type { BadgeDef, EnemyDef, ItemDef, Levels, MoveDef } from '../engine/typ
  *   MOVES first. `heal` makes a move restore energy instead of hitting.
  * - AREAS says who lives in the tall grass of each map, how often they jump out (`rate`, per step) and how strong
  *   they are. `minLevel` is the lowest level a player can have there: 1 for places that are open from the start;
- *   higher only where a door asks for that level (the cave mouth). BOSS_MIN_LEVEL is the same for bosses.
+ *   higher only where a door asks for that level (the cave mouth). BOSS_MIN_LEVEL is the same for bosses. The
+ *   three of the last fight (FINAL_BOSSES) are met with four badges at level FINAL_LEVEL or more.
  */
 
 /** Energy (HP) at the start, and what each badge adds. */
@@ -243,6 +244,34 @@ export const ENEMIES: Record<string, EnemyDef> = {
     moves: [attack('IT IS DUE TODAY', 4, 0.85), attack('TICK TOCK', 3)],
     defeat: 'DEADLINE is met! With a day to spare.',
   },
+  // The last fight, in the Contact Office. `tune` is their own battle music.
+  interview: {
+    name: 'JOB INTERVIEW',
+    level: 8,
+    hp: 63,
+    sprite: 'interview',
+    tune: 'final',
+    moves: [attack('WHITEBOARD', 7, 0.9), attack('LIVE CODING', 6), attack('ANY QUESTIONS', 5)],
+    defeat: 'JOB INTERVIEW is passed! When can you start?',
+  },
+  review: {
+    name: 'YEARLY REVIEW',
+    level: 9,
+    hp: 72,
+    sprite: 'review',
+    tune: 'final',
+    moves: [attack('MEETS EXPECTATIONS', 6), attack('STRETCH GOALS', 7, 0.9), attack('FEEDBACK SANDWICH', 5)],
+    defeat: 'YEARLY REVIEW is done! Exceeds expectations.',
+  },
+  impostor: {
+    name: 'THE IMPOSTOR',
+    level: 10,
+    hp: 81,
+    sprite: 'impostor',
+    tune: 'final',
+    moves: [attack('THEY WILL FIND OUT', 7, 0.9), attack('JUST LUCK', 6), attack('COMPARE YOURSELF', 7, 0.85)],
+    defeat: 'THE IMPOSTOR fades! You belonged here all along.',
+  },
   outage: {
     name: 'THE OUTAGE',
     level: 10,
@@ -271,12 +300,29 @@ export const AREAS: Record<string, Area> = {
   cave: { minLevel: 3, levels: [4, 7], rate: 0.16, enemies: ['memleak', 'nullptr', 'race', 'droptable', 'error500', 'friday', 'diskfull'] },
 };
 
+/**
+ * The last fight: what Wesley sends out in the Contact Office, one after the other, with a coffee in between.
+ * The office asks for all four badges, and the four badge bosses together are worth level FINAL_LEVEL (a test
+ * checks that), so that is the least a player can be here.
+ */
+export const FINAL_BOSSES = ['interview', 'review', 'impostor'];
+export const FINAL_LEVEL = 8;
+
 /** The level the cave mouth asks for, and the one the door to its last chamber asks for. */
 export const CAVE_LEVEL = AREAS.cave!.minLevel;
 export const DEEP_CAVE_LEVEL = 5;
 
 /** The lowest level a player can have when facing each boss. The four badge bosses can be met at level 1. */
-export const BOSS_MIN_LEVEL: Record<string, number> = { exam: 1, legacy: 1, scope: 1, deadline: 1, outage: DEEP_CAVE_LEVEL };
+export const BOSS_MIN_LEVEL: Record<string, number> = {
+  exam: 1,
+  legacy: 1,
+  scope: 1,
+  deadline: 1,
+  outage: DEEP_CAVE_LEVEL,
+  interview: FINAL_LEVEL,
+  review: FINAL_LEVEL,
+  impostor: FINAL_LEVEL,
+};
 
 /** The bag shows the items in this order. */
 export const ITEMS: Record<string, ItemDef> = {
