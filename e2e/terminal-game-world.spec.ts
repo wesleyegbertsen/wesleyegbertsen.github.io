@@ -188,9 +188,13 @@ test.describe('the settings', () => {
     const shadow = await lcd.evaluate((el) => getComputedStyle(el).boxShadow);
     const insets = [...shadow.matchAll(/(-?\d+)px (-?\d+)px (\d+)px (-?\d+)px inset/g)].map((match) => match.slice(1, 5).map(Number));
     expect(insets).toHaveLength(2);
-    expect(insets[0]![0]).toBeGreaterThan(Math.abs(insets[1]![0]!) * 2);
-    expect(insets[0]![1]).toBeGreaterThan(0);
-    expect(insets[1]![0]).toBeLessThan(0);
+    // Both ways: the first shadow comes in from the left and from the top, the second from the right and from the
+    // bottom, and the first reaches more than twice as far in each direction.
+    for (const axis of [0, 1]) {
+      expect(insets[0]![axis], `axis ${axis}`).toBeGreaterThan(0);
+      expect(insets[1]![axis], `axis ${axis}`).toBeLessThan(0);
+      expect(insets[0]![axis], `axis ${axis}`).toBeGreaterThan(Math.abs(insets[1]![axis]!) * 2);
+    }
     // The grid is drawn fainter on a phone than on a desktop, where a game pixel is bigger.
     const grid = await lcd.evaluate((el) => getComputedStyle(el).backgroundImage);
     const alpha = Number(/rgba\(8, 24, 32, ([\d.]+)\)/.exec(grid)![1]);
