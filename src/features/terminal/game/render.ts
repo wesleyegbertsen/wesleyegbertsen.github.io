@@ -1,4 +1,5 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
+import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
 import { WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
@@ -27,6 +28,8 @@ export const VOLUME_STEPS = 10;
 const [LIGHTEST, , DARK, DARKEST] = PALETTE;
 const LINE = 10;
 const BOX_Y = 104;
+/** The height of the note in the corner and of the label with the name of a place. */
+const NOTE_H = 16;
 /** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
 export const FRAME_TICKS = 30;
 /** How many items the bag shows at once; a longer list scrolls with the cursor. */
@@ -197,11 +200,22 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     }
   }
 
-  // The note after a find: the count, in the corner, for a moment.
+  // The name of a place that was just entered: a label in the style of the note below, centred, that slides
+  // down from above the screen and back. It is drawn after the darkness, so a cave shows it too.
+  const drop = Math.round(bannerOut(state) * NOTE_H);
+  if (drop > 0) {
+    const name = fold(state.banner!.text);
+    const width = name.length * FONT.cellW + 11;
+    const left = Math.floor((SCREEN_W - width) / 2);
+    box(ctx, left, drop - NOTE_H, width, NOTE_H);
+    drawText(ctx, sheets, name, left + 6, drop - NOTE_H + 4);
+  }
+
+  // The note after a find: the count, in the corner, for a moment. While the label is out it hangs under it.
   if (state.notice && state.clock < state.notice.until) {
     const { text } = state.notice;
-    box(ctx, 0, 0, text.length * FONT.cellW + 11, 16);
-    drawText(ctx, sheets, text, 6, 4);
+    box(ctx, 0, drop, text.length * FONT.cellW + 11, NOTE_H);
+    drawText(ctx, sheets, text, 6, drop + 4);
   }
 }
 

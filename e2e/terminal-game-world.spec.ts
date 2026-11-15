@@ -347,3 +347,70 @@ test.describe('beyond the town', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe('the name of a place', () => {
+  // The label is a box of the name's width plus 11 pixels, centred at the top: its top edge is a dark line.
+  const edge = (page: Page, name: string) => {
+    const width = name.length * 6 + 11;
+    return darkIn(page, Math.floor((160 - width) / 2), 0, width, 1);
+  };
+
+  test('is shown on a label at the top when the game starts and on the way into a building, and said once', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    await expect(game(page)).toHaveAttribute('data-banner', 'Career Town');
+    const shown = await edge(page, 'Career Town');
+    expect(shown.dark).toBe(shown.all);
+    // With reduced motion it is whole or gone: a few moves later it is gone, and stays away while in town.
+    for (let i = 0; i < 6; i++) await pilot.press(i % 2 === 0 ? 'left' : 'right');
+    await expect(game(page)).toHaveAttribute('data-banner', '');
+    expect((await edge(page, 'Career Town')).dark).toBeLessThan(shown.all);
+
+    await pilot.goTo('town:A');
+    await expect(game(page)).toHaveAttribute('data-map', 'academy');
+    await expect(game(page)).toHaveAttribute('data-banner', 'Academy');
+    await expect(status(page)).toHaveText('Academy');
+    const inside = await edge(page, 'Academy');
+    expect(inside.dark).toBe(inside.all);
+    // Back outside the town is named again.
+    await pilot.goTo('academy:m');
+    await expect(game(page)).toHaveAttribute('data-banner', 'Career Town');
+    await expect(status(page)).toHaveText('Career Town');
+    expect(errors).toEqual([]);
+  });
+
+  test('names a part of the town on the way in, and not on the way out', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:F');
+    await expect(game(page)).toHaveAttribute('data-banner', 'Fountain Plaza');
+    await expect(status(page)).toHaveText('Fountain Plaza');
+    // Down the road again, out of the plaza: no new label, and the old one runs out.
+    await pilot.goTo('town:7');
+    await expect(game(page)).toHaveAttribute('data-banner', '');
+    await expect(status(page)).toHaveText('Fountain Plaza');
+  });
+
+  test('slides in and out by itself when motion is allowed', async ({ page }) => {
+    await stubAudioContext(page);
+    await openSite(page, '/#/terminal');
+    await input(page).fill('play');
+    await page.keyboard.press('Enter');
+    await expect(game(page)).toBeFocused();
+    await page.keyboard.press('z');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    // The label waits above the screen while the intro is read: the game clock stands still in a text box.
+    await expect(game(page)).toHaveAttribute('data-banner', '');
+    // The text types itself; A shows the rest and turns the page.
+    for (let i = 0; i < 200 && (await game(page).getAttribute('data-dialogue')) === 'true'; i++) {
+      await page.keyboard.press('z');
+      await page.waitForTimeout(50);
+    }
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'false');
+    // No key is touched from here on: the label comes down, stays a moment and goes back up.
+    await expect(game(page)).toHaveAttribute('data-banner', 'Career Town');
+    await expect.poll(async () => (await edge(page, 'Career Town')).dark, { timeout: 3000, intervals: [50] }).toBe(77);
+    await expect(game(page)).toHaveAttribute('data-banner', '', { timeout: 6000 });
+    expect((await edge(page, 'Career Town')).dark).toBeLessThan(77);
+  });
+});

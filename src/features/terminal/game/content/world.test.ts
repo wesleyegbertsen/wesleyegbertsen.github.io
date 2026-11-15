@@ -10,8 +10,9 @@ import { playthrough } from '../engine/bot.ts';
 import { attackBonus, enemyHpAt, maxHpOf } from '../engine/level.ts';
 import { COLS, ROWS, fold, wrap } from '../engine/text.ts';
 import type { Action, EnemyDef, World } from '../engine/types.ts';
-import { resolveSpot } from '../engine/world.ts';
+import { areaAt, resolveSpot, tileAt } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, FINAL_BOSSES, FINAL_LEVEL, LEARN } from './battles.ts';
+import { REGIONS } from './maps.ts';
 import { buildWorld } from './world.ts';
 
 const data: FsData = { profile, skills, experience, education, projects };
@@ -263,5 +264,75 @@ describe('a whole playthrough', () => {
     const run = playthrough(broken);
     expect(run.stuck).toBe(true);
     expect(run.state.finished).toBe(false);
+  });
+});
+
+describe('the names of places', () => {
+  /** The label is a box of the name's width plus 11 pixels on a screen of 160: 24 characters fit. */
+  const FITS = 24;
+
+  it('gives every map a name that fits the label and the font', () => {
+    for (const map of Object.values(world.maps)) {
+      expect(map.name.length, map.id).toBeGreaterThan(0);
+      expect(map.name.length, map.id).toBeLessThanOrEqual(FITS);
+      expect(fold(map.name), map.id).toBe(map.name);
+    }
+    expect(new Set(Object.values(world.maps).map((map) => map.name)).size).toBe(Object.keys(world.maps).length);
+  });
+
+  it('keeps every named part on its map, around the thing it is named for, apart from the others', () => {
+    expect(Object.keys(REGIONS).length).toBeGreaterThan(0);
+    for (const [id, parts] of Object.entries(REGIONS)) {
+      const map = world.maps[id]!;
+      expect(map, id).toBeDefined();
+      expect(map.areas?.map((area) => area.name)).toEqual(parts.map((part) => part.name));
+      const taken = new Set<string>();
+      for (const part of parts) {
+        expect(part.name.length, part.name).toBeLessThanOrEqual(FITS);
+        expect(fold(part.name)).toBe(part.name);
+        expect(part.name).not.toBe(map.name);
+        expect(part.x >= 0 && part.y >= 0 && part.x + part.w <= map.width && part.y + part.h <= map.height, part.name).toBe(true);
+        // The thing it is named for stands inside it.
+        const thing = map.objects.find((object) => object.id === `${id}:${part.holds}`)!;
+        expect(thing, `${id}:${part.holds}`).toBeDefined();
+        expect(areaAt(map, thing.x, thing.y), part.name).toBe(part.name);
+        // There is ground to walk on in it, and a way in: a cell beside it that is not solid.
+        let floor = 0;
+        let doorstep = 0;
+        for (let y = part.y - 1; y <= part.y + part.h; y++) {
+          for (let x = part.x - 1; x <= part.x + part.w; x++) {
+            if (tileAt(map, x, y).solid) continue;
+            if (areaAt(map, x, y) === part.name) {
+              floor++;
+              expect(taken.has(`${x},${y}`), `${part.name} ${x},${y}`).toBe(false);
+              taken.add(`${x},${y}`);
+            } else doorstep++;
+          }
+        }
+        expect(floor, part.name).toBeGreaterThan(0);
+        expect(doorstep, part.name).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('names the plaza and the last chamber of the cave', () => {
+    expect(world.maps.town!.areas?.map((area) => area.name)).toEqual(['Fountain Plaza']);
+    expect(world.maps.cave!.areas?.map((area) => area.name)).toEqual(['Incident Room']);
+    // Every cobble of the plaza is in it, and the road past it is not.
+    const town = world.maps.town!;
+    const fountain = town.objects.find((object) => object.id === 'town:F')!;
+    let cobbles = 0;
+    for (const side of [-1, 1]) {
+      for (let x = fountain.x + side; tileAt(town, x, fountain.y).sprite === 'cobble'; x += side) {
+        expect(areaAt(town, x, fountain.y), String(x)).toBe('Fountain Plaza');
+        // Just past the last cobble the town is the town again.
+        if (tileAt(town, x + side, fountain.y).sprite !== 'cobble') expect(areaAt(town, x + side, fountain.y), String(x + side)).toBe('Career Town');
+        cobbles++;
+      }
+    }
+    expect(cobbles).toBeGreaterThanOrEqual(6);
+    for (let x = 0; x < town.width; x++) {
+      if (tileAt(town, x, fountain.y + 2).sprite === 'path') expect(areaAt(town, x, fountain.y + 2)).toBe('Career Town');
+    }
   });
 });

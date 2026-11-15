@@ -1,4 +1,4 @@
-import type { Branch, Cond, Dir, GameMap, GameObject, GameState, Spot, TileDef, World } from './types.ts';
+import type { Branch, Cond, Dir, GameMap, GameObject, GameState, Region, Spot, TileDef, World } from './types.ts';
 import { placeOf } from './wander.ts';
 
 /** A map as the content modules write it: a text grid, and what each non-legend character is. */
@@ -11,6 +11,7 @@ export type MapSpec = {
   objects: Record<string, ObjectSpec>;
   encounters?: GameMap['encounters'];
   dark?: GameMap['dark'];
+  areas?: Region[];
 };
 
 export type ObjectSpec = Omit<GameObject, 'id' | 'x' | 'y'> & { under?: string };
@@ -48,7 +49,7 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   for (const char of Object.keys(spec.objects)) {
     if (!seen.has(char)) throw new Error(`${spec.id}: object '${char}' is not on the map`);
   }
-  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark };
+  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark, areas: spec.areas };
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {
@@ -77,6 +78,12 @@ export function objectAt(map: GameMap, x: number, y: number, state: GameState): 
     const at = placeOf(o, state);
     return at.x === x && at.y === y && !gone(o, state);
   });
+}
+
+/** The name of the place a cell is in: the named part of the map that holds it, or else the map itself. */
+export function areaAt(map: GameMap, x: number, y: number): string {
+  const part = map.areas?.find((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h);
+  return part?.name ?? map.name;
 }
 
 export function branchFor(object: GameObject, state: GameState): Branch | undefined {

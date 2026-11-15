@@ -1,4 +1,5 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
+import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, testWorld as world } from './engine/testWorld.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
@@ -225,6 +226,63 @@ describe('a living map', () => {
     const noted = { ...there(), clock: 10, notice: { text: '* 2/3', until: 20 } };
     expect(textAt(drawn(noted, undefined, living).draws, 4)).toBe('*2/3');
     expect(textAt(drawn({ ...noted, clock: 20 }, undefined, living).draws, 4)).toBe('');
+  });
+
+  describe('the label with the name of a place', () => {
+    // 'Park' is four letters: a box of 35 by 16, centred at the top.
+    const label = (clock: number, slide = true): GameState => ({ ...there(), clock, banner: { text: 'Park', at: 0, slide } });
+    const boxAt = (fills: Fill[]) => fills.find((fill) => fill.w === 35 && fill.h === 16 && fill.shade === PALETTE[3]);
+
+    it('is a box in the style of the note after a find, centred at the top, with the name in it', () => {
+      const { draws, fills } = drawn(label(BANNER_SLIDE), undefined, living);
+      expect(boxAt(fills)).toEqual({ shade: PALETTE[3], x: 62, y: 0, w: 35, h: 16 });
+      // The same double border as the note: light, dark, light.
+      expect(fills).toContainEqual({ shade: PALETTE[0], x: 63, y: 1, w: 33, h: 14 });
+      expect(fills).toContainEqual({ shade: PALETTE[3], x: 64, y: 2, w: 31, h: 12 });
+      expect(fills).toContainEqual({ shade: PALETTE[0], x: 65, y: 3, w: 29, h: 10 });
+      expect(textAt(draws, 4)).toBe('Park');
+      expect(draws.filter((draw) => draw.sheet === 'font' && draw.y === 4).map((draw) => draw.x)).toEqual([68, 74, 80, 86]);
+    });
+
+    it('slides down from above the screen and back up, a whole pixel at a time', () => {
+      const y = (clock: number) => boxAt(drawn(label(clock), undefined, living).fills)?.y;
+      expect(y(0)).toBeUndefined();
+      expect(y(3)).toBe(-12);
+      expect(y(6)).toBe(-8);
+      expect(y(BANNER_SLIDE)).toBe(0);
+      expect(y(BANNER_SLIDE + BANNER_HOLD)).toBe(0);
+      expect(y(BANNER_SLIDE + BANNER_HOLD + 6)).toBe(-8);
+      expect(y(BANNER_SLIDE * 2 + BANNER_HOLD)).toBeUndefined();
+      // The name moves with its box.
+      expect(textAt(drawn(label(6), undefined, living).draws, -4)).toBe('Park');
+    });
+
+    it('with reduced motion is whole or not there', () => {
+      const y = (clock: number) => boxAt(drawn(label(clock, false), undefined, living).fills)?.y;
+      expect(y(0)).toBe(0);
+      expect(y(50)).toBe(0);
+      expect(y(60)).toBeUndefined();
+    });
+
+    it('pushes the note after a find down while it is out, so both can be read', () => {
+      const both = (clock: number) => drawn({ ...label(clock), notice: { text: '* 2/3', until: 999 } }, undefined, living).draws;
+      expect(textAt(both(BANNER_SLIDE), 4)).toBe('Park');
+      expect(textAt(both(BANNER_SLIDE), 20)).toBe('*2/3');
+      // Half way out the note is half way down; with the label gone it is back in its corner.
+      expect(textAt(both(6), 12)).toBe('*2/3');
+      expect(textAt(both(BANNER_SLIDE * 2 + BANNER_HOLD), 4)).toBe('*2/3');
+    });
+
+    it('is not drawn over a battle or the Start menu', () => {
+      const battle = play(started(), 'down', 'right');
+      const out = { text: 'Main', at: battle.clock, slide: false };
+      expect(textAt(drawn({ ...battle, banner: out }).draws, 4)).toBe('');
+      const menu = play(started(), 'start');
+      expect(textAt(drawn({ ...menu, banner: { ...out, at: menu.clock } }).draws, 4)).toBe('');
+      // On the map it is there, also under a text box.
+      const talking = play(started(), 'right', 'up', 'a');
+      expect(textAt(drawn({ ...talking, banner: { ...out, at: talking.clock } }).draws, 4)).toBe('Main');
+    });
   });
 
   it('draws a speaker in the corner of the map and of the title: with waves, or crossed out', () => {
@@ -544,6 +602,16 @@ describe('a dark place', () => {
     expect(textBox).toBeGreaterThan(lastBlack);
     expect(textAt(draws, 110)).toBe('Dark.');
     expect(textAt(draws, 4)).toBe('#1/10');
+  });
+
+  it('draws the label with the name of the place on top of the darkness', () => {
+    const { draws, fills } = drawn({ ...there(), banner: { text: 'Pit', at: 0, slide: false } }, undefined, dark);
+    const lastBlack = fills.map((fill) => fill.w === TILE && fill.h === TILE && fill.shade === PALETTE[3]).lastIndexOf(true);
+    const label = fills.findIndex((fill) => fill.y === 0 && fill.h === 16 && fill.w === 3 * FONT.cellW + 11);
+    expect(label).toBeGreaterThan(lastBlack);
+    // Its paper is light, in the middle of a black screen.
+    expect(fills.slice(label)).toContainEqual({ shade: PALETTE[0], x: 68, y: 3, w: 23, h: 10 });
+    expect(textAt(draws, 4)).toBe('Pit');
   });
 
   it('does not change with the clock: the darkness never flickers', () => {

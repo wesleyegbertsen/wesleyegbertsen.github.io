@@ -4,7 +4,7 @@ import { random } from './rng.ts';
 import { pageLength, paginate } from './text.ts';
 import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { stroll } from './wander.ts';
-import { DELTA, branchFor, gone, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
+import { DELTA, areaAt, branchFor, gone, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /** How many ticks one step from cell to cell takes (at 60 ticks a second). */
 export const WALK_TICKS = 10;
@@ -54,6 +54,8 @@ export function initialGame(world: World, seed = 1): GameState {
     clock: 0,
     roam: {},
     notice: null,
+    area: '',
+    banner: null,
   };
 }
 
@@ -307,6 +309,23 @@ function letGo(state: GameState): GameState {
   return state.clock >= face.until ? { ...state, face: null } : state;
 }
 
+/**
+ * The player is somewhere with another name than a moment ago: the label with the name comes down. Another map
+ * always shows it (the way there has told the status region already), and so does the start of the game. A named
+ * part of a map shows it on the way in and tells the status region; back out into the open map nothing is shown,
+ * it is still the same place. Staying where you are never shows it again.
+ */
+function arrived(state: GameState, from: string, ctx: Ctx): GameState {
+  if (state.scene !== 'world') return state;
+  const map = ctx.world.maps[state.map]!;
+  const area = areaAt(map, state.x, state.y);
+  if (area === state.area) return state;
+  const sameMap = state.map === from && state.area !== '';
+  if (sameMap && area === map.name) return { ...state, area };
+  if (sameMap) ctx.events.push({ kind: 'place', text: area });
+  return { ...state, area, banner: { text: area, at: state.clock, slide: !ctx.instant } };
+}
+
 const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && state.scene === 'world';
 
 /** What the player does on the map this tick: carry on walking, open the bag, ask for a hint, talk or step. */
@@ -345,7 +364,7 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
 export function step(state: GameState, input: Input, world: World, options: Options = {}): Result {
   const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false };
   // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back, a moment later.
-  const done = (next: GameState): Result => ({ state: letGo(next), events: ctx.events, cues: ctx.cues });
+  const done = (next: GameState): Result => ({ state: letGo(arrived(next, state.map, ctx)), events: ctx.events, cues: ctx.cues });
 
   if (state.scene === 'ending') return done(state);
   if (state.scene === 'title') {

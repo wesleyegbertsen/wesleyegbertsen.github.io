@@ -21,6 +21,8 @@ import type { TileDef } from '../engine/types.ts';
  *   road. Who lives there is in AREAS in battles.ts.
  * - The screen shows 10 x 9 cells, so a room of that size needs no scrolling.
  * - A typo (an unknown character, a ragged row) fails `npm test` with a message naming the map and the place.
+ * - The name of a map (in story.ts, `name`) is shown on a label at the top of the screen when the player walks
+ *   in. REGIONS at the bottom of this file gives parts of a map a name of their own, shown the same way.
  */
 export const OUTDOORS: Record<string, TileDef> = {
   // Ground
@@ -313,3 +315,20 @@ export const CONTACT = [
   'Xy_==_sX',
   'XXXmXXXX',
 ];
+
+/**
+ * Parts of a map with a name of their own. HOW TO EDIT
+ *
+ * - Walking into one shows its name on the label at the top of the screen (and tells the status region), just
+ *   like walking onto another map shows that map's name. Walking out again shows nothing: it is still the same map.
+ * - A part is a rectangle of cells: `x` and `y` are its top left cell, counted from 0 (the first character of
+ *   the first row is 0,0), `w` and `h` how many cells wide and high it is. `holds` is a thing that must stand
+ *   inside it (a character of that map): when the map is redrawn and the rectangle is forgotten, a test says so.
+ * - Keep names short: at most 24 characters fit the screen. Parts of one map must not overlap.
+ */
+export const REGIONS: Record<string, { name: string; x: number; y: number; w: number; h: number; holds: string }[]> = {
+  // The cobbles around the fountain.
+  town: [{ name: 'Fountain Plaza', x: 11, y: 4, w: 9, h: 3, holds: 'F' }],
+  // Behind the heavy door: the boss, the prize and the ladder.
+  cave: [{ name: 'Incident Room', x: 10, y: 1, w: 2, h: 4, holds: 'B' }],
+};

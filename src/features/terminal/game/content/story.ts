@@ -6,7 +6,7 @@ import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
 import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ENEMIES, FINAL_BOSSES, STAMP } from './battles.ts';
-import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
+import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
  * Who and what is on the maps, and what they say. HOW TO EDIT
@@ -22,6 +22,8 @@ import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOOR
  * - The main path is the four badges and the contact office. Everything else (the townsfolk, the signposts, the
  *   gold stars, the errands, the roads east and west, Hobby Hills, the cave) is extra: a test fails when a door,
  *   a boss or the ending starts to depend on it.
+ * - The `name` of a map is what the label at the top of the screen says when the player walks in, and what the
+ *   status region announces. Keep it under 25 characters. Named parts of a map are REGIONS in maps.ts.
  * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
  *   A new hobby needs a line there, a digit on the HILLS map and a picture (scripts/sprites/scenery.mjs).
  * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
@@ -723,6 +725,9 @@ export function buildMaps(data: FsData): BuiltMap[] {
     },
   };
 
+  // The parts of a map that have a name of their own (REGIONS in maps.ts).
+  const named = (spec: BuiltMap): BuiltMap => ({ ...spec, areas: REGIONS[spec.id]?.map(({ name, x, y, w, h }) => ({ name, x, y, w, h })) });
+
   return [
     { ...east, legend: OUTDOORS },
     { ...hills, legend: OUTDOORS },
@@ -734,7 +739,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     { ...workshop, legend: indoors('wood') },
     { ...library, legend: indoors('carpet') },
     { ...contact, legend: indoors('wood') },
-  ];
+  ].map(named);
 }
 
 /** The first lines of the game. */

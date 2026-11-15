@@ -84,9 +84,14 @@ export type TileDef = {
   animated?: boolean;
 };
 
+/** A named part of a map: a rectangle of cells. Walking into it shows its name, like walking onto another map does. */
+export type Region = { name: string; x: number; y: number; w: number; h: number };
+
 export type GameMap = {
   id: string;
   name: string;
+  /** The parts of this map that have a name of their own (a plaza, the last chamber of the cave). */
+  areas?: Region[];
   width: number;
   height: number;
   /** Legend characters, `cells[y][x]`. */
@@ -250,6 +255,13 @@ export type GameState = {
   roam: Record<string, Roaming>;
   /** A short note in the corner of the map (the star count after a find), shown until the clock reaches `until`. */
   notice: { text: string; until: number } | null;
+  /** The name of the place the player is in: a named part of the map, or else the map. Empty before the game starts. */
+  area: string;
+  /**
+   * The label with the name of a place that was just entered. `at` is the clock when it appeared; how far it is
+   * out at a given clock is in engine/banner.ts. `slide` is off with reduced motion: it is there, and then it is not.
+   */
+  banner: { text: string; at: number; slide: boolean } | null;
 };
 
 /** `dir` is the way of the last step; `side` the last step sideways (animals drawn from the side keep it going up or down). */
