@@ -393,7 +393,7 @@ export const OFFICE = [
   'X_________JX',
   'X4c_5c_6c_yX',
   'Xs_________X',
-  'XXXXXmXXXXXX',
+  'XXXmXXXXXXXX',
 ];
 
 /** Projects. 1-2 makers (one per project), L the cat, C a chest, B the boss, k coffee, * a star. */
@@ -423,18 +423,19 @@ export const LIBRARY = [
 ];
 
 /**
- * The Cafe. B is the barista (restores energy and moves; a defeat in town wakes the player up in front of her),
- * V the shopkeeper (opens the shop), both in the counter. 1 is a regular at a table. e is the big coffee machine
- * and u the cups, behind the counter where nobody but the staff gets.
+ * The Cafe. B is the barista (restores energy and moves; a defeat anywhere wakes the player up in front of her),
+ * V the shopkeeper (opens the shop), both in the counter. 1 is a regular at a table by the sofa. e is the big
+ * coffee machine and u the cups, behind the counter where nobody but the staff gets. The tables stand against the
+ * walls: the way from the door (m) up to the counter stays free (a test checks every room for that).
  */
 export const CAFE = [
   'XXQuuXOXWX',
   'Xe__x__zyX',
   'XnnBnnVnnX',
   'X________X',
-  'X_oh__ho_X',
+  'Xoh____hoX',
   'X________X',
-  'Xs_1o___yX',
+  'Xso1____yX',
   'X__===___X',
   'XXXXmXXXXX',
 ];

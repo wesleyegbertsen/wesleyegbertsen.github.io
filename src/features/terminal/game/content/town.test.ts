@@ -9,7 +9,7 @@ import { initialGame, step } from '../engine/engine.ts';
 import { fold } from '../engine/text.ts';
 import { NO_INPUT, type Action, type Branch, type Cond, type Dir, type GameMap, type GameObject, type GameState, type Input, type World } from '../engine/types.ts';
 import { placeOf } from '../engine/wander.ts';
-import { DELTA, resolveSpot } from '../engine/world.ts';
+import { DELTA, passable, resolveSpot } from '../engine/world.ts';
 import { COLLECT } from './battles.ts';
 import { buildWorld } from './world.ts';
 
@@ -87,6 +87,40 @@ describe('the town', () => {
     }
     const floors = new Set(ROOMS.map((id) => world.maps[id]!.tiles._!.sprite));
     expect(floors.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it('keeps the way into every room clear, and everything in it within reach of the door', () => {
+    for (const id of ROOMS) {
+      const map = world.maps[id]!;
+      const mat = map.objects.find((object) => object.id === `${id}:m`)!;
+      // Whoever walks in arrives above the mat, facing up: that cell and the one ahead are free.
+      const free = (x: number, y: number) => !tileOf(map, x, y)!.solid && !map.objects.some((object) => object.x === x && object.y === y && object.solid);
+      expect(free(mat.x, mat.y - 1), `${id}: the cell in front of the door`).toBe(true);
+      expect(free(mat.x, mat.y - 2), `${id}: the cell ahead of that`).toBe(true);
+      // Everything that can be talked to or used has a free cell beside it that is walked to from the door. Doors
+      // inside the room count as open (the key card of the Office is in the bag).
+      const state: GameState = { ...started(), map: id, x: mat.x, y: mat.y - 1, items: { keycard: 1 }, level: 10 };
+      const open = (x: number, y: number) => {
+        if (tileOf(map, x, y)?.solid !== false) return false;
+        const object = map.objects.find((candidate) => candidate.x === x && candidate.y === y);
+        return !object || passable(object, state);
+      };
+      const reach = new Set([`${mat.x},${mat.y - 1}`]);
+      const queue = [{ x: mat.x, y: mat.y - 1 }];
+      for (let cell = queue.shift(); cell; cell = queue.shift()) {
+        for (const { dx, dy } of Object.values(DELTA)) {
+          const next = { x: cell.x + dx, y: cell.y + dy };
+          if (reach.has(`${next.x},${next.y}`) || !open(next.x, next.y)) continue;
+          reach.add(`${next.x},${next.y}`);
+          queue.push(next);
+        }
+      }
+      for (const object of map.objects) {
+        if (object.trigger !== 'interact' || object.branches.length === 0) continue;
+        const beside = Object.values(DELTA).some(({ dx, dy }) => reach.has(`${object.x + dx},${object.y + dy}`));
+        expect(beside, object.id).toBe(true);
+      }
+    }
   });
 });
 
