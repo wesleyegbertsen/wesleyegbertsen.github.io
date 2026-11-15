@@ -14,6 +14,8 @@ export function buildWorld(data: FsData): World {
     subtitle: data.profile.name,
     maps: Object.fromEntries(maps.map((map) => [map.id, map])),
     start: { map: 'town', at: '@', dir: 'up' },
+    // Every defeat, wherever it happens, wakes the player in the cafe, in front of the barista: the one place to rest.
+    respawn: { map: 'cafe', at: 'B', dy: 1, dir: 'up' },
     items: ITEMS,
     startItems: START_ITEMS,
     moves: MOVES,

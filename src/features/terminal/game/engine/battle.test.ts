@@ -114,7 +114,7 @@ describe('battles', () => {
     expect(nothing.battle?.steps[0]?.text).toBe('You have nothing to use.');
   });
 
-  it('sends a beaten player back to the last coffee stop, rested, with nothing lost', () => {
+  it('sends a beaten player back to the last place rested at, rested, with nothing lost', () => {
     const rested = play(started(), 'right', 'right', 'up', 'right', 'a', 'a');
     expect(rested.heal).toEqual({ map: 'main', x: 4, y: 1 });
     const carrying = { ...rested, items: { key: 1 }, flags: { opened: true as const } };
@@ -126,9 +126,9 @@ describe('battles', () => {
       state = result.state;
       events.push(...result.events);
     }
-    expect(events).toContainEqual({ kind: 'defeat', text: 'Defeated. Back to the last coffee stop.' });
+    expect(events).toContainEqual({ kind: 'defeat', text: `Defeated. You wake up in the ${world.maps.main!.name}.` });
     expect(state).toMatchObject({ map: 'main', x: 4, y: 1, hp: 20, items: { key: 1 }, flags: { opened: true }, finished: false });
-    expect(state.dialogue?.pages[0]?.join(' ')).toMatch(/You wake up/);
-    expect(play(state, 'a', 'a', 'down')).toMatchObject({ x: 4, y: 2, dialogue: null });
+    expect(state.dialogue?.pages[0]?.join(' ')).toMatch(/You come to in the .*Nothing was lost/);
+    expect(play(state, 'a', 'down')).toMatchObject({ x: 4, y: 2, dialogue: null });
   });
 });

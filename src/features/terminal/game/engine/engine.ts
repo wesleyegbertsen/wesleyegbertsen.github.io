@@ -56,7 +56,7 @@ export function initialGame(world: World, seed = 1): GameState {
     coins: world.economy.start,
     repel: 0,
     face: null,
-    heal: home(world, world.start.map) ?? start,
+    heal: home(world) ?? start,
     seed,
     finished: false,
     clock: 0,

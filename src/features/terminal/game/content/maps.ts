@@ -15,9 +15,8 @@ import type { TileDef } from '../engine/types.ts';
  *   project or skill group goes to 1, the next to 2. A digit that has nobody left to tell about is simply empty.
  *   In town the digits 1-6 are hidden gold stars and 0, 7, 8, 9 are signposts. In Hobby Hills the digits are the
  *   ten hobby stops.
- * - The CAFE in town is where energy and moves are restored and where a defeat in town brings the player back
- *   to; it has a shop. The town has no coffee machine of its own any more. The machines (k) inside the buildings,
- *   on the two routes, in Hobby Hills and in the cave stay: they are the places to rest away from the cafe.
+ * - The CAFE in town is the one place where energy and moves are restored, and where every defeat brings the
+ *   player back to (`respawn` in world.ts); it has a shop. There are no coffee machines: do not add places to rest.
  * - Lamp posts (i, I) stand beside a road, at even distances: a test fails for a lamp that does not touch a road.
  * - `(` and `)` on the edge of an outdoor map are the ways out to the west and to the east.
  * - Tall grass (and the rubble in the cave) is where wild enemies live. Who lives there is in AREAS in battles.ts.
@@ -201,17 +200,16 @@ export const TOWN = [
 ];
 
 /**
- * The road east, to Hobby Hills. ( leads back to town, ) on to the hills. s is a signpost, k a coffee machine,
- * C a chest in the tall grass. Walking out, each line of ledges ($) blocks the road: go round it through the band
- * of tall grass (south of the first, north of the second). Walking back, hop down the ledges. The coffee machine
- * stands in the first line, so it can be used from both sides.
+ * The road east, to Hobby Hills. ( leads back to town, ) on to the hills. s is a signpost, C a chest in the tall grass. Walking out, each line of ledges ($) blocks the road: go round it through the band
+ * of tall grass (south of the first, north of the second). Walking back, hop down the ledges. A bush closes the
+ * top end of the first line.
  */
 export const EAST = [
   'TYTTYTTTYTTYTTTTYTTYTTTYTT',
   'T."""".YTT.,...""""C""".YT',
   'T.""""".rT...."""""""""..T',
   'T.,""...uT..,.....uuu..,.T',
-  'T....s.i.k...i.....$.i...T',
+  'T....s.i.u...i.....$.i...T',
   '(========$=========$=====)',
   'T..i.....$..i...i..$...i.T',
   'T..,....uru......,.T....nT',
@@ -234,7 +232,7 @@ export const EAST = [
  * of two rows; a sand garden with a rock by the kanji board (y is a rock in the sand), flower beds, fences, benches.
  * People: ? keeps the stamp rally, P plays the arcade, B looks after the gate; H a kid, D a dog and m a second cat
  * stroll (keep their ranges apart, and never the only way to a stop). s is the signpost at the entrance, p and o the
- * ones that say where the stops are, k a coffee machine. ( leads back to the road.
+ * ones that say where the stops are. ( leads back to the road.
  */
 export const HILLS = [
   'TYTTYTTTYTTYTTTTYTTYTTTYTTYTTT',
@@ -256,23 +254,23 @@ export const HILLS = [
   'T.=.,..=.;;,..=.;;.,...=..o=,T',
   'T.==========================.T',
   'T,i..#..,i..,..#i..,...i..,..T',
-  'T.,.#9#...Y..,#0#..u..k.,.,.,T',
+  'T.,.#9#...Y..,#0#..u..,.,.,.,T',
   'T.,,..Y..,..,,...Y..,,..Y.,..T',
   'TYTTTYTTYTTTTYTTTYTTYTTTYTTTYT',
 ];
 
 /**
  * The road west, to the mountain (c is rock). D is the mouth of the cave, ) leads back to town. s is a signpost,
- * k a coffee machine, C a chest in the tall grass. Walking out, each line of ledges (}) blocks the road: go round
+ * C a chest in the tall grass. Walking out, each line of ledges (}) blocks the road: go round
  * it through the band of tall grass (north of the first, south of the second). Walking back from the cave, hop
- * down the ledges. The coffee machine stands in the first line, so it can be used from both sides.
+ * down the ledges. A bush closes the top end of the first line.
  */
 export const WEST = [
   'ccccccTYTTYTTTYTTYTTTTYTTT',
   'ccccccccc.,.."""T""".."""T',
   'ccccccccc....""""""".."".T',
   'ccccc..,r...,..uuu...,...T',
-  'cccc.i..}....i..k..s.i...T',
+  'cccc.i..}....i..u..s.i...T',
   'cccD====}=======}========)',
   'cccc..i.}.....i.}......i.T',
   'ccccc..uru..,...T..,.....T',
@@ -283,7 +281,7 @@ export const WEST = [
 
 /**
  * The cave, dark: rooms and tunnels that branch and meet again. m (on the right) is the way out: you come in
- * walking left. k and j are coffee machines, a is scratched into the rock and b a paper pinned to it, E F G are
+ * walking left. a is scratched into the rock and b a paper pinned to it, E F G are
  * chests, n someone who lost the way. The commas are rubble: wild things hide there.
  *
  * L is the ladder down to the deep cave, and it is meant to be hard to find: it is behind a wall. w, in the east
@@ -306,10 +304,10 @@ export const CAVE_MAP = [
   'XXX,XXXXXXdXXXXXXXX_XXXX',
   'XXX_XXXXXX_XXXXXXXX,XXXX',
   'XX__sXXXs____XXXXaX_XXXX',
-  'XX___XXX_,___XXXX____kXX',
+  'XX___XXX_,___XXXX_____XX',
   'XX___,,_______,,______mX',
   'XX___XXX___,_XXXXs____XX',
-  'XXj__XXX____sXXXXXX_XXXX',
+  'XX___XXX____sXXXXXX_XXXX',
   'XXX_XXXX,XXXXXXXXXX,XXXX',
   'XXX,XX____XXXXXXXXX_XXXX',
   'XXX_XX_,__XXXXXX______XX',
@@ -322,8 +320,8 @@ export const CAVE_MAP = [
  * The deep cave, below the first floor, dark too. Three puzzles in a row, then the boss. No rubble: nothing
  * jumps out down here, so a puzzle is never interrupted.
  *
- * u (top left) is the ladder back up; you arrive below it. k and j are coffee machines: one where you arrive,
- * one in front of the last door.
+ * u (top left) is the ladder back up; you arrive below it. There is nowhere to rest down here: a
+ * defeat wakes the player in the cafe in town, and the puzzles stay solved.
  *
  * 1. THE BOULDERS (top right). 1 and 2 are boulders, o the pressure plates, t a fire bowl, s a rock. Walk into a
  *    boulder to push it a cell on. When a boulder stands on each plate, the gate g opens for good and the
@@ -348,7 +346,7 @@ export const CAVE_MAP = [
 export const DEEP_MAP = [
   'XXXXXXXXXXXXnXXXXXXXXXXX',
   'XXuXXXXXXX________XXXXXX',
-  'X___kXXXrX_1_t__o_XXXXXX',
+  'X____XXXrX_1_t__o_XXXXXX',
   'X_______===___2___g_XXXX',
   'X____XXXXX_s___o__X_XXXX',
   'XXXXXXXXXX________X_XXXX',
@@ -359,7 +357,7 @@ export const DEEP_MAP = [
   'XXXXXXPhAXCXX~~~~~~~~XXX',
   'XXXXXX_____XX~~~~~~~^XXX',
   'XXXXXX__t__XX^~~~~~~~XXX',
-  'Xj___G_______~~~~~*~~XXX',
+  'X____G_______~~~~~*~~XXX',
   'XXDXXX_____XX~*^~~~~~XXX',
   'XX_XXX_____XX~~~~~~^~XXX',
   'XXBXXXXXXXXXXXXXXXXXXXXX',
@@ -367,13 +365,13 @@ export const DEEP_MAP = [
   'XXXXXXXXXXXXXXXXXXXXXXXX',
 ];
 
-/** Education: a classroom. 1-3 teachers (one per school), E the examiner, k coffee, * a star, m the way out. */
+/** Education: a classroom. 1-3 teachers (one per school), E the examiner, * a star, m the way out. */
 export const ACADEMY = [
   'XXQQXOXWPX',
   'Xb_____*gX',
   'X_1_2_3__X',
   'X________X',
-  'Xt_t_t_EkX',
+  'Xt_t_t_E_X',
   'Xh_h_h___X',
   'X________X',
   'Xy______yX',
@@ -382,7 +380,7 @@ export const ACADEMY = [
 
 /**
  * Experience. 1-6 colleagues (one per employer), J a developer who is stuck, D the server room door, B the boss
- * among the server racks, k coffee, * a star.
+ * among the server racks, * a star.
  */
 export const OFFICE = [
   'XXXXXXXXXXXX',
@@ -390,27 +388,27 @@ export const OFFICE = [
   'X__________X',
   'XUXXXDXXWXPX',
   'X_________vX',
-  'X1c_2c_3c_kX',
+  'X1c_2c_3c__X',
   'X_________JX',
   'X4c_5c_6c_yX',
   'Xs_________X',
   'XXXmXXXXXXXX',
 ];
 
-/** Projects. 1-2 makers (one per project), L the cat, C a chest, B the boss, k coffee, * a star. */
+/** Projects. 1-2 makers (one per project), L the cat, C a chest, B the boss, * a star. */
 export const WORKSHOP = [
   'XGGXWXGXPX',
   'Xww_cc_bbX',
   'X________X',
   'X_1__2_C_X',
   'X________X',
-  'X_L_o_B_kX',
+  'X_L_o_B__X',
   'Xx______zX',
   'Xxx____*zX',
   'XXXXmXXXXX',
 ];
 
-/** Skills. 1-4 librarians (the skills are spread over them), R the head librarian, B the boss, k coffee, * a star. */
+/** Skills. 1-4 librarians (the skills are spread over them), R the head librarian, B the boss, * a star. */
 export const LIBRARY = [
   'XXWXXOXWXX',
   'XbbbbbbbbX',
@@ -418,7 +416,7 @@ export const LIBRARY = [
   'X_1_2_3_4X',
   'X________X',
   'Xb_oh__b*X',
-  'Xy_____BkX',
+  'Xy_____B_X',
   'Xs_R_____X',
   'XXXXmXXXXX',
 ];

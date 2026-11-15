@@ -319,13 +319,11 @@ describe('the roads out of town', () => {
     }
   });
 
-  it('have a coffee machine that is reached dry from both ends, for after a rough battle', () => {
+  it('have no coffee machine: the way back to rest is the dry way back to town and its cafe', () => {
     for (const { map, town, far } of ROUTES) {
-      const machines = map.objects.filter((object) => object.sprite === 'coffee');
-      expect(machines, map.id).toHaveLength(1);
-      const beside = (reach: Map<string, number>) => Object.values(DELTA).some(({ dx, dy }) => reach.get(`${machines[0]!.x + dx},${machines[0]!.y + dy}`) === 0);
-      expect(beside(grassTo(map, town)), `${map.id} from town`).toBe(true);
-      expect(beside(grassTo(map, far)), `${map.id} from the far end`).toBe(true);
+      expect(map.objects.filter((object) => object.sprite === 'coffee'), map.id).toHaveLength(0);
+      // From the far end the town is reached without a step in the grass.
+      expect(grassTo(map, far).get(`${town.x},${town.y}`), map.id).toBe(0);
     }
   });
 
@@ -532,9 +530,8 @@ describe('Hobby Hills as a place', () => {
     for (const stop of stopsOf()) expect(stepsFromRoad(stop), stop.id).toBeLessThanOrEqual(3);
     // Most of them are right beside a road or one step from it.
     expect(stopsOf().filter((stop) => stepsFromRoad(stop) <= 1).length).toBeGreaterThanOrEqual(7);
-    // The rally keeper and the coffee machine too.
+    // The rally keeper too.
     expect(stepsFromRoad(thing('?'))).toBeLessThanOrEqual(1);
-    expect(stepsFromRoad(thing('k'))).toBeLessThanOrEqual(1);
   });
 
   it('has signposts that name every stop, at the entrance and at two corners of the ring', () => {
@@ -662,9 +659,9 @@ describe('Hobby Hills as a place', () => {
     for (const [id, cells] of seen) expect(cells.size, id).toBeGreaterThan(3);
   });
 
-  it('never lets a stroller shut a stop, the keeper or the coffee off: there is a second cell to stand on, or one out of their reach', () => {
+  it('never lets a stroller shut a stop, the keeper or the angler off: there is a second cell to stand on, or one out of their reach', () => {
     const inRange = (cell: Cell) => strollers.some((object) => Math.max(Math.abs(cell.x - object.x), Math.abs(cell.y - object.y)) <= object.wander!.radius && !tileOf(hills!, cell.x, cell.y)!.road);
-    for (const target of [...stopsOf(), thing('?'), thing('k'), thing('E')]) {
+    for (const target of [...stopsOf(), thing('?'), thing('E')]) {
       const beside = Object.values(DELTA).map(({ dx, dy }) => ({ x: target.x + dx, y: target.y + dy })).filter((cell) => standable(hills!, cell.x, cell.y));
       const free = beside.filter((cell) => !inRange(cell));
       expect(free.length > 0 || beside.length >= 2, target.id).toBe(true);
@@ -745,9 +742,9 @@ describe('the cave', () => {
   });
 
   it('is a cave, not a tunnel: rooms, and more than one way to its main rooms', () => {
-    // The room in the far west, with the second coffee machine: no single patch of rubble is the only way there.
-    const j = thing('j');
-    const front = `${j.x + 1},${j.y}`;
+    // The room in the far west: no single patch of rubble is the only way there.
+    const west = [...reach()].map((key) => key.split(",").map(Number) as [number, number]).sort((a, b) => a[0] - b[0] || b[1] - a[1])[0]!;
+    const front = `${west[0]},${west[1]}`;
     expect(reach().has(front)).toBe(true);
     for (const cell of rubble) expect(reach([`${cell.x},${cell.y}`]).has(front), `${cell.x},${cell.y}`).toBe(true);
     // Rooms: at least four places where a 3 by 3 block is open floor.
@@ -764,7 +761,7 @@ describe('the cave', () => {
   it('has dead ends and side rooms that are worth the walk: chests, a note, scratches and someone who is lost', () => {
     const open = reach();
     const beside = (char: string) => Object.values(DELTA).some(({ dx, dy }) => open.has(`${thing(char).x + dx},${thing(char).y + dy}`));
-    for (const char of ['E', 'F', 'G', 'a', 'b', 'd', 'n', 'k', 'j']) expect(beside(char), char).toBe(true);
+    for (const char of ['E', 'F', 'G', 'a', 'b', 'd', 'n']) expect(beside(char), char).toBe(true);
     // The prize went down a floor with the boss: three chests are left up here.
     expect(cave!.objects.filter((object) => object.sprite === 'chest')).toHaveLength(3);
     let state = inside({ level: 10, hp: 57, maxHp: 57 });
@@ -810,18 +807,16 @@ describe('the cave', () => {
     expect(cave!.areas).toBeUndefined();
   });
 
-  it('has coffee at the mouth and deeper in, and a defeat only costs the walk back', () => {
-    expect(cave!.objects.filter((object) => object.sprite === 'coffee')).toHaveLength(2);
-    const rested = talk(inside({ hp: 5 }), 'cave:k');
-    expect(rested.hp).toBe(rested.maxHp);
-    expect(rested.heal.map).toBe('cave');
+  it('has no coffee: a defeat down here wakes the player in the cafe in town, with nothing lost', () => {
+    expect(cave!.objects.filter((object) => object.sprite === 'coffee')).toHaveLength(0);
     const first = rubble.find((cell) => walkable(cell.x + 1, cell.y) && !tileOf(cave!, cell.x + 1, cell.y)!.grass)!;
     let lost: GameState | null = null;
     for (let seed = 1; seed < 80 && !lost?.battle; seed++) {
-      lost = press({ ...rested, seed, hp: 1, xp: 30, items: { coffee: 1, stamp: 4 }, x: first.x + 1, y: first.y }, { dir: 'left', pressed: 'left' });
+      lost = press({ ...inside(), seed, hp: 1, xp: 30, items: { coffee: 1, stamp: 4 }, x: first.x + 1, y: first.y }, { dir: 'left', pressed: 'left' });
     }
     const after = settle(lost!);
-    expect(after).toMatchObject({ map: 'cave', x: rested.heal.x, y: rested.heal.y, hp: after.maxHp, xp: 30, level: 3 });
+    const cafe = resolveSpot(world, world.respawn!);
+    expect(after).toMatchObject({ map: 'cafe', x: cafe.x, y: cafe.y, hp: after.maxHp, xp: 30, level: 3 });
     expect(after.items).toEqual({ coffee: 1, stamp: 4 });
   });
 });
@@ -1055,16 +1050,13 @@ describe('the deep cave', () => {
     expect(inRoom.events.map((event) => event.text)).toContain('Incident Room');
   });
 
-  it('is as easy to find as it was: past the last gate one short corridor leads to the door, with coffee beside it', () => {
+  it('is as easy to find as it was: past the last gate one short corridor leads to the door', () => {
     const gate = thing('G');
-    const door = thing('D');
-    const coffee = thing('j');
     // From the cell behind the gate to the cell in front of the door: a few steps, no rubble, nothing to solve.
     const route = routeTo(world, { ...atDoor(), x: gate.x - 1, y: gate.y, dir: 'left' }, 'deep:D');
     expect(route).not.toBeNull();
     expect(route!.length).toBeLessThanOrEqual(5);
-    expect(Math.abs(coffee.x - door.x) + Math.abs(coffee.y - (door.y - 1))).toBe(1);
-    // The corridor has no turn-offs: every cell of it has the gate on one side and the door or the coffee on the other.
+    // The corridor has no turn-offs: every cell of it has the gate on one side and the door on the other.
     const corridor = cellsOf(below, (x, y) => y === gate.y && x < gate.x && walkable(x, y) && !below.objects.some((object) => object.x === x && object.y === y));
     expect(corridor.length).toBeLessThanOrEqual(4);
     for (const cell of corridor) expect(walkable(cell.x, cell.y - 1)).toBe(false);
@@ -1094,13 +1086,9 @@ describe('the deep cave', () => {
     expect(state).toMatchObject({ map: 'west', dir: 'right' });
   });
 
-  it('has coffee where the player arrives and in front of the last door; a defeat costs the walk from there and no puzzle', () => {
-    expect(below.objects.filter((object) => object.sprite === 'coffee').map((object) => object.id).sort()).toEqual(['deep:j', 'deep:k']);
-    const top = thing('u');
-    expect(routeTo(world, { ...atDoor({ flags: {} }), x: top.x, y: top.y + 1 }, 'deep:k')!.length).toBeLessThanOrEqual(4);
-    const rested = talk(atDoor({ hp: 5 }), 'deep:j');
-    expect(rested.hp).toBe(rested.maxHp);
-    expect(rested.heal).toMatchObject({ map: 'deep' });
+  it('has no coffee: a defeat wakes the player in the cafe, and costs the walk back down but no puzzle', () => {
+    expect(below.objects.filter((object) => object.sprite === 'coffee')).toEqual([]);
+    const rested = atDoor();
     // Lose to the boss on purpose: one energy, and it always gets a turn.
     const boss = thing('B');
     let state = press({ ...rested, x: boss.x, y: boss.y - 1, dir: 'down', items: { coffee: 1, stamp: 4 }, xp: 300, roam: { 'deep:1': { x: 16, y: 2, fromX: 16, fromY: 3, at: 0 }, 'deep:2': { x: 15, y: 4, fromX: 14, fromY: 4, at: 0 } } }, { a: true });
@@ -1110,12 +1098,15 @@ describe('the deep cave', () => {
     for (let i = 0; i < 300 && state.battle; i++) state = press(state, { a: true });
     state = settle(state);
     expect(state.flags['beat:outage']).toBeUndefined();
-    expect(state).toMatchObject({ map: 'deep', x: rested.heal.x, y: rested.heal.y, xp: 300 });
+    const cafe = resolveSpot(world, world.respawn!);
+    expect(state).toMatchObject({ map: 'cafe', x: cafe.x, y: cafe.y, xp: 300 });
     expect(state.items).toEqual({ coffee: 1, stamp: 4 });
-    // The puzzles stay solved and the boulders stay on their plates.
+    // The puzzles stay solved and the boulders stay on their plates: back down the ladder, the door is a walk away.
     expect(state.flags).toMatchObject(solved);
     expect(state.roam['deep:1']).toMatchObject({ x: 16, y: 2 });
-    expect(routeTo(world, state, 'deep:D')).not.toBeNull();
+    const top = thing('u');
+    const down = { ...state, map: 'deep', x: top.x, y: top.y + 1 };
+    expect(routeTo(world, down, 'deep:D')).not.toBeNull();
   });
 });
 
@@ -1416,13 +1407,11 @@ describe('small things that looked wrong', () => {
     for (const cell of reeds) expect(Object.values(DELTA).some(({ dx, dy }) => tileOf(town!, cell.x + dx, cell.y + dy)!.sprite === 'shore'), keyOf(cell)).toBe(true);
   });
 
-  it('stands the water cooler of the Office against the wall by the coffee machine, out of the walkway', () => {
+  it('stands the water cooler of the Office in the corner, out of the walkway', () => {
     const office = world.maps.office!;
     const coolers = cellsOf(office, (x, y) => tileOf(office, x, y)!.sprite === 'cooler');
     expect(coolers).toHaveLength(1);
     const cooler = coolers[0]!;
-    const coffee = office.objects.find((object) => object.sprite === 'coffee')!;
-    expect(cooler).toEqual({ x: coffee.x, y: coffee.y - 1 });
     // In the corner: wall to its right and above it.
     expect(tileOf(office, cooler.x + 1, cooler.y)!.sprite).toBe('iwall');
     expect(tileOf(office, cooler.x, cooler.y - 1)!.solid).toBe(true);

@@ -21,7 +21,7 @@ import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY,
  *   branches: the first whose `when` holds runs its actions in order (say, give, take, flag, badge, heal, battle,
  *   warp, coins, shop, ending). See engine/types.ts.
  * - The CAFE in town is the place to rest: the barista restores energy and moves, and a defeat in town brings
- *   the player back to her (`respawn` on the town). CAFE_TEXT is what is said there: a draft, rewrite it. The
+ *   the player back to her (`respawn` in world.ts), from anywhere. CAFE_TEXT is what is said there: a draft, rewrite it. The
  *   shopkeeper opens the shop (`{ shop: 'cafe' }`); what it sells and the prices are SHOPS in battles.ts.
  *   `{ coins: 20 }` hands over money; the amounts that are handed out (errands, the stamp card, some chests, the
  *   pay after the last fight) are REWARDS in battles.ts. Nothing in the shop may be needed for the main path.
@@ -223,20 +223,6 @@ const exitTo = (townDoor: string): ObjectSpec => ({
 /** Into a building: you arrive on the cell above its mat. */
 const into = (map: string): Spot => ({ map, at: 'm', dy: -1, dir: 'up' });
 
-/** A coffee machine: restores energy and moves, and is where a defeat brings you back to. Never leaves you dry. */
-const coffee = (): ObjectSpec => ({
-  sprite: 'coffee',
-  solid: true,
-  trigger: 'interact',
-  branches: [
-    {
-      when: { noItem: 'coffee' },
-      do: [{ heal: true }, { say: ['Fresh coffee! Energy and moves are restored. Here, one to go.'] }, { give: 'coffee' }],
-    },
-    { do: [{ heal: true }, { say: ['Fresh coffee! Energy and moves are restored.'] }] },
-  ],
-});
-
 /**
  * What is said in and about the CAFE, in a friendly voice. A DRAFT: rewrite it freely. `who` is the first name
  * from the profile.
@@ -254,7 +240,10 @@ export const CAFE_TEXT = {
   regular: (who: string) => ['They know my order by heart here.', `${who} says the best ideas come after the second cup. I am on my fourth. Still waiting.`],
 };
 
-/** The barista of the cafe: restores energy and moves, like a coffee machine, and never leaves you dry either. */
+/**
+ * The barista of the cafe, the one place to rest: restores energy and moves after the rest jingle, and never leaves
+ * you dry: someone without a COFFEE gets one (the Office trades its key card for one).
+ */
 const barista = (): ObjectSpec => ({
   sprite: 'barista',
   solid: true,
@@ -569,8 +558,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
     rows: TOWN,
     ground: '.',
     encounters: wild('town'),
-    // A defeat in town: back to the cafe, in front of the barista.
-    respawn: { map: 'cafe', at: 'B', dy: 1, dir: 'up' },
     objects: {
       '@': marker('='),
       '(': wayOut({ map: 'west', at: ')', dx: -1, dir: 'left' }),
@@ -668,7 +655,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
           { say: ['THE OFFICE across town only hires graduates. Show them your DIPLOMA.'] },
         ],
       ),
-      k: coffee(),
       '*': star('academy'),
       m: exitTo('A'),
     },
@@ -735,7 +721,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
         ['Deep in the server room, something old stirs...', 'It is LEGACY CODE! Nobody dares to touch it.'],
         [{ badge: 'experience' }, { say: ['Years of experience, earned. The other buildings have badges too.'] }],
       ),
-      k: coffee(),
       J: stuck,
       '*': star('office'),
       m: exitTo('O'),
@@ -760,7 +745,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
           { say: ['The LIBRARY is at the bottom right of town. Your card opens it.'] },
         ],
       ),
-      k: coffee(),
       '*': star('workshop'),
       m: exitTo('S'),
     },
@@ -778,7 +762,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
         ['Tick. Tock. This badge is due... NOW!', 'It is the DEADLINE!'],
         [{ badge: 'skills' }, { say: [`Skills, proven. With ${all} badges the CONTACT OFFICE at the top of town opens.`] }],
       ),
-      k: coffee(),
       // The other end of the postman's errand.
       R: {
         sprite: 'librarian',
@@ -864,7 +847,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
         `The way there crosses tall grass. The wild things in it are Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}.`,
         ROUTE_BACK,
       ),
-      k: coffee(),
       C: chest('chest:east', 'energydrink', '"'),
     },
   };
@@ -914,7 +896,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
           { do: [{ say: [`Welcome to the HOBBY HILLS stamp rally! ${stamps} stops, one stamp each.`, 'Fill your card and come back to me. START shows how many you have.'] }] },
         ],
       },
-      k: coffee(),
       // The people of the hills. The ones with stroll() walk about, off the roads and away from each other.
       P: person('dev', HILLS_FOLK.gamer(who)),
       B: person('gardener', HILLS_FOLK.keeper(who)),
@@ -951,7 +932,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
         `The way there crosses tall grass. The wild things in it are Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}. In the CAVE: Lv ${AREAS.cave!.levels[0]} to ${AREAS.cave!.levels[1]}, and it is dark.`,
         ROUTE_BACK,
       ),
-      k: coffee(),
       C: chest('chest:west', 'energydrink', '"'),
     },
   };
@@ -965,8 +945,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
     encounters: wild('cave'),
     objects: {
       m: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
-      k: coffee(),
-      j: coffee(),
       a: thing('scratches', ['Scratched into the rock: "It worked on staging."', 'Below it, in another hand: "Everything that goes wrong on production lives down here."']),
       b: thing('notice', ['A post-mortem, pinned to the wall. ROOT CAUSE: it was DNS. It is always DNS.']),
       // The dead ends and side rooms are worth the walk.
@@ -1008,8 +986,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
     plates: { flag: DEEP_FLAGS.plates, do: [{ say: DEEP_TEXT.platesDown }] },
     objects: {
       u: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'cave', at: 'L', dy: -1, dir: 'up' }, cue: 'cave' }] }] },
-      k: coffee(),
-      j: coffee(),
 
       // 1. The boulders.
       '1': { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' },

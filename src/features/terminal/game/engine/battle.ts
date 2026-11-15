@@ -171,14 +171,15 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
   return show({ ...state, seed, pp, items }, { ...battle, outcome, win }, steps, ctx);
 }
 
-/** The battle is over: back to the map. A defeat only costs the walk back from the last coffee stop. */
+/** The battle is over: back to the map. A defeat only costs the walk back from where the player wakes up. */
 function finish(state: GameState, ctx: Ctx): GameState {
   const battle = state.battle!;
   if (battle.outcome === 'win') return { ...state, battle: null, script: [...battle.win, ...state.script] };
   if (battle.outcome === 'lose') {
-    ctx.events.push({ kind: 'defeat', text: 'Defeated. Back to the last coffee stop.' });
-    // The map may have a place of its own to wake up in (the town: its cafe); else it is the last place rested at.
-    const back = home(ctx.world, state.map) ?? state.heal;
+    // The world may have one place to wake up in (the cafe); else it is the last place rested at.
+    const back = home(ctx.world) ?? state.heal;
+    const where = ctx.world.maps[back.map]!.name;
+    ctx.events.push({ kind: 'defeat', text: `Defeated. You wake up in the ${where}.` });
     return {
       ...state,
       // Like any other way of arriving somewhere: what was pushed about there is back in its place.
@@ -189,7 +190,7 @@ function finish(state: GameState, ctx: Ctx): GameState {
       walk: null,
       hp: state.maxHp,
       pp: fullPp(ctx.world, state.moves),
-      script: [{ say: ['You wake up at the last coffee stop, fully rested. Nothing was lost. Try again!'] }],
+      script: [{ say: [`You come to in the ${where}, rested. Nothing was lost.`] }],
     };
   }
   return { ...state, battle: null };

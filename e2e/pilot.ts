@@ -4,7 +4,7 @@ import { experience } from '../src/data/experience.ts';
 import { profile } from '../src/data/profile.ts';
 import { skills } from '../src/data/skills.ts';
 import { buildWorld } from '../src/features/terminal/game/content/world.ts';
-import { routeTo } from '../src/features/terminal/game/engine/bot.ts';
+import { routeTo, routeToCell } from '../src/features/terminal/game/engine/bot.ts';
 import { initialGame, step } from '../src/features/terminal/game/engine/engine.ts';
 import { solve } from '../src/features/terminal/game/engine/solve.ts';
 import { NO_INPUT, type GameState, type Input } from '../src/features/terminal/game/engine/types.ts';
@@ -178,6 +178,19 @@ export class Pilot {
     await expect(game).toHaveAttribute('data-y', String(this.state.y));
   }
 
+  /** Walks to a cell of the current map (where nothing stands to walk up to). */
+  async walkTo(x: number, y: number) {
+    for (let i = 0; this.state.x !== x || this.state.y !== y; i++) {
+      const route = routeToCell(world, this.state, x, y);
+      if (!route || i > 400) throw new Error(`No way to ${x},${y} from ${this.state.map} ${this.state.x},${this.state.y}`);
+      await this.press(route[0]!);
+      await this.shakeOff();
+    }
+    const game = gameOf(this.page);
+    await expect(game).toHaveAttribute('data-x', String(x));
+    await expect(game).toHaveAttribute('data-y', String(y));
+  }
+
   /**
    * Solves a puzzle: searches the copy of the game for the fewest presses that lead to a state for which `goal`
    * holds (engine/solve.ts: boulders are pushed, slick rock is slid over, levers are pulled), and plays them on
@@ -200,7 +213,7 @@ export class Pilot {
    * Whoever got one runs from it. RUN always works against a wild enemy and costs nothing, so both sides stand on
    * the same cell afterwards with the same energy, XP and level: the routes out of town cannot be walked without
    * the grass, and a walk along them must not change what a test goes on to check. (Fighting would: XP, levels,
-   * and now and then a lost battle that sends the page back to a coffee machine.)
+   * and now and then a lost battle that sends the page back to the cafe.)
    *
    * The keys work in every part of a battle: down, down, A reads on while the text is up, and picks RUN (the
    * third entry) once the menu is.

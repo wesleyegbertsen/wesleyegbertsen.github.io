@@ -547,10 +547,10 @@ test.describe('beyond the town', () => {
     const { pilot } = await play(page);
     await pilot.start();
     await pilot.goTo('town:(');
-    // On the West Road the coffee machine stands in the first line of ledges. Out to the chest in the far band of
-    // grass and back to the machine: the nearest side of it is then the far one, left of the ledges.
+    // Out to the chest in the far band of grass of the West Road, and back to the road left of the first line of
+    // ledges (a bush closes its top end).
     await pilot.goTo('west:C');
-    await pilot.goTo('west:k');
+    await pilot.walkTo(15, 4);
     await expect(game(page)).toHaveAttribute('data-x', '15');
     await expect(game(page)).toHaveAttribute('data-y', '4');
     await pilot.press('down');

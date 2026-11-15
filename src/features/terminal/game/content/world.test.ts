@@ -233,7 +233,8 @@ describe('balance', () => {
 });
 
 describe('a whole playthrough', () => {
-  it.each([1, 2, 3, 4, 5, 6, 7, 8])('a bot finishes the game with default choices and no defeat (seed %i)', (seed) => {
+  // Slower since round seven: the one place to rest is the cafe, and the bot walks back to it.
+  it.each([1, 2, 3, 4, 5, 6, 7, 8])('a bot finishes the game with default choices and no defeat (seed %i)', { timeout: 30_000 }, (seed) => {
     const run = playthrough(world, seed);
     expect(run.stuck).toBe(false);
     expect(run.state.finished).toBe(true);

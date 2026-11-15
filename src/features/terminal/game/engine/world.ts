@@ -12,7 +12,6 @@ export type MapSpec = {
   encounters?: GameMap['encounters'];
   dark?: GameMap['dark'];
   areas?: Region[];
-  respawn?: GameMap['respawn'];
   /** The puzzle of the pressure plates of this map: the flag it sets and what happens then (see GameMap). */
   plates?: Pick<NonNullable<GameMap['plates']>, 'flag' | 'do'>;
 };
@@ -83,7 +82,6 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
     encounters: spec.encounters,
     dark: spec.dark,
     areas: spec.areas,
-    respawn: spec.respawn,
     ...(spec.plates ? { plates: { ...spec.plates, cells: plateCells } } : {}),
     ...(lights.length > 0 ? { lights } : {}),
   };
@@ -183,9 +181,9 @@ export function resolveSpot(world: World, spot: Spot): { map: string; x: number;
   return { map: spot.map, x: object.x + (spot.dx ?? 0), y: object.y + (spot.dy ?? 0) };
 }
 
-/** Where a defeat on a map brings the player back to, when that map says so (the town: its cafe). */
-export function home(world: World, mapId: string): GameState['heal'] | null {
-  const spot = world.maps[mapId]?.respawn;
+/** Where every defeat brings the player back to, when the world says so (the cafe). */
+export function home(world: World): GameState['heal'] | null {
+  const spot = world.respawn;
   return spot ? { ...resolveSpot(world, spot), ...(spot.dir ? { dir: spot.dir } : {}) } : null;
 }
 

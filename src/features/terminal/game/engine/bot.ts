@@ -7,7 +7,9 @@ import { DELTA, branchFor, objectAt, passable, resolveSpot, stopOf, tileAt } fro
 /**
  * A player that knows nothing about the story: it talks to everything it can reach, walks through every door that
  * lets it, rests when it is hurt and presses A through every dialogue and battle (so it always takes the default
- * choice). A shop it walks into is closed again with B: it never buys, so the game is proven to be finishable
+ * choice). There may be one place to rest in the whole world (the cafe): when the bot is low, or about to face
+ * someone who stands guard while it is not at full strength, it walks back there first, through as many doors and
+ * maps as it takes. A shop it walks into is closed again with B: it never buys, so the game is proven to be finishable
  * without spending a coin. The tests use it to prove that the game can be finished; the browser tests use `routeTo`
  * to find keys.
  * People who stroll may step into the way or walk off: a walk that did not land where it should is given up and
@@ -87,11 +89,19 @@ export function routeTo(world: World, state: GameState, objectId: string): Dir[]
   return routeIn(world, state, state.map, state, object, false) ?? routeIn(world, state, state.map, state, object);
 }
 
+/** The directions to press to stand on a cell of the current map, around the tall grass when there is a way. */
+export function routeToCell(world: World, state: GameState, x: number, y: number): Dir[] | null {
+  const key = `${x},${y}`;
+  return walks(world, state, state.map, state, false).get(key) ?? walks(world, state, state.map, state, true).get(key) ?? null;
+}
+
 const progress = (state: GameState) =>
   JSON.stringify([Object.keys(state.flags).sort(), Object.keys(state.items).filter((id) => state.items[id]! > 0).sort(), state.badges, state.level]);
 
 /** Whether actions take progress back (a riddle that starts over): the bot does not press what can only undo. */
 const undoes = (actions: Action[]): boolean => actions.some((action) => 'unflag' in action || ('battle' in action && undoes(action.win)));
+/** Whether actions end the game, there or after a battle they start. */
+const ends = (actions: Action[]): boolean => actions.some((action) => 'ending' in action || ('battle' in action && ends(action.win)));
 
 /** Whether a map holds a puzzle that walking and talking alone do not solve: something to push, or a thing that takes progress back. */
 const PUZZLING = new WeakMap<GameMap, boolean>();
@@ -99,6 +109,12 @@ function puzzling(map: GameMap): boolean {
   if (!PUZZLING.has(map)) PUZZLING.set(map, map.objects.some((object) => !!object.push || object.branches.some((branch) => undoes(branch.do))));
   return PUZZLING.get(map)!;
 }
+
+/** At or under this share of its energy the bot goes back to rest, however far away that is. */
+const LOW = 0.5;
+
+/** Whether talking to an object starts a battle there and then (someone who stands guard). */
+const fights = (object: GameObject, state: GameState) => !!branchFor(object, state)?.do.some((action) => 'battle' in action);
 
 const heals = (object: GameObject, state: GameState) =>
   object.trigger === 'interact' && !!branchFor(object, state)?.do.some((action) => 'heal' in action);
@@ -168,53 +184,66 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
       return objectAt(here, at.x, at.y, state) === object;
     };
 
-    // Hurt or short of PP for the first move, and a coffee machine is in reach: rest first, as a careful player would.
-    if (state.hp < state.maxHp || state.pp[state.moves[0]!]! < world.moves[state.moves[0]!]!.pp / 2) {
-      const rest = here.objects.find((object) => visible(object) && heals(object, state) && routeIn(world, state, here.id, state, object));
-      if (rest) {
-        if (walk(routeIn(world, state, here.id, state, rest)!)) press({ a: true });
+    const key = progress(state);
+    known.add(key);
+    /**
+     * The nearest thing to talk to that `wanted` picks: here first, then through the doors and ways out. The route
+     * is the walk to it on this map, or the walk to the way out towards it.
+     */
+    const explore = (wanted: (object: GameObject) => boolean): { route: Dir[]; talk: GameObject | null; target: GameObject } | null => {
+      const seen = new Set<string>();
+      type Node = { map: string; at: Cell; first: Dir[] | null };
+      const queue: Node[] = [{ map: state.map, at: state, first: null }];
+      for (let node = queue.shift(); node; node = queue.shift()) {
+        if (seen.has(`${node.map}:${node.at.x},${node.at.y}`)) continue;
+        seen.add(`${node.map}:${node.at.x},${node.at.y}`);
+        const map = world.maps[node.map]!;
+        const reach = walks(world, state, node.map, node.at, true);
+        for (const object of map.objects) {
+          const at = placeOf(object, state);
+          if (object.branches.length === 0 || objectAt(map, at.x, at.y, state) !== object) continue;
+          const route = facing(reach, at);
+          if (!route) continue;
+          if (object.trigger === 'interact') {
+            if (wanted(object)) return { route: node.first ?? route, talk: node.first ? null : object, target: object };
+            continue;
+          }
+          if (!passable(object, state)) continue;
+          const warp = branchFor(object, state)?.do.find((action) => 'warp' in action);
+          const first = node.first ?? route;
+          if (warp && 'warp' in warp) {
+            const spot = resolveSpot(world, warp.warp);
+            queue.push({ map: spot.map, at: spot, first });
+          } else {
+            // A door inside a map: carry on from the cell behind it.
+            const dir = route.at(-1)!;
+            queue.push({ map: node.map, at: { x: at.x + DELTA[dir].dx, y: at.y + DELTA[dir].dy }, first: node.first ?? [...route, dir] });
+          }
+        }
+      }
+      return null;
+    };
+    const rest = () => explore((object) => heals(object, state));
+
+    // Low on energy or short of PP for the first move: back to rest first, however far, as a careful player would.
+    // Only a little hurt, with a place to rest on this map: rest anyway, it is on the way.
+    const low = state.hp <= state.maxHp * LOW || state.pp[state.moves[0]!]! < world.moves[state.moves[0]!]!.pp / 2;
+    if (low || state.hp < state.maxHp) {
+      const nearby = here.objects.find((object) => visible(object) && heals(object, state) && routeIn(world, state, here.id, state, object));
+      const toRest = nearby ? { route: routeIn(world, state, here.id, state, nearby)!, talk: nearby } : low ? rest() : null;
+      if (toRest) {
+        if (walk(toRest.route) && toRest.talk && !busy() && faced() === toRest.talk) press({ a: true });
         continue;
       }
     }
 
-    // Look for something not tried yet since the last bit of progress: here first, then through the doors.
-    const key = progress(state);
-    known.add(key);
-    const seen = new Set<string>();
-    type Node = { map: string; at: Cell; first: Dir[] | null };
-    const queue: Node[] = [{ map: state.map, at: state, first: null }];
-    let plan: { route: Dir[]; talk: GameObject | null } | null = null;
-
-    for (let node = queue.shift(); node && !plan; node = queue.shift()) {
-      if (seen.has(`${node.map}:${node.at.x},${node.at.y}`)) continue;
-      seen.add(`${node.map}:${node.at.x},${node.at.y}`);
-      const map = world.maps[node.map]!;
-      const reach = walks(world, state, node.map, node.at, true);
-      for (const object of map.objects) {
-        const at = placeOf(object, state);
-        if (object.branches.length === 0 || objectAt(map, at.x, at.y, state) !== object) continue;
-        const route = facing(reach, at);
-        if (!route) continue;
-        if (object.trigger === 'interact') {
-          if (tried.has(`${object.id}|${key}`)) continue;
-          // The wrong switch of a riddle would only put the others out again.
-          if (undoes(branchFor(object, state)?.do ?? [])) continue;
-          plan = { route: node.first ?? route, talk: node.first ? null : object };
-          break;
-        }
-        if (!passable(object, state)) continue;
-        const warp = branchFor(object, state)?.do.find((action) => 'warp' in action);
-        const first = node.first ?? route;
-        if (warp && 'warp' in warp) {
-          const spot = resolveSpot(world, warp.warp);
-          queue.push({ map: spot.map, at: spot, first });
-        } else {
-          // A door inside a map: carry on from the cell behind it.
-          const dir = route.at(-1)!;
-          queue.push({ map: node.map, at: { x: at.x + DELTA[dir].dx, y: at.y + DELTA[dir].dy }, first: node.first ?? [...route, dir] });
-        }
-      }
-    }
+    // Look for something not tried yet since the last bit of progress: here first, then through the doors. The
+    // wrong switch of a riddle would only put the others out again.
+    // What ends the game comes last: the bot sees the rest of the world first, as a curious player would.
+    const untried = (object: GameObject) => !tried.has(`${object.id}|${key}`) && !undoes(branchFor(object, state)?.do ?? []);
+    let plan = explore((object) => untried(object) && !ends(branchFor(object, state)?.do ?? [])) ?? explore(untried);
+    // Someone who stands guard is only faced at full strength: rest first, wherever that is.
+    if (plan && state.hp < state.maxHp && fights(plan.target, state)) plan = rest() ?? plan;
 
     // Nothing new to walk to on this map, and it has a puzzle: look for presses that get somewhere new.
     if (!plan?.talk && puzzling(here)) {

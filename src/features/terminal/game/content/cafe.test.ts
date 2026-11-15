@@ -106,11 +106,14 @@ describe('the cafe in town', () => {
     expect([out.map, out.x, out.y]).toEqual(['town', door.x, door.y + 1]);
   });
 
-  it('took the place of the coffee machine of the town: the machines that are left are indoors and out of town', () => {
+  it('is the only place to rest: no coffee machine is left anywhere, and nobody else restores energy and moves', () => {
     expect(town.objects.filter((object) => object.sprite === 'coffee')).toHaveLength(0);
     expect(heals(town)).toHaveLength(0);
     const machines = Object.fromEntries(Object.values(world.maps).map((map) => [map.id, map.objects.filter((object) => object.sprite === 'coffee').length]));
-    expect(machines).toEqual({ town: 0, cafe: 0, contact: 0, academy: 1, office: 1, workshop: 1, library: 1, east: 1, west: 1, hills: 1, cave: 2, deep: 2 });
+    expect(Object.values(machines).every((count) => count === 0)).toBe(true);
+    // The barista alone. (Wesley's coffee between the rounds of the last fight heals too, but only after a won round.)
+    const healers = Object.values(world.maps).flatMap((map) => heals(map).map((object) => object.id));
+    expect(healers).toEqual(['cafe:B']);
     expect(heals(cafe).map((object) => object.id)).toEqual(['cafe:B']);
   });
 
@@ -167,7 +170,7 @@ describe('the barista', () => {
   });
 });
 
-describe('a defeat in town', () => {
+describe('a defeat', () => {
   const inFront = () => ({ ...resolveSpot(world, { map: 'cafe', at: 'B', dy: 1 }), dir: 'up' });
 
   it('wakes the player up in the cafe, in front of the barista, rested, with nothing lost', () => {
@@ -188,13 +191,22 @@ describe('a defeat in town', () => {
     expect(told(after, { a: true }).state.face?.id).toBe('cafe:B');
   });
 
-  it('is the cafe even after a rest somewhere else: the town has one place to wake up in', () => {
-    // Rest at the machine of the Academy, walk out, lose in the grass.
-    let state = settle(press(goTo(goTo(started(), 'town:A'), 'academy:k'), { a: true }));
-    expect(state.heal.map).toBe('academy');
-    state = lose(ambushed(goTo(state, 'academy:m')));
-    expect(state.map).toBe('cafe');
-    expect(state.heal).toMatchObject(resolveSpot(world, { map: 'cafe', at: 'B', dy: 1 }));
+  it('is the cafe from anywhere: a building, the routes, the hills and both floors of the cave', () => {
+    const fighting = ambushed(started());
+    for (const [map, at] of [['academy', 'm'], ['west', ')'], ['east', '('], ['hills', '('], ['cave', 'm'], ['deep', 'u']] as const) {
+      const there = { ...fighting, ...resolveSpot(world, { map, at, dx: map === 'west' ? -1 : map === 'east' || map === 'hills' ? 1 : 0, dy: map === 'academy' ? -1 : map === 'deep' ? 1 : 0 }) };
+      if (map === 'cave') there.x -= 1;
+      const after = lose(there);
+      expect([after.map, after.x, after.y, after.dir], map).toEqual(['cafe', inFront().x, inFront().y, 'up']);
+      expect(after.hp, map).toBe(after.maxHp);
+    }
+    expect(world.respawn).toEqual({ map: 'cafe', at: 'B', dy: 1, dir: 'up' });
+  });
+
+  it('is the cafe even after a rest between the rounds of the last fight', () => {
+    // Wesley's coffee between two rounds heals, but the place to wake up stays the cafe.
+    const healed = { ...started(), heal: resolveSpot(world, { map: 'contact', at: 'H', dy: 1 }) };
+    expect(lose({ ...ambushed(healed), heal: healed.heal }).map).toBe('cafe');
   });
 
   it('is where a game starts out from too: a defeat in a building before any rest ends in the cafe', () => {
@@ -206,14 +218,6 @@ describe('a defeat in town', () => {
     expect(lose(state).map).toBe('cafe');
   });
 
-  it('still goes back to the last coffee machine away from town', () => {
-    const west = world.maps.west!;
-    const machine = thing(west, 'k');
-    const rested = settle(press({ ...started(), map: 'west', x: machine.x + 1, y: machine.y, dir: 'left' as const }, { a: true }));
-    expect(rested.heal).toMatchObject({ map: 'west', x: machine.x + 1, y: machine.y });
-    expect(west.respawn).toBeUndefined();
-    expect(Object.values(world.maps).filter((map) => map.respawn).map((map) => map.id)).toEqual(['town']);
-  });
 });
 
 describe('the shop in the cafe', () => {
@@ -426,14 +430,14 @@ describe('the money of the game', () => {
     expect(thing(cafe, 'V').branches.flatMap((branch) => branch.do).every((action) => 'say' in action || 'shop' in action)).toBe(true);
   });
 
-  it('leaves the main path open to someone with no coffee and no coins: the machine in the Office still pours one for the key card', () => {
+  it('leaves the main path open to someone with no coffee and no coins: the barista pours one for the key card', () => {
     let state: GameState = { ...started(), items: { diploma: 1 }, coins: 0 };
     state = goTo(state, 'town:O');
     state = settle(press(goTo(state, 'office:1'), { a: true }));
     expect(state.items.keycard).toBeUndefined();
-    state = settle(press(goTo(state, 'office:k'), { a: true }));
+    state = settle(press(goTo(goTo(goTo(state, 'office:m'), 'town:X'), 'cafe:B'), { a: true }));
     expect(state.items.coffee).toBe(1);
-    state = settle(press(goTo(state, 'office:1'), { a: true }));
+    state = settle(press(goTo(goTo(goTo(state, 'cafe:m'), 'town:O'), 'office:1'), { a: true }));
     expect(state.items.keycard).toBe(1);
     expect(state.coins).toBe(0);
   });

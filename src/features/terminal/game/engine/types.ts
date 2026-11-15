@@ -147,8 +147,6 @@ export type GameMap = {
   encounters?: { enemies: string[]; rate: number; levels?: [number, number] };
   /** A dark place: only this many cells around the player are lit (see engine/light.ts). */
   dark?: number;
-  /** Where a defeat on this map brings the player back to, whatever was the last place to rest (the cafe, for the town). */
-  respawn?: Spot;
   /**
    * The puzzle of the pressure plates: once a pushed thing stands on every plate of the map, `flag` is set for
    * good, `do` runs, and the pushed things stay where they are from then on. `cells` are the plates (parseMap
@@ -207,6 +205,11 @@ export type World = {
   subtitle: string;
   maps: Record<string, GameMap>;
   start: Spot;
+  /**
+   * Where every defeat brings the player back to (the cafe), whatever was the last place rested at. Without it a
+   * defeat goes back to the last place that healed (`heal` in the state).
+   */
+  respawn?: Spot;
   items: Record<string, ItemDef>;
   startItems: Record<string, number>;
   moves: Record<string, MoveDef>;
