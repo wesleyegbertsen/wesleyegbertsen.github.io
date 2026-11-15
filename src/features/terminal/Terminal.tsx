@@ -137,7 +137,9 @@ export function Terminal() {
     setMode('shell');
     setEntries((current) => [...current, ...newEntries('output', lines)]);
   };
-  const leave = () => leaveGame(["Left the game. Type 'play' to carry on."]);
+  // After the ending 'play' starts again from the title, so the line must not promise a continuation.
+  const leave = () =>
+    leaveGame([progressRef.current?.finished ? "Left the game. Type 'play' to play again." : "Left the game. Type 'play' to carry on."]);
   const skip = () => leaveGame(careerLines(data));
 
   const recall = (direction: 'up' | 'down') => {

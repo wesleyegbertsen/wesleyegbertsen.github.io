@@ -19,7 +19,7 @@ function free(world: World, state: GameState, mapId: string, x: number, y: numbe
 }
 
 /** The shortest walk from `from` to each cell it can reach on a map, never stepping on objects. */
-function walks(world: World, state: GameState, mapId: string, from: Cell): Map<string, Dir[]> {
+function walks(world: World, state: GameState, mapId: string, from: Cell, grassOk: boolean): Map<string, Dir[]> {
   const found = new Map<string, Dir[]>([[`${from.x},${from.y}`, []]]);
   const queue: Cell[] = [from];
   for (let cell = queue.shift(); cell; cell = queue.shift()) {
@@ -28,6 +28,7 @@ function walks(world: World, state: GameState, mapId: string, from: Cell): Map<s
       const x = cell.x + DELTA[dir].dx;
       const y = cell.y + DELTA[dir].dy;
       if (found.has(`${x},${y}`) || !free(world, state, mapId, x, y)) continue;
+      if (!grassOk && tileAt(world, world.maps[mapId]!, x, y).grass) continue;
       found.set(`${x},${y}`, [...path, dir]);
       queue.push({ x, y });
     }
@@ -36,8 +37,15 @@ function walks(world: World, state: GameState, mapId: string, from: Cell): Map<s
 }
 
 /** The directions to press to end up facing (or stepping onto) an object, or null when it cannot be reached. */
-function routeIn(world: World, state: GameState, mapId: string, from: Cell, object: GameObject): Dir[] | null {
-  const reach = walks(world, state, mapId, from);
+function routeIn(
+  world: World,
+  state: GameState,
+  mapId: string,
+  from: Cell,
+  object: GameObject,
+  grassOk = true,
+): Dir[] | null {
+  const reach = walks(world, state, mapId, from, grassOk);
   let best: Dir[] | null = null;
   for (const dir of DIRS) {
     const path = reach.get(`${object.x - DELTA[dir].dx},${object.y - DELTA[dir].dy}`);
@@ -49,7 +57,9 @@ function routeIn(world: World, state: GameState, mapId: string, from: Cell, obje
 /** The directions to press, one whole move each, to face the object with this id on the current map. */
 export function routeTo(world: World, state: GameState, objectId: string): Dir[] | null {
   const object = world.maps[state.map]!.objects.find((candidate) => candidate.id === objectId);
-  return object ? routeIn(world, state, state.map, state, object) : null;
+  if (!object) return null;
+  // Around the tall grass when there is a way: a wild enemy depends on the dice, and the browser tests must not.
+  return routeIn(world, state, state.map, state, object, false) ?? routeIn(world, state, state.map, state, object);
 }
 
 const progress = (state: GameState) =>

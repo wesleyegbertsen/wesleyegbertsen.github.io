@@ -224,6 +224,7 @@
 }
 
 .dpad button {
+  position: relative;
   background: #2b2c36;
 }
 
@@ -252,12 +253,13 @@
   flex: 0 0 auto;
   flex-direction: column;
   align-self: flex-end;
-  gap: 8px;
+  gap: 12px;
 }
 
 .small button {
+  position: relative;
   min-width: 50px;
-  min-height: 26px;
+  min-height: 32px;
   border-radius: 999px;
   background: #7d7f8c;
   color: #fff;
@@ -265,6 +267,18 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* Touch targets: the buttons are drawn small to look like a Game Boy, but each one answers a touch within a 44px square. */
+.dpad button::after,
+.small button::after {
+  position: absolute;
+  inset: -3px;
+  content: '';
+}
+
+.small button::after {
+  inset: -6px -0px;
 }
 
 .ab {

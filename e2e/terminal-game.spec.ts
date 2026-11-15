@@ -254,6 +254,27 @@ test.describe('the adventure in the terminal', () => {
     await expect(page.getByText('Arrows or WASD')).toHaveCount(isMobile ? 0 : 1);
   });
 
+  test('every on-screen button answers a touch within a 44px square', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'The buttons exist on touch devices only');
+    await play(page);
+    for (const name of ['Up', 'Down', 'Left', 'Right', 'Select', 'Start', 'A', 'B']) {
+      const button = page.getByRole('button', { name, exact: true });
+      const hit = await button.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const owns = (x: number, y: number) => document.elementFromPoint(x, y) === el;
+        // The farthest each side that still lands on this button, probed in whole pixels.
+        let up = 0;
+        while (up < 30 && owns(cx, cy - r.height / 2 - up - 1)) up++;
+        let down = 0;
+        while (down < 30 && owns(cx, cy + r.height / 2 + down + 1)) down++;
+        return { height: r.height + up + down };
+      });
+      expect(hit.height, name).toBeGreaterThanOrEqual(43);
+    }
+  });
+
   test('the on-screen buttons play the game on a touch device and stay inside the panel', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'The buttons exist on touch devices only');
     await openSite(page, '/#/terminal');

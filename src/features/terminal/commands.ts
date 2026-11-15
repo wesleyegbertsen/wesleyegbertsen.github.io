@@ -192,10 +192,11 @@ export const commands: Command[] = [
   {
     name: 'play', group: 'fun',
     help: 'walk through my career (a Game Boy adventure); "play skip" prints it as text',
-    run: (args, ctx) =>
-      args[0] === 'skip'
-        ? { lines: careerLines(ctx.data) }
-        : { lines: ['Starting Career Quest. Esc or q to leave.'], effects: [{ type: 'game' }] },
+    run: (args, ctx) => {
+      if (args.length === 0) return { lines: ['Career Quest. Esc or q to leave.'], effects: [{ type: 'game' }] };
+      if (args.length === 1 && args[0] === 'skip') return { lines: careerLines(ctx.data) };
+      return say('Usage: play [skip]');
+    },
   },
   { name: 'cowsay', group: 'fun', help: 'a cow says it', run: (args) => ({ lines: cowsayLines(args.join(' ')) }) },
   {

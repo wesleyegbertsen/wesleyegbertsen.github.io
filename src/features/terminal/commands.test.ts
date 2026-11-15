@@ -93,6 +93,14 @@ describe('play', () => {
     expect(result.lines.join(' ')).toMatch(/Esc or q/);
   });
 
+  it('answers an unknown argument with a usage line instead of starting the game', () => {
+    for (const line of ['play skp', 'play SKIP', 'play now']) {
+      const result = run(line);
+      expect(result.effects).toEqual([]);
+      expect(result.lines.join(' ')).toContain('Usage: play [skip]');
+    }
+  });
+
   it('prints the whole career as text with play skip, and starts no game', () => {
     const result = run('play skip');
     expect(result.effects).toEqual([]);

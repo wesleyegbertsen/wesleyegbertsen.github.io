@@ -90,6 +90,16 @@ describe('battles', () => {
     expect(dry.battle?.steps[0]?.text).toMatch(/^You use FLAIL! RAT loses [234] HP\.$/);
   });
 
+  it('keeps an item when the player is already at full energy, and the enemy does not get a free turn', () => {
+    const full: GameState = { ...wild(), items: { coffee: 1 } };
+    const refused = play(full, 'down', 'a', 'a');
+    expect(refused.items.coffee).toBe(1);
+    expect(refused.hp).toBe(full.hp);
+    expect(refused.battle?.enemyHp).toBe(full.battle!.enemyHp);
+    expect(refused.battle?.steps).toEqual([{ text: 'You are full of energy already.' }]);
+    expect(play(refused, 'a').battle?.phase).toBe('menu');
+  });
+
   it('heals with a move and with an item', () => {
     const hurt: GameState = { ...wild(), hp: 5, items: { coffee: 1 } };
     const napped = play(hurt, 'a', 'down', 'a');

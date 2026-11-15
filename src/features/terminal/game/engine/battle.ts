@@ -194,5 +194,8 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
     return cursor === battle.cursor ? state : { ...state, battle: { ...battle, cursor } };
   }
   const item = items[Math.min(battle.cursor, items.length - 1)];
-  return item ? turn(state, { item }, ctx) : { ...state, battle: { ...battle, phase: 'menu', cursor: 0 } };
+  if (!item) return { ...state, battle: { ...battle, phase: 'menu', cursor: 0 } };
+  // The same refusal as the bag menu: nothing is used up, and the enemy does not get a free turn.
+  if (state.hp >= state.maxHp) return show(state, battle, [{ text: 'You are full of energy already.' }], ctx);
+  return turn(state, { item }, ctx);
 }
