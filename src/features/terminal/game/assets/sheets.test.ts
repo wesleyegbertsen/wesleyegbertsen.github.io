@@ -76,6 +76,19 @@ describe('the sprite sheets', () => {
     }
   });
 
+  it('draw the cracked wall of the cave as a clear crack: a long light fissure with dark edges, and pebbles at its foot', () => {
+    const script = "import('./scripts/sprites/scenery.mjs').then(({ scenery }) => console.log(JSON.stringify({ crack: scenery.crack, wall: scenery.cavewall })))";
+    const drawn = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { crack: string[]; wall: string[] };
+    const wall = (drawn.wall.length === 8 ? [...drawn.wall, ...drawn.wall].map((row) => row + row) : drawn.wall);
+    // (The sheet holds the crack laid over the rock already.)
+    const differs = (y: number) => [...drawn.crack[y]!].filter((dot, x) => dot !== wall[y]![x]).length;
+    // The fissure runs (nearly) from top to bottom, and its light core is easy to see in the shade of the rock.
+    expect(Array.from({ length: 12 }, (_, y) => differs(y + 1)).every((count) => count >= 2)).toBe(true);
+    expect(drawn.crack.join('').split('0').length - 1).toBeGreaterThanOrEqual(10);
+    // Pebbles at the foot: the light shade in the bottom rows.
+    expect(drawn.crack.slice(13).join('').split('1').length - 1).toBeGreaterThanOrEqual(3);
+  });
+
   it('use four shades, lightest first', () => {
     expect(PALETTE).toHaveLength(4);
     const light = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);

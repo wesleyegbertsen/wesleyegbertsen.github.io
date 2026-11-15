@@ -967,26 +967,27 @@ const cavefloor = ['11111111', '11121111', '11111111', '11111121', '11111111', '
 const rubble = ['11111111', '11301111', '12211031', '11111321', '13011111', '12111121', '11132011', '11111111'];
 const cavewall = ['22222322', '23222232', '22322222', '22232223', '32222322', '22322232', '22223222', '22222223'];
 /**
- * A crack in the cave wall: the hidden way. It must look almost like the rock around it (a test counts the
- * pixels that differ): a thin jagged line of the darkest shade, with a light edge where the draught comes through.
+ * A crack in the cave wall: the hidden way. Clear once it is in the light of the player, and still rock until then:
+ * a jagged fissure from top to bottom, dark at its edges with a light core where the draught comes through, a hairline
+ * branching off, and a few pebbles that fell from it at its foot.
  */
 const crack = [
-  '................',
-  '................',
-  '................',
-  '.......3........',
-  '.......3........',
   '........3.......',
-  '........31......',
-  '.......3........',
-  '.......3........',
-  '......3.........',
-  '......31........',
-  '.......3........',
-  '.......3........',
-  '................',
-  '................',
-  '................',
+  '.......303......',
+  '.......3013.....',
+  '......3013......',
+  '.....30113..3...',
+  '.....3013..3....',
+  '......30133.....',
+  '......30113.....',
+  '.......3013.....',
+  '......3013......',
+  '.....3013.......',
+  '....30113.......',
+  '....3013........',
+  '..........33....',
+  '..33.....3113...',
+  '.3113.....33....',
 ];
 /** Daylight on the floor: the way out of the cave. */
 const caveexit = Array.from({ length: 16 }, (_, y) => (y === 0 || y === 15 ? '1111111111111111' : y % 4 === 3 ? '1022222222222201' : '1000000000000001'));

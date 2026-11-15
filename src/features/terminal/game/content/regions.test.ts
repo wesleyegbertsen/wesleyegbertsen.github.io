@@ -927,15 +927,16 @@ describe('the ladder down', () => {
     expect(routeTo(world, up, 'cave:m')).not.toBeNull();
   });
 
-  it('looks almost like the rock around it: the crack is a few pixels of the wall, no more', () => {
+  it('is clear once it is looked at, and still mostly rock: a crack across the wall, not a door', () => {
     const script = "import('./scripts/sprites/scenery.mjs').then(({ scenery }) => console.log(JSON.stringify({ crack: scenery.crack, wall: scenery.cavewall })))";
     const { crack: drawn, wall } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { crack: string[]; wall: string[] };
     const rock = wall.length === 8 ? [...wall, ...wall].map((row) => row + row) : wall;
     expect(drawn).toHaveLength(16);
     const differ = drawn.flatMap((row, y) => [...row].filter((dot, x) => dot !== rock[y]![x])).length;
-    // Enough to be found by someone who looks, too little to catch the eye in passing.
-    expect(differ).toBeGreaterThanOrEqual(5);
-    expect(differ).toBeLessThanOrEqual(16);
+    // Round seven: it was too subtle. Now a crack that is seen in the light of the player, and still well under
+    // half of the tile, so from afar it is a wall like the others.
+    expect(differ).toBeGreaterThanOrEqual(30);
+    expect(differ).toBeLessThanOrEqual(96);
   });
 
   it('is the furthest thing from the mouth, at the end of a tunnel that leads nowhere else', () => {

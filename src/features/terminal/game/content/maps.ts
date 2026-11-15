@@ -287,7 +287,7 @@ export const WEST = [
  *
  * L is the ladder down to the deep cave, and it is meant to be hard to find: it is behind a wall. w, in the east
  * wall of the chest room in the north-west (the furthest dead end from the mouth), is rock with a crack in it:
- * it looks almost like the rock around it, and whoever looks at it (A) leans on it and it gives way, for good.
+ * it is a clear crack once it is in the light, still rock from afar, and whoever looks at it (A) leans on it and it gives way, for good.
  * x and y are the rock behind it, which falls away with it (they are drawn as plain rock until then). Behind
  * those three a short tunnel leads to the ladder. No sign points to it; the one who is lost (n) gives a hint.
  * d is a bricked-up doorway at the end of the short tunnel that goes up from the middle room: that is where the
