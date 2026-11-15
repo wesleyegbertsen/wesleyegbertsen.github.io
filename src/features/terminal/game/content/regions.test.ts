@@ -9,12 +9,12 @@ import { playthrough, routeTo } from '../engine/bot.ts';
 import { initialGame, step } from '../engine/engine.ts';
 import { maxHpOf } from '../engine/level.ts';
 import { fold } from '../engine/text.ts';
-import { NO_INPUT, type Action, type Dir, type GameMap, type GameState, type Input } from '../engine/types.ts';
+import { NO_INPUT, type Action, type Dir, type GameMap, type GameObject, type GameState, type Input } from '../engine/types.ts';
 import { placeOf } from '../engine/wander.ts';
 import { DELTA, landing, resolveSpot } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
-import { HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
+import { DEEP_FLAGS, DEEP_TEXT, HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -708,7 +708,7 @@ describe('the cave', () => {
     expect(trackFor(at('hills', '(', {}, 1), world)).toBe('hills');
   });
 
-  it('switches to the wild tune for a cave monster and to the boss tune for THE OUTAGE', () => {
+  it('switches to the wild tune for a cave monster', () => {
     const first = rubble.find((cell) => walkable(cell.x + 1, cell.y) && !tileOf(cave!, cell.x + 1, cell.y)!.grass)!;
     let state: GameState | null = null;
     for (let seed = 1; seed < 80 && !state?.battle; seed++) {
@@ -719,19 +719,13 @@ describe('the cave', () => {
     expect(state!.battle!.level).toBeGreaterThanOrEqual(AREAS.cave!.levels[0]);
     expect(state!.battle!.level).toBeLessThanOrEqual(AREAS.cave!.levels[1]);
     expect(trackFor(state!, world)).toBe(world.music!.wild);
-
-    const boss = thing('B');
-    let fight = press({ ...inside({ level: 9 }), x: boss.x, y: boss.y + 1, dir: 'up' }, { a: true });
-    for (let i = 0; i < 10 && fight.dialogue; i++) fight = press(fight, { a: true });
-    expect(fight.battle).toMatchObject({ enemy: 'outage', wild: false, level: 10 });
-    expect(trackFor(fight, world)).toBe(world.music!.boss);
   });
 
-  it('is a cave, not a tunnel: rooms, and more than one way to everything that matters', () => {
-    const door = thing('D');
-    const front = `${door.x},${door.y + 1}`;
+  it('is a cave, not a tunnel: rooms, and more than one way to its main rooms', () => {
+    // The room in the far west, with the second coffee machine: no single patch of rubble is the only way there.
+    const j = thing('j');
+    const front = `${j.x + 1},${j.y}`;
     expect(reach().has(front)).toBe(true);
-    // No single patch of rubble is the only way: close any one of them and the door can still be reached.
     for (const cell of rubble) expect(reach([`${cell.x},${cell.y}`]).has(front), `${cell.x},${cell.y}`).toBe(true);
     // Rooms: at least four places where a 3 by 3 block is open floor.
     const rooms = cellsOf(cave!, (x, y) => [0, 1, 2].every((dy) => [0, 1, 2].every((dx) => walkable(x + dx, y + dy))));
@@ -741,20 +735,15 @@ describe('the cave', () => {
     expect(Math.min(...cells.map(([x]) => x!))).toBeLessThanOrEqual(3);
     expect(Math.min(...cells.map(([, y]) => y!))).toBeLessThanOrEqual(2);
     expect(Math.max(...cells.map(([, y]) => y!))).toBeGreaterThanOrEqual(cave!.height - 3);
-  });
-
-  it('still makes every way to the last chamber cross rubble', () => {
-    const door = thing('D');
-    const start = resolveSpot(world, { map: 'cave', at: 'm', dx: -1 });
-    expect(dryReach(cave!, start).has(`${door.x},${door.y + 1}`)).toBe(false);
     expect(rubble.length).toBeGreaterThanOrEqual(10);
   });
 
   it('has dead ends and side rooms that are worth the walk: chests, a note, scratches and someone who is lost', () => {
     const open = reach();
     const beside = (char: string) => Object.values(DELTA).some(({ dx, dy }) => open.has(`${thing(char).x + dx},${thing(char).y + dy}`));
-    for (const char of ['E', 'F', 'G', 'a', 'b', 'n', 'k', 'j']) expect(beside(char), char).toBe(true);
-    expect(cave!.objects.filter((object) => object.sprite === 'chest')).toHaveLength(4);
+    for (const char of ['E', 'F', 'G', 'a', 'b', 'd', 'n', 'k', 'j']) expect(beside(char), char).toBe(true);
+    // The prize went down a floor with the boss: three chests are left up here.
+    expect(cave!.objects.filter((object) => object.sprite === 'chest')).toHaveLength(3);
     let state = inside({ level: 10, hp: 57, maxHp: 57 });
     for (const [char, item] of [['E', 'energydrink'], ['F', 'pizza'], ['G', 'energydrink']] as const) {
       const before = state.items[item] ?? 0;
@@ -764,11 +753,11 @@ describe('the cave', () => {
     expect(said(cave!)).toContain('I came down here to find the root cause.');
     // A dead end: the room of chest F hangs on one tunnel. Close that and it is cut off.
     const f = thing('F');
-    const tunnel = cellsOf(cave!, (x, y) => walkable(x, y) && y > f.y + 1 && y < f.y + 5 && Math.abs(x - f.x) <= 3);
+    const tunnel = cellsOf(cave!, (x, y) => walkable(x, y) && y > f.y + 1 && y < f.y + 5 && Math.abs(x - f.x) <= 1);
     expect(tunnel.length).toBeGreaterThan(0);
     const cut = reach(tunnel.map((cell) => `${cell.x},${cell.y}`));
-    expect(cut.has(`${f.x - 1},${f.y}`)).toBe(false);
-    expect(open.has(`${f.x - 1},${f.y}`)).toBe(true);
+    expect(cut.has(`${f.x + 1},${f.y}`)).toBe(false);
+    expect(open.has(`${f.x + 1},${f.y}`)).toBe(true);
   });
 
   it('draws the post-mortem as a paper pinned to the rock and the scratches as scratches, both in a wall', () => {
@@ -776,7 +765,7 @@ describe('the cave', () => {
     expect(thing('a').sprite).toBe('scratches');
     expect(said(cave!)).toContain('A post-mortem, pinned to the wall.');
     expect(said(cave!)).toContain('Scratched into the rock');
-    for (const char of ['a', 'b']) {
+    for (const char of ['a', 'b', 'd']) {
       const { x, y } = thing(char);
       // Rock to the left, to the right and above; the floor in front.
       expect([walkable(x - 1, y), walkable(x + 1, y), walkable(x, y - 1), walkable(x, y + 1)], char).toEqual([false, false, false, true]);
@@ -784,42 +773,18 @@ describe('the cave', () => {
     expect(cave!.objects.some((object) => object.sprite === 'sign')).toBe(false);
   });
 
-  it('has the door to the last chamber in a wall that is walked up to from below, for level 5', () => {
-    expect(DEEP_CAVE_LEVEL).toBe(BOSS_MIN_LEVEL.outage);
-    const door = thing('D');
-    expect(walkable(door.x - 1, door.y)).toBe(false);
-    expect(walkable(door.x + 1, door.y)).toBe(false);
-    expect(walkable(door.x, door.y + 1)).toBe(true);
-    const before = { ...inside({ level: DEEP_CAVE_LEVEL - 1 }), x: door.x, y: door.y + 1, dir: 'up' as const };
-    const stopped = press(before, { dir: 'up', pressed: 'up' });
-    expect(stopped.y).toBe(door.y + 1);
-    expect(stopped.dialogue?.pages.flat().join(' ')).toContain(`Lv ${DEEP_CAVE_LEVEL} and up`);
-    // Nothing behind the door can be reached while it is shut.
-    expect(reach().has(`${door.x},${door.y - 1}`)).toBe(false);
-    const through = press({ ...before, level: DEEP_CAVE_LEVEL }, { dir: 'up', pressed: 'up' });
-    expect(through.y).toBe(door.y);
-    expect(routeTo(world, through, 'cave:B')).not.toBeNull();
-  });
-
-  it('has a boss guarding a chest with a medal and ten max energy for good, and a ladder out', () => {
-    const boss = thing('B');
-    const beforeBoss = { ...inside({ level: 10, hp: 57, maxHp: 57 }), x: boss.x, y: boss.y + 1, dir: 'up' as const };
-    // The chest and the ladder are behind the boss: no way to them while it stands, door open or not.
-    expect(reach([], ['cave:D']).has(`${thing('L').x},${thing('L').y}`)).toBe(false);
-    expect(routeTo(world, beforeBoss, 'cave:C')).toBeNull();
-    let state = settle(press(beforeBoss, { a: true }));
-    expect(state.flags['beat:outage']).toBe(true);
-    const energy = state.maxHp;
-    state = talk(state, 'cave:C');
-    expect(state.items.medal).toBe(1);
-    expect(state.bonusHp).toBe(10);
-    expect(state.maxHp).toBe(energy + 10);
-    expect(state.maxHp).toBe(maxHpOf(world, state));
-    state = talk(state, 'cave:C');
-    expect(state.items.medal).toBe(1);
-    expect(state.bonusHp).toBe(10);
-    state = goTo(state, 'cave:L');
-    expect(state).toMatchObject({ map: 'west', dir: 'right' });
+  it('no longer has the last chamber: its doorway in the middle is bricked up, and the boss is not on this floor', () => {
+    const wall = thing('d');
+    expect(wall.sprite).toBe('scratches');
+    expect(said(cave!)).toContain(DEEP_TEXT.bricked[0]!);
+    // The short tunnel up from the middle room ends at it.
+    expect(reach().has(`${wall.x},${wall.y + 1}`)).toBe(true);
+    expect(walkable(wall.x, wall.y - 1)).toBe(false);
+    const ids = cave!.objects.map((object) => object.id);
+    for (const gone of ['cave:D', 'cave:B', 'cave:C']) expect(ids).not.toContain(gone);
+    const battles = cave!.objects.flatMap((object) => object.branches.flatMap((branch) => deep(branch.do))).filter((action) => 'battle' in action);
+    expect(battles).toEqual([]);
+    expect(cave!.areas).toBeUndefined();
   });
 
   it('has coffee at the mouth and deeper in, and a defeat only costs the walk back', () => {
@@ -835,6 +800,207 @@ describe('the cave', () => {
     const after = settle(lost!);
     expect(after).toMatchObject({ map: 'cave', x: rested.heal.x, y: rested.heal.y, hp: after.maxHp, xp: 30, level: 3 });
     expect(after.items).toEqual({ coffee: 1, stamp: 4 });
+  });
+});
+
+describe('the ladder down', () => {
+  const thing = (char: string) => cave!.objects.find((object) => object.id === `cave:${char}`)!;
+  const walkable = (x: number, y: number) => !!tileOf(cave!, x, y) && !tileOf(cave!, x, y)!.solid;
+  const mouth = resolveSpot(world, { map: 'cave', at: 'm', dx: -1 });
+  /** How many steps it is from the mouth to each cell, walking round the things that stand in the way. `closed` cells are shut. */
+  function steps(closed: string[] = []): Map<string, number> {
+    const dist = new Map([[keyOf(mouth), 0]]);
+    const queue: Cell[] = [mouth];
+    for (let cell = queue.shift(); cell; cell = queue.shift()) {
+      for (const { dx, dy } of Object.values(DELTA)) {
+        const next = { x: cell.x + dx, y: cell.y + dy };
+        if (dist.has(keyOf(next)) || closed.includes(keyOf(next)) || !walkable(next.x, next.y)) continue;
+        if (cave!.objects.some((object) => object.x === next.x && object.y === next.y && object.solid)) continue;
+        dist.set(keyOf(next), dist.get(keyOf(cell))! + 1);
+        queue.push(next);
+      }
+    }
+    return dist;
+  }
+  /** The fewest steps to stand on a thing (the ladder) or beside it (everything else). */
+  const walkTo = (object: GameObject, dist = steps()) =>
+    Math.min(...[{ dx: 0, dy: 0 }, ...Object.values(DELTA)].map(({ dx, dy }) => dist.get(`${object.x + dx},${object.y + dy}`) ?? Infinity));
+  const ladder = thing('L');
+
+  it('is the furthest thing from the mouth, by a long way, at the end of a tunnel that leads nowhere else', () => {
+    const dist = steps();
+    const others = cave!.objects.filter((object) => object !== ladder && object.id !== 'cave:m');
+    const furthest = Math.max(...others.map((object) => walkTo(object, dist)));
+    expect(walkTo(ladder, dist)).toBeGreaterThan(furthest + 8);
+    expect(walkTo(ladder, dist)).toBeGreaterThanOrEqual(35);
+    // Its tunnel: the cells that are cut off with the ladder when the one cell where the tunnel leaves the chest room is shut.
+    const open = [...dist.keys()];
+    const entries = open.filter((key) => {
+      const shut = steps([key]);
+      return !shut.has(keyOf(ladder)) && others.every((object) => walkTo(object, shut) < Infinity);
+    });
+    expect(entries.length).toBeGreaterThanOrEqual(8);
+    // Nothing else is down that tunnel: no chest, no note, no coffee to draw anyone in.
+    const first = entries.reduce((best, key) => (dist.get(key)! < dist.get(best)! ? key : best));
+    const tunnel = open.filter((key) => !steps([first]).has(key) && key !== first);
+    expect(tunnel.length).toBeGreaterThanOrEqual(8);
+    for (const key of [first, ...tunnel]) {
+      const [x, y] = key.split(',').map(Number) as [number, number];
+      const beside = cave!.objects.filter((object) => object !== ladder && Math.abs(object.x - x) + Math.abs(object.y - y) <= 1);
+      expect(beside.map((object) => object.id), key).toEqual([]);
+    }
+    // It winds: the tunnel turns at least four times, so the dark hides where it goes.
+    const way = [first, ...tunnel].map((key) => key.split(',').map(Number) as [number, number]).sort((a, b) => dist.get(`${a[0]},${a[1]}`)! - dist.get(`${b[0]},${b[1]}`)!);
+    let turns = 0;
+    for (let i = 2; i < way.length; i++) {
+      const straight = (way[i]![0] - way[i - 1]![0] === way[i - 1]![0] - way[i - 2]![0]) && (way[i]![1] - way[i - 1]![1] === way[i - 1]![1] - way[i - 2]![1]);
+      if (!straight) turns++;
+    }
+    expect(turns).toBeGreaterThanOrEqual(4);
+    // It starts in the chest room in the north-west, the far dead end, and wild things live on the way in.
+    const f = thing('F');
+    const [fx, fy] = first.split(',').map(Number) as [number, number];
+    expect(Math.abs(fx - f.x) + Math.abs(fy - f.y)).toBeLessThanOrEqual(6);
+    expect(dryReach(cave!, mouth).has(keyOf(ladder))).toBe(false);
+    expect(tunnel.some((key) => tileOf(cave!, ...(key.split(',').map(Number) as [number, number]))!.grass) || tileOf(cave!, fx, fy)!.grass).toBe(true);
+  });
+
+  it('is not signposted: nobody and nothing in the game says where it is, or that it is there', () => {
+    const everything = Object.values(world.maps).filter((map) => map.id !== 'deep').map(said).join('\n') + world.intro.join('\n') + world.hints.map((hint) => hint.text).join('\n');
+    expect(everything).not.toMatch(/ladder|second floor|floor below|lower floor|deeper|deep cave|downstairs|way down/i);
+    expect(cave!.objects.some((object) => object.sprite === 'sign')).toBe(false);
+    // The paper and the scratches are nowhere near it.
+    for (const char of ['a', 'b', 'd', 'n']) expect(walkTo(ladder) - walkTo(thing(char)), char).toBeGreaterThan(12);
+    // It is a hole in the floor with a ladder in it, not daylight like the way out.
+    expect(ladder.sprite).toBe('hole');
+    expect(thing('m').sprite).toBe('caveexit');
+  });
+
+  it('lies right behind the bricked-up doorway, where the last chamber was: close by, and a long walk', () => {
+    const wall = thing('d');
+    expect(Math.abs(wall.x - ladder.x) + Math.abs(wall.y - ladder.y)).toBeLessThanOrEqual(4);
+    const dist = steps();
+    expect(walkTo(ladder, dist) - dist.get(`${wall.x},${wall.y + 1}`)!).toBeGreaterThanOrEqual(20);
+    // Too far to be seen from the doorway: the light reaches three cells and a half.
+    expect(Math.hypot(wall.x - ladder.x, wall.y + 1 - ladder.y)).toBeGreaterThan(3.5);
+  });
+
+  it('asks for no level, leads to the deep cave and back, and says where the player is', () => {
+    expect(ladder.branches).toHaveLength(1);
+    expect(ladder.branches[0]!.when).toBeUndefined();
+    const before = { ...at('cave', 'L', { level: CAVE_LEVEL, dir: 'right' as const }, -1) };
+    const down = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
+    const top = world.maps.deep!.objects.find((object) => object.id === 'deep:u')!;
+    expect(down.state).toMatchObject({ map: 'deep', x: top.x, y: top.y + 1, dir: 'down' });
+    expect(down.cues).toContain('cave');
+    expect(down.events.map((event) => event.text)).toContain('The Deep Cave');
+    expect(down.state.banner?.text).toBe('The Deep Cave');
+    expect(top.sprite).toBe('ladder');
+    const up = step(down.state, { ...NO_INPUT, dir: 'up', pressed: 'up' }, world, { instant: true });
+    expect(up.state).toMatchObject({ map: 'cave', x: ladder.x - 1, y: ladder.y, dir: 'left' });
+    expect(up.cues).toContain('cave');
+  });
+});
+
+describe('the deep cave', () => {
+  const below = world.maps.deep!;
+  const thing = (char: string) => below.objects.find((object) => object.id === `deep:${char}`)!;
+  const walkable = (x: number, y: number) => !!tileOf(below, x, y) && !tileOf(below, x, y)!.solid;
+  const solved = { [DEEP_FLAGS.plates]: true as const, [DEEP_FLAGS.shipped]: true as const };
+  /** Past the last gate, in front of the heavy door, every puzzle solved. */
+  const atDoor = (extra: Partial<GameState> = {}): GameState => ({ ...at('deep', 'D', { level: 10, hp: 57, maxHp: 57, dir: 'down', flags: solved, ...extra }, 0, -1) });
+
+  it('is dark like the floor above, with the same tune, and the boss tune for THE OUTAGE', () => {
+    expect(below.dark).toBe(1);
+    expect(below.name).toBe('The Deep Cave');
+    expect(trackFor(atDoor(), world)).toBe('cave');
+    const boss = thing('B');
+    let fight = press({ ...atDoor({ level: 9 }), x: boss.x, y: boss.y - 1 }, { a: true });
+    for (let i = 0; i < 10 && fight.dialogue; i++) fight = press(fight, { a: true });
+    expect(fight.battle).toMatchObject({ enemy: 'outage', wild: false, level: 10 });
+    expect(trackFor(fight, world)).toBe(world.music!.boss);
+  });
+
+  it('has the door to the last chamber in a wall that is walked down into, for level 5', () => {
+    expect(DEEP_CAVE_LEVEL).toBe(BOSS_MIN_LEVEL.outage);
+    const door = thing('D');
+    expect(walkable(door.x - 1, door.y)).toBe(false);
+    expect(walkable(door.x + 1, door.y)).toBe(false);
+    expect(walkable(door.x, door.y - 1)).toBe(true);
+    const stopped = press(atDoor({ level: DEEP_CAVE_LEVEL - 1 }), { dir: 'down', pressed: 'down' });
+    expect(stopped.y).toBe(door.y - 1);
+    expect(stopped.dialogue?.pages.flat().join(' ')).toContain(`Lv ${DEEP_CAVE_LEVEL} and up`);
+    expect(routeTo(world, atDoor({ level: DEEP_CAVE_LEVEL - 1 }), 'deep:B')).toBeNull();
+    const through = step(atDoor({ level: DEEP_CAVE_LEVEL }), { ...NO_INPUT, dir: 'down', pressed: 'down' }, world, { instant: true });
+    expect(through.state.y).toBe(door.y);
+    expect(routeTo(world, through.state, 'deep:B')).not.toBeNull();
+    // One more step and the label says where this is.
+    const inRoom = step(through.state, { ...NO_INPUT, dir: 'down', pressed: 'down' }, world, { instant: true });
+    expect(inRoom.state.banner?.text).toBe('Incident Room');
+    expect(inRoom.events.map((event) => event.text)).toContain('Incident Room');
+  });
+
+  it('is as easy to find as it was: past the last gate one short corridor leads to the door, with coffee beside it', () => {
+    const gate = thing('G');
+    const door = thing('D');
+    const coffee = thing('j');
+    // From the cell behind the gate to the cell in front of the door: a few steps, no rubble, nothing to solve.
+    const route = routeTo(world, { ...atDoor(), x: gate.x - 1, y: gate.y, dir: 'left' }, 'deep:D');
+    expect(route).not.toBeNull();
+    expect(route!.length).toBeLessThanOrEqual(5);
+    expect(Math.abs(coffee.x - door.x) + Math.abs(coffee.y - (door.y - 1))).toBe(1);
+    // The corridor has no turn-offs: every cell of it has the gate on one side and the door or the coffee on the other.
+    const corridor = cellsOf(below, (x, y) => y === gate.y && x < gate.x && walkable(x, y) && !below.objects.some((object) => object.x === x && object.y === y));
+    expect(corridor.length).toBeLessThanOrEqual(4);
+    for (const cell of corridor) expect(walkable(cell.x, cell.y - 1)).toBe(false);
+    // And the gate is gone for good once the pipeline has shipped.
+    expect(gate.hideWhen).toEqual({ flag: DEEP_FLAGS.shipped });
+    expect(thing('g').hideWhen).toEqual({ flag: DEEP_FLAGS.plates });
+  });
+
+  it('has a boss guarding a chest with a medal and ten max energy for good, and a ladder out', () => {
+    const boss = thing('B');
+    const beforeBoss = { ...atDoor(), x: boss.x, y: boss.y - 1 };
+    // The chest and the ladder are behind the boss: no way to them while it stands.
+    expect(routeTo(world, beforeBoss, 'deep:c')).toBeNull();
+    expect(routeTo(world, beforeBoss, 'deep:L')).toBeNull();
+    let state = settle(press(beforeBoss, { a: true }));
+    expect(state.flags['beat:outage']).toBe(true);
+    const energy = state.maxHp;
+    state = talk(state, 'deep:c');
+    expect(state.items.medal).toBe(1);
+    expect(state.bonusHp).toBe(10);
+    expect(state.maxHp).toBe(energy + 10);
+    expect(state.maxHp).toBe(maxHpOf(world, state));
+    state = talk(state, 'deep:c');
+    expect(state.items.medal).toBe(1);
+    expect(state.bonusHp).toBe(10);
+    state = goTo(state, 'deep:L');
+    expect(state).toMatchObject({ map: 'west', dir: 'right' });
+  });
+
+  it('has coffee where the player arrives and in front of the last door; a defeat costs the walk from there and no puzzle', () => {
+    expect(below.objects.filter((object) => object.sprite === 'coffee').map((object) => object.id).sort()).toEqual(['deep:j', 'deep:k']);
+    const top = thing('u');
+    expect(routeTo(world, { ...atDoor({ flags: {} }), x: top.x, y: top.y + 1 }, 'deep:k')!.length).toBeLessThanOrEqual(4);
+    const rested = talk(atDoor({ hp: 5 }), 'deep:j');
+    expect(rested.hp).toBe(rested.maxHp);
+    expect(rested.heal).toMatchObject({ map: 'deep' });
+    // Lose to the boss on purpose: one energy, and it always gets a turn.
+    const boss = thing('B');
+    let state = press({ ...rested, x: boss.x, y: boss.y - 1, dir: 'down', items: { coffee: 1, stamp: 4 }, xp: 300, roam: { 'deep:1': { x: 16, y: 2, fromX: 16, fromY: 3, at: 0 }, 'deep:2': { x: 15, y: 4, fromX: 14, fromY: 4, at: 0 } } }, { a: true });
+    for (let i = 0; i < 10 && state.dialogue; i++) state = press(state, { a: true });
+    expect(state.battle?.enemy).toBe('outage');
+    state = { ...state, hp: 1, maxHp: 1 };
+    for (let i = 0; i < 300 && state.battle; i++) state = press(state, { a: true });
+    state = settle(state);
+    expect(state.flags['beat:outage']).toBeUndefined();
+    expect(state).toMatchObject({ map: 'deep', x: rested.heal.x, y: rested.heal.y, xp: 300 });
+    expect(state.items).toEqual({ coffee: 1, stamp: 4 });
+    // The puzzles stay solved and the boulders stay on their plates.
+    expect(state.flags).toMatchObject(solved);
+    expect(state.roam['deep:1']).toMatchObject({ x: 16, y: 2 });
+    expect(routeTo(world, state, 'deep:D')).not.toBeNull();
   });
 });
 
@@ -953,12 +1119,12 @@ describe('none of it is needed', () => {
         const conds = [object.hideWhen, ...object.branches.map((branch) => branch.when)];
         for (const cond of conds) {
           if (!cond) continue;
-          if (cond.level !== undefined) expect(['west:D', 'cave:D'], object.id).toContain(object.id);
+          if (cond.level !== undefined) expect(['west:D', 'deep:D'], object.id).toContain(object.id);
           for (const item of [cond.item, cond.noItem, cond.count?.item]) {
             if (item && extra.includes(item)) expect(object.id).toBe('hills:?');
           }
           for (const flag of [cond.flag, cond.notFlag]) {
-            if (flag && /^(hobby|rally|chest:(prize|cave|east|west)|beat:outage)/.test(flag)) expect(['hills', 'cave', 'east', 'west'], object.id).toContain(map.id);
+            if (flag && /^(hobby|rally|chest:(prize|cave|east|west)|beat:outage|deep:|git:)/.test(flag)) expect(['hills', 'cave', 'deep', 'east', 'west'], object.id).toContain(map.id);
           }
         }
       }
@@ -967,7 +1133,12 @@ describe('none of it is needed', () => {
     const ways = Object.values(world.maps).flatMap((map) =>
       map.objects.flatMap((object) => object.branches.flatMap((branch) => deep(branch.do)).flatMap((action) => ('warp' in action ? [`${object.id}>${action.warp.map}`] : []))),
     );
-    expect(ways.filter((way) => /^(town|academy|office|workshop|library|contact):.*>(east|west|hills|cave)$/.test(way)).sort()).toEqual(['town:(>west', 'town:)>east']);
+    expect(ways.filter((way) => /^(town|academy|office|workshop|library|contact|cafe):.*>(east|west|hills|cave|deep)$/.test(way)).sort()).toEqual(['town:(>west', 'town:)>east']);
+    // And the deep cave hangs on the cave alone: the ladder down, and the ladder out to the road.
+    expect(ways.filter((way) => />deep$/.test(way))).toEqual(['cave:L>deep']);
+    expect(ways.filter((way) => /^deep:/.test(way)).sort()).toEqual(['deep:L>west', 'deep:u>cave']);
+    // The flags of the puzzles are asked for by the deep cave only.
+    expect(Object.values(DEEP_FLAGS)).toHaveLength(4);
   });
 });
 

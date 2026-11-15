@@ -360,7 +360,7 @@ export const MUSIC: NonNullable<World['music']> = {
   boss: 'boss',
   victory: 'victory',
   indoors: 'indoors',
-  maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', cafe: 'cafe' },
+  maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', deep: 'cave', cafe: 'cafe' },
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------

@@ -109,7 +109,7 @@ describe('the cafe in town', () => {
     expect(town.objects.filter((object) => object.sprite === 'coffee')).toHaveLength(0);
     expect(heals(town)).toHaveLength(0);
     const machines = Object.fromEntries(Object.values(world.maps).map((map) => [map.id, map.objects.filter((object) => object.sprite === 'coffee').length]));
-    expect(machines).toEqual({ town: 0, cafe: 0, contact: 0, academy: 1, office: 1, workshop: 1, library: 1, east: 1, west: 1, hills: 1, cave: 2 });
+    expect(machines).toEqual({ town: 0, cafe: 0, contact: 0, academy: 1, office: 1, workshop: 1, library: 1, east: 1, west: 1, hills: 1, cave: 2, deep: 2 });
     expect(heals(cafe).map((object) => object.id)).toEqual(['cafe:B']);
   });
 

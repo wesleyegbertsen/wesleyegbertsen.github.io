@@ -158,9 +158,10 @@ describe('the scores of the game', () => {
   it('has a track for every place, and they are different tunes', () => {
     const names = [MUSIC.title, MUSIC.ending, MUSIC.wild, MUSIC.boss, MUSIC.victory, MUSIC.indoors, ...Object.values(MUSIC.maps)];
     for (const name of names) expect(TRACKS).toHaveProperty([name]);
-    // The two routes share a tune; every other place has its own.
+    // The two routes share a tune, and so do the two floors of the cave; every other place has its own.
     const tunes = [...new Set(names)];
-    expect(tunes.length).toBe(names.length - 1);
+    expect(tunes.length).toBe(names.length - 2);
+    expect(MUSIC.maps.deep).toBe(MUSIC.maps.cave);
     expect(MUSIC.maps.east).toBe(MUSIC.maps.west);
     expect(MUSIC.maps.town).toBeDefined();
     for (const place of ['town', 'east', 'west', 'hills', 'cave']) expect(MUSIC.maps[place], place).toBeDefined();

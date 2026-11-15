@@ -6,7 +6,7 @@ import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
 import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ECONOMY, ENEMIES, FINAL_BOSSES, SHOPS, STAMP } from './battles.ts';
-import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
+import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
  * Who and what is on the maps, and what they say. HOW TO EDIT
@@ -33,6 +33,9 @@ import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, O
  * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
  *   A new hobby needs a line there, a digit on the HILLS map, a picture (scripts/sprites/scenery.mjs) and a name
  *   in STOP_NAMES for the signposts. HILLS_FOLK is what the people of the hills say: a draft too.
+ * - The cave has a second floor, the deep cave, with three puzzles (see DEEP_MAP in maps.ts for the map and the
+ *   rules). DEEP_TEXT is what is said down there: a draft, rewrite it. PUZZLES lists the puzzles for the test
+ *   that solves each of them by playing: when you move a puzzle, keep its entry pointing at the right place.
  * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
  * - After a change run `npm test`: a bot plays the whole game and fails if it can no longer be finished.
  */
@@ -300,6 +303,63 @@ export const countCollectibles = (maps: MapSpec[], item: string): number =>
     (sum, map) => sum + Object.values(map.objects).reduce((inner, object) => inner + Math.max(0, ...object.branches.map((branch) => gives(branch.do, item))), 0),
     0,
   );
+
+// --- the deep cave ----------------------------------------------------------------------------------------------
+
+/** The flags the deep cave sets: the boulders are on their plates, and the three steps of the riddle. */
+export const DEEP_FLAGS = { plates: 'deep:plates', add: 'git:add', commit: 'git:commit', shipped: 'deep:shipped' };
+
+/** What is said in the deep cave. A DRAFT: rewrite it freely. */
+export const DEEP_TEXT = {
+  /** The bricked-up doorway on the first floor, where the last chamber used to be. */
+  bricked: ['A doorway, bricked up. The mortar is still fresh.', 'Chalked on a brick: "INCIDENT ROOM moved. People kept walking in."'],
+  /** The note in the hall of the boulders, and what its gate and its lever say. */
+  boulders: ['A note: "Two plates in the floor, two boulders. Walk into a boulder to push it."', '"Hold both plates down and the gate opens. Stuck? The lever by the way in puts the boulders back."'],
+  platesDown: ['Both plates are down. To the east, a gate rattles open. The boulders settle and will not move again.'],
+  gate: ['An iron gate. It will not move. Something in this hall holds it shut.'],
+  lever: ['You pull the lever. The boulders roll back to where they started.'],
+  leverDone: ['The lever is stuck. The boulders are where they belong.'],
+  /** The note at the slick rock. */
+  slick: ['A note: "Slick rock ahead. One step and you slide until something stops you."', '"The way on is at the far left. Plan the slide before you take it."'],
+  /** The riddle of the pipeline: the note, the three terminals and the gate. */
+  riddle: ['A sticky note: "The gate ships with the code. First stage your work. Then seal it with a message. Then send it off."', '"One wrong step and you start over."'],
+  add: ['$ git add .', 'Staged. A green light comes on: 1 of 3.'],
+  commit: ['$ git commit -m "open the gate"', 'Sealed with a message. A second light comes on: 2 of 3.'],
+  push: ['$ git push', 'Sent off. All three lights are green. To the west, a gate rolls open.'],
+  wrong: (command: string) => [`$ git ${command}`, 'Not in that order. Every light goes out: start over.'],
+  shipped: ['Everything is up to date.'],
+  pipelineGate: ['A steel gate with three dark lights above it. The terminals in this room must have something to do with it.'],
+};
+
+/**
+ * A terminal of the riddle. It is the right one when the step before it is done (`after`) and it has not been
+ * used yet; anything else puts every light out. Once the riddle is solved the terminals only say so.
+ */
+const terminal = (command: string, flag: string, after: string | undefined, right: string[]): ObjectSpec => ({
+  sprite: 'computer',
+  solid: true,
+  trigger: 'interact',
+  under: 'X',
+  branches: [
+    { when: { flag: DEEP_FLAGS.shipped }, do: [{ say: DEEP_TEXT.shipped }] },
+    { when: { ...(after ? { flag: after } : {}), notFlag: flag }, do: [{ flag }, { say: right }] },
+    { do: [{ unflag: [DEEP_FLAGS.add, DEEP_FLAGS.commit] }, { say: DEEP_TEXT.wrong(command) }] },
+  ],
+});
+
+/** A gate across a passage: shut until a flag is set, then gone for good. */
+const gate = (flag: string, shut: string[]): ObjectSpec => ({ sprite: 'gate', solid: true, trigger: 'step', hideWhen: { flag }, branches: [{ do: [{ say: shut }] }] });
+
+/**
+ * The puzzles of the deep cave, for the test that proves each one by playing it (puzzles.test.ts). `from` is
+ * where the player stands when the puzzle begins, `needs` the flags of the puzzles before it, and `goal` what
+ * solves it: a flag that gets set, or a place that is reached.
+ */
+export const PUZZLES: { name: string; from: Spot; needs: string[]; goal: { flag: string } | { at: Spot } }[] = [
+  { name: 'the boulders', from: { map: 'deep', at: 'u', dy: 1 }, needs: [], goal: { flag: DEEP_FLAGS.plates } },
+  { name: 'the slick rock', from: { map: 'deep', at: 'i', dx: -1 }, needs: [DEEP_FLAGS.plates], goal: { at: { map: 'deep', at: 'G', dx: 7 } } },
+  { name: 'the pipeline', from: { map: 'deep', at: 'G', dx: 7 }, needs: [DEEP_FLAGS.plates], goal: { flag: DEEP_FLAGS.shipped } },
+];
 
 // --- the last fight ---------------------------------------------------------------------------------------------
 
@@ -837,13 +897,56 @@ export function buildMaps(data: FsData): BuiltMap[] {
         'I came down here to find the root cause.',
         'That was three sprints ago. Do you know the way out? No, wait, do not tell me. I can feel that I am close.',
       ]),
+      // Where the last chamber used to be: a dead end now.
+      d: thing('scratches', DEEP_TEXT.bricked),
+      // The ladder down. Hard to find on purpose: nothing points to it.
+      L: { sprite: 'hole', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'deep', at: 'u', dy: 1, dir: 'down' }, cue: 'cave' }] }] },
+    },
+  };
+
+  const deep: MapSpec = {
+    id: 'deep',
+    name: 'The Deep Cave',
+    rows: DEEP_MAP,
+    ground: '_',
+    dark: 1,
+    // The boulders: a boulder on each plate opens the first gate, for good.
+    plates: { flag: DEEP_FLAGS.plates, do: [{ say: DEEP_TEXT.platesDown }] },
+    objects: {
+      u: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'cave', at: 'L', dx: -1, dir: 'left' }, cue: 'cave' }] }] },
+      k: coffee(),
+      j: coffee(),
+
+      // 1. The boulders.
+      '1': { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' },
+      '2': { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' },
+      n: thing('notice', DEEP_TEXT.boulders),
+      r: {
+        sprite: 'lever',
+        solid: true,
+        trigger: 'interact',
+        branches: [{ when: { flag: DEEP_FLAGS.plates }, do: [{ say: DEEP_TEXT.leverDone }] }, { do: [{ reset: true }, { say: DEEP_TEXT.lever }] }],
+      },
+      g: gate(DEEP_FLAGS.plates, DEEP_TEXT.gate),
+
+      // 2. The slick rock.
+      i: thing('notice', DEEP_TEXT.slick),
+
+      // 3. The pipeline: add, commit, push.
+      h: thing('notice', DEEP_TEXT.riddle),
+      A: terminal('add .', DEEP_FLAGS.add, undefined, DEEP_TEXT.add),
+      C: terminal('commit', DEEP_FLAGS.commit, DEEP_FLAGS.add, DEEP_TEXT.commit),
+      P: terminal('push', DEEP_FLAGS.shipped, DEEP_FLAGS.commit, DEEP_TEXT.push),
+      G: gate(DEEP_FLAGS.shipped, DEEP_TEXT.pipelineGate),
+
+      // The last chamber.
       D: {
         sprite: 'door',
         solid: true,
         trigger: 'step',
         branches: [
           { when: { level: DEEP_CAVE_LEVEL }, do: [], pass: true },
-          { do: [{ say: [`A heavy door. A red light blinks: "INCIDENT ROOM. Lv ${DEEP_CAVE_LEVEL} and up." The wild things out here are good practice.`] }] },
+          { do: [{ say: [`A heavy door. A red light blinks: "INCIDENT ROOM. Lv ${DEEP_CAVE_LEVEL} and up." The wild things on the floor above are good practice.`] }] },
         ],
       },
       B: boss(
@@ -851,14 +954,14 @@ export function buildMaps(data: FsData): BuiltMap[] {
         ['Every screen in the room is red. A pager goes off. Then another.', `It is ${ENEMIES.outage!.name}!`],
         [{ say: ['The dashboards turn green, one by one. Somewhere, a pager falls silent.'] }],
       ),
-      C: {
+      c: {
         sprite: 'chest',
         spriteWhen: { flag: 'chest:prize', sprite: 'chest-open' },
         solid: true,
         trigger: 'interact',
-        branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. The ladder beside it leads back up.'] }] }],
+        branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. The ladder beside it leads out of the mountain.'] }] }],
       },
-      L: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
+      L: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
     },
   };
 
@@ -870,6 +973,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     { ...hills, legend: OUTDOORS },
     { ...west, legend: OUTDOORS },
     { ...cave, legend: CAVE },
+    { ...deep, legend: CAVE },
     { ...town, legend: OUTDOORS },
     { ...academy, legend: indoors('checker') },
     { ...office, legend: indoors('floor') },

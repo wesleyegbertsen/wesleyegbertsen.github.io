@@ -27,6 +27,8 @@ import type { TileDef } from '../engine/types.ts';
  *   beside it there must be a band of tall grass to walk round it; close every other gap with trees, bushes or
  *   rocks. Tests fail when the way out can be walked dry, when the way back cannot, or when a cell of a route has
  *   no way to both ends.
+ * - The cave has two floors. The ladder down from the first is hidden on purpose: no sign points to it. The floor
+ *   below (DEEP_MAP) holds three puzzles in a row, then the boss and the prize. Its rules are at DEEP_MAP.
  * - The screen shows 10 x 9 cells, so a room of that size needs no scrolling.
  * - A typo (an unknown character, a ragged row) fails `npm test` with a message naming the map and the place.
  * - The name of a map (in story.ts, `name`) is shown on a label at the top of the screen when the player walks
@@ -137,12 +139,23 @@ export function indoors(floor: string): Record<string, TileDef> {
   };
 }
 
-/** The legend of the cave: rock, a floor, and rubble where the wild things hide. */
+/**
+ * The legend of the cave: rock, a floor, and rubble where the wild things hide. The lower half is for the puzzles
+ * of the deep cave.
+ */
 export const CAVE: Record<string, TileDef> = {
   _: { sprite: 'cavefloor', solid: false },
   ',': { sprite: 'rubble', solid: false, grass: true },
   X: { sprite: 'cavewall', solid: true },
   s: { sprite: 'stalagmite', solid: true },
+  // A doorway: it looks like floor, but a boulder cannot be pushed onto it, so the way in and out stays free.
+  '=': { sprite: 'cavefloor', solid: false, road: true },
+  // A pressure plate: a boulder is pushed onto it.
+  o: { sprite: 'plate', solid: false, plate: true },
+  // Slick rock: whoever steps onto it slides on until something stops them.
+  '~': { sprite: 'ice', solid: false, slide: true },
+  // A fire bowl: it stands in the way, and lights the cells around it (2 cells fully, then it fades) in the dark.
+  t: { sprite: 'brazier', solid: true, animated: true, light: 2 },
 };
 
 /**
@@ -263,15 +276,19 @@ export const WEST = [
 /**
  * The cave, dark: rooms and tunnels that branch and meet again. m (on the right) is the way out: you come in
  * walking left. k and j are coffee machines, a is scratched into the rock and b a paper pinned to it, E F G are
- * chests, n someone who lost the way. D is the door to the last chamber (walk up to it), B the boss, C the prize,
- * L a ladder back up. The commas are rubble: wild things hide there, and every way to the door crosses some.
+ * chests, n someone who lost the way. The commas are rubble: wild things hide there.
+ *
+ * L is the ladder down to the deep cave, and it is meant to be hard to find: it lies at the end of a tunnel that
+ * winds away from the far corner of the chest room in the north-west, the furthest dead end from the mouth. No
+ * sign points to it. d is a bricked-up doorway at the end of the short tunnel that goes up from the middle room:
+ * that is where the last chamber used to be. The ladder is right behind that wall, and there is no way through.
  */
 export const CAVE_MAP = [
   'XXXXXXXXXXXXXXXXXXXXXXXX',
-  'XX___FXXXXCXXXXXXXXbXXXX',
-  'XX____XXXXBLXXXXX____EXX',
-  'XXX_XXXXXX_XXXXXXs____XX',
-  'XXX,XXXXXXDXXXXXXXX_XXXX',
+  'XXF___XXX__LXXXXXXXbXXXX',
+  'XX_____X__XXXXXXX____EXX',
+  'XXX_XX,X_XXXXXXXXs____XX',
+  'XXX,XX___XdXXXXXXXX_XXXX',
   'XXX_XXXXXX_XXXXXXXX,XXXX',
   'XX__sXXXs____XXXXaX_XXXX',
   'XX___XXX_,___XXXX____kXX',
@@ -283,6 +300,49 @@ export const CAVE_MAP = [
   'XXX_XX_,__XXXXXX______XX',
   'XXX_________,,____,___XX',
   'XXXXXXG__sXXXXXXs____nXX',
+  'XXXXXXXXXXXXXXXXXXXXXXXX',
+];
+
+/**
+ * The deep cave, below the first floor, dark too. Three puzzles in a row, then the boss. No rubble: nothing
+ * jumps out down here, so a puzzle is never interrupted.
+ *
+ * u (top left) is the ladder back up; you arrive below it. k and j are coffee machines: one where you arrive,
+ * one in front of the last door.
+ *
+ * 1. THE BOULDERS (top right). 1 and 2 are boulders, o the pressure plates, t a fire bowl, s a rock. Walk into a
+ *    boulder to push it a cell on. When a boulder stands on each plate, the gate g opens for good and the
+ *    boulders stay where they are. r is the lever that puts them back (so does climbing the ladder and coming
+ *    down again). = is a doorway: a boulder cannot be pushed onto it. n is a note that explains it.
+ * 2. THE SLICK ROCK (bottom right). ~ is slick rock: one step and you slide on until a rock (s), a fire bowl (t)
+ *    or the wall stops you. You come in at the top right and must get out on the left. i is a note.
+ * 3. THE PIPELINE (bottom, middle). P, A and C are three terminals in the rock: git push, git add, git commit.
+ *    They must be used in the right order (add, commit, push); a wrong one puts all of them out again. h is the
+ *    note with the riddle. Then the gate G opens for good.
+ *
+ * D is the door to the last chamber (walk down into it; level 5 and up), B the boss, c the prize, L a ladder out.
+ *
+ * After a change run `npm test`: for every puzzle a search plays the game itself, press by press, and fails when
+ * the puzzle can no longer be solved or when there is a state it cannot be solved from any more (puzzles.test.ts).
+ * PUZZLES in story.ts says where each puzzle starts and what solves it.
+ */
+export const DEEP_MAP = [
+  'XXXXXXXXXXXXnXXXXXXXXXXX',
+  'XXuXXXXXXX________XXXXXX',
+  'X___kXXXrX_1_t__o_XXXXXX',
+  'X_______===___2___g_XXXX',
+  'X____XXXXX_s___o__X_XXXX',
+  'XXXXXXXXXX________X_XXXX',
+  'XXXXXXXXXXXXXXXXXXX_XXXX',
+  'XXXXXXXXXXXXXXXXXXX_iXXX',
+  'XXXXXXPhAXCXX~~~~~~~~XXX',
+  'XXXXXX_____XX~~~~~~~sXXX',
+  'XXXXXX__t__XXs~~~~~~~XXX',
+  'Xj___G_______~~~~~t~~XXX',
+  'XXDXXX_____XX~ts~~~~~XXX',
+  'XX_XXX_____XX~~~~~~s~XXX',
+  'XXBXXXXXXXXXXXXXXXXXXXXX',
+  'Xc_LXXXXXXXXXXXXXXXXXXXX',
   'XXXXXXXXXXXXXXXXXXXXXXXX',
 ];
 
@@ -383,6 +443,11 @@ export const CONTACT = [
 export const REGIONS: Record<string, { name: string; x: number; y: number; w: number; h: number; holds: string }[]> = {
   // The cobbles around the fountain.
   town: [{ name: 'Fountain Plaza', x: 11, y: 4, w: 9, h: 3, holds: 'F' }],
-  // Behind the heavy door: the boss, the prize and the ladder.
-  cave: [{ name: 'Incident Room', x: 10, y: 1, w: 2, h: 4, holds: 'B' }],
+  // The deep cave: its three puzzle rooms, and behind the heavy door the boss, the prize and the ladder.
+  deep: [
+    { name: 'Boulder Hall', x: 10, y: 1, w: 8, h: 5, holds: '1' },
+    { name: 'Slick Rock', x: 13, y: 7, w: 8, h: 7, holds: 'i' },
+    { name: 'Pipeline Room', x: 6, y: 8, w: 5, h: 6, holds: 'A' },
+    { name: 'Incident Room', x: 1, y: 13, w: 3, h: 3, holds: 'B' },
+  ],
 };

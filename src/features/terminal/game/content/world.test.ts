@@ -318,9 +318,10 @@ describe('the names of places', () => {
     }
   });
 
-  it('names the plaza and the last chamber of the cave', () => {
+  it('names the plaza, and in the deep cave the three puzzle rooms and the last chamber', () => {
     expect(world.maps.town!.areas?.map((area) => area.name)).toEqual(['Fountain Plaza']);
-    expect(world.maps.cave!.areas?.map((area) => area.name)).toEqual(['Incident Room']);
+    expect(world.maps.cave!.areas).toBeUndefined();
+    expect(world.maps.deep!.areas?.map((area) => area.name)).toEqual(['Boulder Hall', 'Slick Rock', 'Pipeline Room', 'Incident Room']);
     // Every cobble of the plaza is in it, and the road past it is not.
     const town = world.maps.town!;
     const fountain = town.objects.find((object) => object.id === 'town:F')!;

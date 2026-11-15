@@ -266,7 +266,7 @@ describe('the gold stars and the errands', () => {
       branch.pass === true || deep(branch.do).some((action) => 'warp' in action || 'badge' in action || 'battle' in action || 'ending' in action || ('give' in action && MAIN_ITEMS.includes(action.give)));
     const optional = (object: GameObject) => object.sprite === 'star';
     // The roads out of town and what lies along them are extra as a whole (regions.test.ts proves that).
-    const EXTRA = ['east', 'hills', 'west', 'cave'];
+    const EXTRA = ['east', 'hills', 'west', 'cave', 'deep'];
     for (const map of Object.values(world.maps)) {
       if (EXTRA.includes(map.id)) continue;
       for (const object of map.objects) {
