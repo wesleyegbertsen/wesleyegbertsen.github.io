@@ -382,4 +382,33 @@ describe('the sound player', () => {
       sound.jingle('fanfare');
     }).not.toThrow();
   });
+
+  it('turns the volume: the master follows at once, within 0 and 1', () => {
+    const { audio, sound } = setup();
+    sound.unlock();
+    sound.setVolume(0.5);
+    expect(audio.master.gain.value).toBe(0.5);
+    expect(audio.master.gain.last).toBe(0.5);
+    sound.setVolume(0);
+    expect(audio.master.gain.value).toBe(0);
+    sound.setVolume(7);
+    expect(audio.master.gain.value).toBe(1);
+    sound.setVolume(-1);
+    expect(audio.master.gain.value).toBe(0);
+  });
+
+  it('keeps the volume apart from the mute switch: off stays silent, on comes back at the new volume', () => {
+    const { audio, sound } = setup();
+    sound.unlock();
+    sound.setMuted(true);
+    sound.setVolume(0.4);
+    expect(audio.master.gain.value).toBe(0);
+    sound.setMuted(false);
+    expect(audio.master.gain.value).toBe(0.4);
+    // And a volume set before there is a context is the one it starts with.
+    const later = setup();
+    later.sound.setVolume(0.1);
+    later.sound.unlock();
+    expect(later.audio.master.gain.value).toBe(0.1);
+  });
 });

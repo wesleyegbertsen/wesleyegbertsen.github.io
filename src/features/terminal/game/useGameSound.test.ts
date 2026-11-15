@@ -6,7 +6,7 @@ import { initialGame } from './engine/engine.ts';
 import { play, testWorld } from './engine/testWorld.ts';
 import type { World } from './engine/types.ts';
 import { createSoundStore } from './soundStore.ts';
-import { VOLUME, useGameSound } from './useGameSound.ts';
+import { MAX_GAIN, VOLUME, gainFor, useGameSound } from './useGameSound.ts';
 
 const world: World = {
   ...testWorld,
@@ -187,5 +187,72 @@ describe('useGameSound', () => {
 
     expect(() => renderHook(() => useGameSound({ world, store }))).not.toThrow();
     expect(made).toHaveLength(1);
+  });
+
+  it('maps the volume wheel to the master: half way is the old loudness, the top is twice that, the bottom is silence', () => {
+    expect(gainFor(5)).toBe(0.25);
+    expect(gainFor(10)).toBe(0.5);
+    expect(gainFor(0)).toBe(0);
+    expect(gainFor(99)).toBe(MAX_GAIN);
+    expect(VOLUME).toBe(0.25);
+    for (let step = 1; step <= 10; step++) expect(gainFor(step)).toBeGreaterThan(gainFor(step - 1));
+  });
+
+  it('turns the wheel a step at a time, keeps it in the store, and stops at both ends', () => {
+    const { audio, result, store } = setup();
+    expect(result.current.volume).toBe(5);
+    let now = 0;
+    act(() => {
+      now = result.current.turn(1);
+    });
+    expect(now).toBe(6);
+    expect(result.current.volume).toBe(6);
+    expect(store.volume()).toBe(6);
+    expect(audio().master.gain.value).toBeCloseTo(0.3, 6);
+    act(() => {
+      for (let i = 0; i < 9; i++) now = result.current.turn(1);
+    });
+    expect(now).toBe(10);
+    expect(audio().master.gain.value).toBe(0.5);
+    act(() => {
+      for (let i = 0; i < 14; i++) now = result.current.turn(-1);
+    });
+    expect(now).toBe(0);
+    expect(audio().master.gain.value).toBe(0);
+  });
+
+  it('keeps the wheel and the mute switch apart, and starts a new visit at the level the session remembers', () => {
+    const { audio, result, store } = setup();
+    act(() => void result.current.toggle());
+    act(() => void result.current.turn(3));
+    expect(store.volume()).toBe(8);
+    expect(store.muted()).toBe(true);
+    expect(audio().master.gain.value).toBe(0);
+    act(() => void result.current.toggle());
+    expect(audio().master.gain.value).toBeCloseTo(0.4, 6);
+
+    const made: FakeAudio[] = [];
+    const remembered = createSoundStore(false, 2);
+    renderHook(() =>
+      useGameSound({
+        world,
+        store: remembered,
+        context: () => {
+          made.push(new FakeAudio({}));
+          return made.at(-1)!.as();
+        },
+      }),
+    );
+    expect(made[0]!.master.gain.value).toBeCloseTo(0.1, 6);
+  });
+
+  it('plays the level-up jingle and a blip for a turn of the wheel', () => {
+    const { audio, result } = setup();
+    const before = audio().sources.length;
+    act(() => result.current.play(['louder']));
+    expect(audio().sources.length).toBe(before + EFFECTS.louder!.tones.length);
+    const then = audio().sources.length;
+    act(() => result.current.play(['levelup']));
+    expect(audio().sources.length).toBeGreaterThan(then + 5);
   });
 });

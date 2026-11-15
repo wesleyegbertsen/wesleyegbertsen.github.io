@@ -64,6 +64,8 @@ export type Sound = {
   jingle(id: string): void;
   effect(id: string): void;
   setMuted(muted: boolean): void;
+  /** The master volume, 0 to 1. It is kept while the sound is off and applies again when it comes back. */
+  setVolume(volume: number): void;
   /** The tab is hidden: everything freezes. `resume` carries on where it was. */
   pause(): void;
   resume(): void;
@@ -94,7 +96,7 @@ type Playing = { id: string; sequencer: Sequencer; startAt: number; gain: GainLi
 
 export function createSound(options: SoundOptions): Sound {
   const timer = options.timer ?? defaultTimer;
-  const volume = options.volume ?? MASTER;
+  let volume = options.volume ?? MASTER;
   let ctx: AudioLike | null = null;
   let master: GainLike | null = null;
   let musicBus: GainLike | null = null;
@@ -332,6 +334,17 @@ export function createSound(options: SoundOptions): Sound {
       });
       // Nothing is made while muted; the tune starts afresh when the sound comes back.
       start();
+    },
+
+    setVolume(next) {
+      volume = Math.max(0, Math.min(1, next));
+      if (!ctx || !master || muted) return;
+      const now = ctx.currentTime;
+      safely(() => {
+        master!.gain.cancelScheduledValues(now);
+        master!.gain.setValueAtTime(volume, now);
+        master!.gain.value = volume;
+      });
     },
 
     pause() {

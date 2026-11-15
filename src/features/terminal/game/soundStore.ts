@@ -1,25 +1,42 @@
 /**
- * Whether the game's sound is off. A tiny store that lives in the terminal's session, beside the game's progress:
- * in memory only, so the choice outlasts leaving the game and visiting another page, and a reload starts with
- * the sound on again. Nothing is written to storage.
+ * Whether the game's sound is off, and how loud it is. A tiny store that lives in the terminal's session, beside
+ * the game's progress: in memory only, so the choices outlast leaving the game and visiting another page, and a
+ * reload starts with the sound on at half volume again. Nothing is written to storage.
  */
 export type SoundStore = {
   /** True when the sound is off. */
   muted(): boolean;
   setMuted(muted: boolean): void;
+  /** The volume wheel: a step from 0 (silent) to VOLUME_MAX (loudest). It keeps its place while the sound is off. */
+  volume(): number;
+  /** Sets the wheel, kept within its range. */
+  setVolume(step: number): void;
   /** Calls `listener` after every change; returns how to stop. */
   subscribe(listener: () => void): () => void;
 };
 
-export function createSoundStore(muted = false): SoundStore {
+/** The wheel has ten steps of 10%; it starts in the middle. */
+export const VOLUME_MAX = 10;
+export const VOLUME_START = 5;
+
+export function createSoundStore(muted = false, volume = VOLUME_START): SoundStore {
   let off = muted;
+  let step = volume;
   const listeners = new Set<() => void>();
+  const tell = () => listeners.forEach((listener) => listener());
   return {
     muted: () => off,
     setMuted(next) {
       if (next === off) return;
       off = next;
-      listeners.forEach((listener) => listener());
+      tell();
+    },
+    volume: () => step,
+    setVolume(next) {
+      const within = Math.max(0, Math.min(VOLUME_MAX, Math.round(next)));
+      if (within === step) return;
+      step = within;
+      tell();
     },
     subscribe(listener) {
       listeners.add(listener);

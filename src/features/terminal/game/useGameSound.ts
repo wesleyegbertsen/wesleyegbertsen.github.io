@@ -3,10 +3,14 @@ import { trackFor } from './audio/director.ts';
 import { createSound, type AudioLike, type Sound } from './audio/player.ts';
 import { EFFECTS, JINGLES, TRACKS } from './content/music.ts';
 import type { Cue, GameState, World } from './engine/types.ts';
-import type { SoundStore } from './soundStore.ts';
+import { VOLUME_MAX, VOLUME_START, type SoundStore } from './soundStore.ts';
 
-/** The master volume: modest, the game is a guest on the page. */
-export const VOLUME = 0.25;
+/** The master gain with the wheel all the way up. Half way (where it starts) is modest: the game is a guest on the page. */
+export const MAX_GAIN = 0.5;
+/** The master gain for a step of the volume wheel: 0 is silent, the middle is 0.25, the top is 0.5. */
+export const gainFor = (step: number) => (Math.max(0, Math.min(VOLUME_MAX, step)) / VOLUME_MAX) * MAX_GAIN;
+/** The master volume the game starts at. */
+export const VOLUME = gainFor(VOLUME_START);
 
 /** The browser's AudioContext, or null where there is none (an old browser, a test). */
 function browserContext(): AudioLike | null {
@@ -26,15 +30,16 @@ type Options = {
 /**
  * The game's sound, for as long as the game is on the page: one player (and at most one AudioContext) per visit,
  * closed when the game goes away, frozen while the tab is hidden. The component tells it what happens (`follow`
- * a state for the music, `play` the engine's cues); `toggle` is the mute switch.
+ * a state for the music, `play` the engine's cues); `toggle` is the mute switch and `turn` the volume wheel.
  */
 export function useGameSound({ world, store, context = browserContext }: Options) {
   const player = useRef<Sound | null>(null);
   const wanted = useRef<string | null>(null);
   const muted = useSyncExternalStore(store.subscribe, store.muted);
+  const volume = useSyncExternalStore(store.subscribe, store.volume);
 
   useEffect(() => {
-    const sound = createSound({ context, tracks: TRACKS, effects: EFFECTS, volume: VOLUME, muted: store.muted() });
+    const sound = createSound({ context, tracks: TRACKS, effects: EFFECTS, volume: gainFor(store.volume()), muted: store.muted() });
     player.current = sound;
     sound.music(wanted.current);
     // `play` and Enter were a gesture, so the browser lets the sound start; a key or a touch in the game asks again.
@@ -79,5 +84,15 @@ export function useGameSound({ world, store, context = browserContext }: Options
     return off;
   }, [store]);
 
-  return useMemo(() => ({ muted, follow, play, unlock, toggle }), [muted, follow, play, unlock, toggle]);
+  /** Turns the volume wheel by so many steps, and returns where it is now (0 to VOLUME_MAX). */
+  const turn = useCallback(
+    (steps: number) => {
+      store.setVolume(store.volume() + steps);
+      player.current?.setVolume(gainFor(store.volume()));
+      return store.volume();
+    },
+    [store],
+  );
+
+  return useMemo(() => ({ muted, volume, follow, play, unlock, toggle, turn }), [muted, volume, follow, play, unlock, toggle, turn]);
 }

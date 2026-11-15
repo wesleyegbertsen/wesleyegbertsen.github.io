@@ -165,11 +165,11 @@ describe('Game', () => {
   it('names the M key in its label and lists it with the state of the sound', async () => {
     const { game, user } = setup(started());
     expect(game.getAttribute('aria-label')).toMatch(/M to switch the sound off or on/);
-    expect(screen.getByText('Sound: on')).toBeInTheDocument();
+    expect(screen.getByText('Sound: on, 50%')).toBeInTheDocument();
     expect(game).toHaveAttribute('data-sound', 'on');
     await user.keyboard('m');
-    expect(screen.getByText('Sound: off')).toBeInTheDocument();
-    expect(screen.queryByText('Sound: on')).toBeNull();
+    expect(screen.getByText('Sound: off, 50%')).toBeInTheDocument();
+    expect(screen.queryByText('Sound: on, 50%')).toBeNull();
   });
 
   it('switches the sound off and on with M, says so politely, and remembers it in the session store', async () => {
@@ -202,7 +202,7 @@ describe('Game', () => {
   it('opens with the sound off when the session says so', () => {
     const { game } = setup(started(), false, true);
     expect(game).toHaveAttribute('data-sound', 'off');
-    expect(screen.getByText('Sound: off')).toBeInTheDocument();
+    expect(screen.getByText('Sound: off, 50%')).toBeInTheDocument();
   });
 
   it('has a Sound button on touch devices only, pressed while the sound is on', async () => {
@@ -285,5 +285,96 @@ describe('Game', () => {
     screen.getByRole('button', { name: 'Start' }).focus();
     await user.keyboard(' ');
     expect(game).toHaveAttribute('data-menu', 'items');
+  });
+
+  it('has a volume row in the Start menu: left and right turn the wheel, and say so politely', async () => {
+    const { game, sound, user } = setup(started());
+    const status = screen.getByRole('status');
+    expect(game).toHaveAttribute('data-volume', '50');
+    expect(game.getAttribute('aria-label')).toMatch(/volume row/);
+    await user.keyboard('p{ArrowDown}');
+    expect(game).toHaveAttribute('data-menu', 'items');
+    expect(game).toHaveAttribute('data-row', 'volume');
+    expect(status).toHaveTextContent('Volume. Left and right change it.');
+    await user.keyboard('{ArrowRight}');
+    expect(sound.volume()).toBe(6);
+    expect(game).toHaveAttribute('data-volume', '60');
+    expect(status).toHaveTextContent('Volume 60%');
+    expect(screen.getByText('Sound: on, 60%')).toBeInTheDocument();
+    await user.keyboard('{ArrowLeft}{ArrowLeft}z');
+    expect(sound.volume()).toBe(4);
+    expect(status).toHaveTextContent('Volume 40%');
+    // Still the bag: the tab did not change, and M still works there, apart from the wheel.
+    expect(game).toHaveAttribute('data-menu', 'items');
+    await user.keyboard('m');
+    expect(sound.muted()).toBe(true);
+    expect(sound.volume()).toBe(4);
+    expect(game).toHaveAttribute('data-sound', 'off');
+    await user.keyboard('{ArrowRight}');
+    expect(sound.volume()).toBe(5);
+    expect(sound.muted()).toBe(true);
+    await user.keyboard('{ArrowUp}{ArrowRight}');
+    expect(game).toHaveAttribute('data-row', '');
+    expect(game).toHaveAttribute('data-menu', 'badges');
+    expect(sound.volume()).toBe(5);
+  });
+
+  it('stops the wheel at 0% and at 100%', async () => {
+    const { game, sound, user } = setup(started());
+    await user.keyboard('p{ArrowDown}');
+    for (let i = 0; i < 7; i++) await user.keyboard('{ArrowRight}');
+    expect(sound.volume()).toBe(10);
+    expect(game).toHaveAttribute('data-volume', '100');
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 100%');
+    for (let i = 0; i < 12; i++) await user.keyboard('{ArrowLeft}');
+    expect(sound.volume()).toBe(0);
+    expect(game).toHaveAttribute('data-volume', '0');
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 0%');
+  });
+
+  it('turns the wheel with the D-pad on touch devices', () => {
+    const { game, sound } = setup(started(), true);
+    const tap = (name: string) => {
+      fireEvent.pointerDown(screen.getByRole('button', { name }));
+      fireEvent.pointerUp(screen.getByRole('button', { name }));
+    };
+    tap('Start');
+    tap('Down');
+    expect(game).toHaveAttribute('data-row', 'volume');
+    tap('Right');
+    tap('Right');
+    expect(sound.volume()).toBe(7);
+    expect(game).toHaveAttribute('data-volume', '70');
+    tap('Left');
+    expect(sound.volume()).toBe(6);
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 60%');
+  });
+
+  it('makes the wheel audible: the master gain follows it', async () => {
+    const made = stubAudio();
+    const { user } = setup(started());
+    expect(made[0]!.master.gain.value).toBe(0.25);
+    await user.keyboard('p{ArrowDown}');
+    for (let i = 0; i < 5; i++) await user.keyboard('{ArrowRight}');
+    expect(made[0]!.master.gain.value).toBe(0.5);
+    await user.keyboard('{ArrowLeft}');
+    expect(made[0]!.master.gain.value).toBeCloseTo(0.45, 6);
+  });
+
+  it('shows the level, the XP and the offer of a new move through data attributes', async () => {
+    const { game, user } = setup({ ...started(), level: 3, xp: 27, learn: { move: 'nap', cursor: 0 } });
+    expect(game).toHaveAttribute('data-level', '3');
+    expect(game).toHaveAttribute('data-xp', '27');
+    expect(game).toHaveAttribute('data-learn', 'nap');
+    await user.keyboard('x');
+    expect(game).toHaveAttribute('data-learn', '');
+    expect(screen.getByRole('status')).toHaveTextContent('You keep your moves.');
+  });
+
+  it('shows the level of the enemy in a battle', async () => {
+    const { game, user } = setup(started());
+    await user.keyboard('{ArrowDown}{ArrowRight}');
+    expect(game).toHaveAttribute('data-battle', 'rat');
+    expect(game).toHaveAttribute('data-foe-level', '2');
   });
 });

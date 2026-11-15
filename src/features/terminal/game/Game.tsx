@@ -36,14 +36,14 @@ const BUTTONS: Record<string, Button> = {
   H: 'select',
 };
 
-/** The keyboard, as the list beside the screen shows it. The sound line shows whether it is on. */
-const keys = (muted: boolean) =>
+/** The keyboard, as the list beside the screen shows it. The sound line shows whether it is on and how loud. */
+const keys = (muted: boolean, volume: number) =>
   [
     ['Walk', 'Arrows or WASD'],
     ['A: talk, confirm', 'Z, Enter or Space'],
     ['B: back', 'X or Backspace'],
-    ['Start: bag / Select: hint', 'P / H'],
-    [`Sound: ${muted ? 'off' : 'on'}`, 'M'],
+    ['Start: bag, volume / Select: hint', 'P / H'],
+    [`Sound: ${muted ? 'off' : 'on'}, ${volume * 10}%`, 'M'],
     ['Leave', 'Esc or Q'],
   ] as const;
 
@@ -83,16 +83,16 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
   const shown = useRef('');
   const cueCount = useRef(0);
 
-  const paint = (state: GameState, muted = soundStore.muted()) => {
+  const paint = (state: GameState, muted = soundStore.muted(), volume = soundStore.volume()) => {
     const ctx = sheets && canvasRef.current?.getContext('2d');
-    if (ctx) drawGame(ctx, sheets, state, world, { muted });
+    if (ctx) drawGame(ctx, sheets, state, world, { muted, volume });
   };
   const onFrame = (state: GameState) => {
     paint(state);
     setFinished(state.finished);
     const music = sound.follow(state) ?? '';
     const root = focusRef.current;
-    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.menu?.tab, state.badges.length, state.hp, state.finished, music].join('|');
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.row, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -104,7 +104,12 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
         dir: state.dir,
         dialogue: String(!!state.dialogue),
         battle: state.battle?.enemy ?? '',
+        foeLevel: state.battle ? String(state.battle.level) : '',
         menu: state.menu?.tab ?? '',
+        row: state.menu?.row ?? '',
+        learn: state.learn?.move ?? '',
+        level: String(state.level),
+        xp: String(state.xp),
         badges: String(state.badges.length),
         hp: String(state.hp),
         finished: String(state.finished),
@@ -118,6 +123,13 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
     setStatus((old) => ({ text, again: old.text === text && !old.again }));
   };
   const onCues = (cues: Cue[]) => {
+    // The volume row of the Start menu: the game only says "quieter" or "louder"; the wheel is turned here.
+    for (const cue of cues) {
+      if (cue !== 'quieter' && cue !== 'louder') continue;
+      const volume = sound.turn(cue === 'louder' ? 1 : -1);
+      onEvents([{ kind: 'menu', text: `Volume ${volume * 10}%` }]);
+      if (storeRef.current) paint(storeRef.current, soundStore.muted(), volume);
+    }
     sound.play(cues);
     // For the browser tests: which sound was asked for last, and how many so far.
     const root = focusRef.current;
@@ -217,9 +229,10 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a volume row under its list: left and right change it."
       tabIndex={0}
       data-sound={sound.muted ? 'off' : 'on'}
+      data-volume={sound.volume * 10}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
       onPointerDown={sound.unlock}
@@ -299,7 +312,7 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
               </div>
             ) : (
               <dl className={styles.keys}>
-                {keys(sound.muted).map(([what, key]) => (
+                {keys(sound.muted, sound.volume).map(([what, key]) => (
                   <div key={key}>
                     <dt>{what}</dt>
                     <dd>{key}</dd>

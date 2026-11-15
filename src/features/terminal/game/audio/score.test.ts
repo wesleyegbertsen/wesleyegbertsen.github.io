@@ -3,7 +3,7 @@ import type { Cue } from '../engine/types.ts';
 import { createSequencer, flatten, frequencyOf, parseVoice, stepSeconds, trackSteps, type Track } from './score.ts';
 
 // Written as a record so that a new cue in the engine is a type error here until it is listed.
-const CUE_LIST = { cursor: true, confirm: true, cancel: true, blip: true, door: true, item: true, star: true, badge: true, bump: true, heal: true, hit: true, hurt: true, miss: true, faint: true, low: true, run: true, encounter: true } satisfies Record<Cue, true>;
+const CUE_LIST = { cursor: true, confirm: true, cancel: true, blip: true, door: true, item: true, star: true, badge: true, bump: true, heal: true, hit: true, hurt: true, miss: true, faint: true, low: true, run: true, encounter: true, levelup: true, quieter: true, louder: true } satisfies Record<Cue, true>;
 const CUES = Object.keys(CUE_LIST) as Cue[];
 
 const tune = (notes: string, extra: Partial<Track> = {}): Track => ({ bpm: 150, loop: false, voices: [{ wave: 'pulse', volume: 0.5, notes }], ...extra });
@@ -156,10 +156,21 @@ describe('the scores of the game', () => {
   it('has a track for every place, and they are different tunes', () => {
     const names = [MUSIC.title, MUSIC.ending, MUSIC.wild, MUSIC.boss, MUSIC.victory, MUSIC.indoors, ...Object.values(MUSIC.maps)];
     for (const name of names) expect(TRACKS).toHaveProperty([name]);
-    expect(new Set(names).size).toBe(names.length);
+    // The two routes share a tune; every other place has its own.
+    const tunes = [...new Set(names)];
+    expect(tunes.length).toBe(names.length - 1);
+    expect(MUSIC.maps.east).toBe(MUSIC.maps.west);
     expect(MUSIC.maps.town).toBeDefined();
-    const melodies = names.map((name) => TRACKS[name]!.voices[0]!.notes);
-    expect(new Set(melodies).size).toBe(names.length);
+    for (const place of ['town', 'east', 'west', 'hills', 'cave']) expect(MUSIC.maps[place], place).toBeDefined();
+    expect(new Set(['town', 'hills', 'cave', 'east'].map((place) => MUSIC.maps[place])).size).toBe(4);
+    const melodies = tunes.map((name) => TRACKS[name]!.voices[0]!.notes);
+    expect(new Set(melodies).size).toBe(tunes.length);
+    // The cave is dark and sparse: slow, and its melody rests for a good part of the time.
+    const cave = TRACKS[MUSIC.maps.cave!]!;
+    expect(cave.bpm).toBeLessThan(TRACKS[MUSIC.maps.town!]!.bpm);
+    const melody = parseVoice(cave.voices[0]!.notes);
+    const sounding = melody.notes.reduce((sum, note) => sum + note.steps, 0);
+    expect(sounding / melody.steps).toBeLessThan(0.7);
     for (const name of [MUSIC.title, MUSIC.ending, MUSIC.wild, MUSIC.boss, MUSIC.indoors, MUSIC.maps.town!]) expect(TRACKS[name]!.loop).toBe(true);
     expect(TRACKS[MUSIC.victory]!.loop).toBe(false);
   });
@@ -183,6 +194,7 @@ describe('the scores of the game', () => {
       }
     }
     expect(JINGLES.badge).toBe('badge');
+    expect(JINGLES.levelup).toBe('levelup');
     // The quiet ones stay quiet: the bump and the typewriter must not nag.
     expect(EFFECTS.blip!.tones[0]!.volume).toBeLessThanOrEqual(0.1);
     expect(EFFECTS.bump!.gap).toBeGreaterThanOrEqual(0.2);

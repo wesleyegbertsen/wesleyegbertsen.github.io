@@ -13,7 +13,8 @@ import type { Cue, World } from '../engine/types.ts';
  * - `loop: true` starts again at the end; `loopFrom` (in steps) skips an intro the second time round.
  * - `backing()` writes the bass, the chords and the drums from a chord per bar (`F+G` is two chords in one bar),
  *   so a new tune only needs a melody and its chords.
- * - MUSIC says which track plays where. A map that is not listed plays `indoors`.
+ * - MUSIC says which track plays where: the town, the routes, Hobby Hills and the cave have their own tune. A map
+ *   that is not listed plays `indoors`.
  * - EFFECTS are the short sounds, one per cue of the engine (see `Cue` in engine/types.ts): each is a few tones
  *   with a start (`at`, seconds), a pitch (`from`, sliding to `to`), a length and a volume. For noise, `from` and
  *   `to` are how bright it is (1 is hiss, 0.1 is rumble). `gap` is the least time between two of the same.
@@ -128,6 +129,70 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /** The routes out of town: a march with a spring in its step. */
+  route: {
+    bpm: 144,
+    loop: true,
+    voices: [
+      lead([
+        'G4:2 B4:2 D5:4 G5:4 D5:4',
+        'E5:2 G5:2 B5:4 A5:2 G5:2 E5:4',
+        'C5:2 E5:2 G5:4 C6:4 G5:4',
+        'D5:2 F#5:2 A5:4 D6:6 -:2',
+        'G5:4 B5:2 D6:2 B5:4 G5:4',
+        'E5:4 G5:2 B5:2 G5:4 E5:4',
+        'C6:2 B5:2 A5:2 G5:2 F#5:2 A5:2 D6:4',
+        'G5:8 D5:4 -:4',
+      ]),
+      ...backing('G Em C D G Em C+D G', { bass: 'pump', chords: 'eighths', drums: STEADY }),
+    ],
+  },
+
+  /** Hobby Hills: unhurried, on five notes, like a tune from a tea house. */
+  hills: {
+    bpm: 92,
+    loop: true,
+    voices: [
+      lead(
+        [
+          'E5:4 F5:2 E5:2 C5:4 B4:4',
+          'A4:6 B4:2 C5:8',
+          'E5:4 F5:2 E5:2 A5:4 E5:4',
+          'F5:6 E5:2 C5:8',
+          'B4:4 C5:2 E5:2 F5:4 E5:4',
+          'C5:6 B4:2 A4:8',
+          'E5:2 F5:2 A5:4 F5:2 E5:2 C5:4',
+          'A4:12 -:4',
+        ],
+        0.36,
+      ),
+      ...backing('Am F Am F Em Am F+Em Am', { bass: 'hold', chords: 'quarters' }),
+    ],
+  },
+
+  /** The cave: dark and sparse. A low drone, a few notes that do not resolve, a drip now and then. */
+  cave: {
+    bpm: 72,
+    loop: true,
+    voices: [
+      lead(
+        [
+          'E4:4 -:4 G4:2 F#4:2 -:4',
+          'B3:8 -:8',
+          'E4:4 -:4 Bb4:2 A4:2 -:4',
+          'F#4:8 -:8',
+          '-:8 E5:2 B4:2 G4:4',
+          'F4:6 E4:2 -:8',
+          'E4:2 -:2 E4:2 -:2 G4:4 F#4:4',
+          'E4:12 -:4',
+        ],
+        0.26,
+      ),
+      { wave: 'triangle', volume: 0.55, notes: 'E2:16 | E2:16 | C2:16 | B1:16 | E2:16 | F2:16 | C2:8 B1:8 | E2:16' },
+      { wave: 'noise', volume: 0.12, notes: 'h -:15 | -:16 | -:8 h -:7 | -:16 | h -:15 | -:16 | -:12 h -:3 | -:16' },
+    ],
+  },
+
   /** Inside the buildings: slower, softer, no drums. */
   indoors: {
     bpm: 96,
@@ -213,6 +278,17 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /** A new level: one rising bar over the music. */
+  levelup: {
+    bpm: 150,
+    loop: false,
+    voices: [
+      lead(['G5 B5 D6 G6 B6:2 G6 B6 D7:6 -:2'], 0.45),
+      { wave: 'thin', volume: 0.25, notes: 'D5 G5 B5 D6 G6:2 D6 G6 B6:6 -:2' },
+      { wave: 'triangle', volume: 0.6, notes: 'G3:6 D4:2 G4:6 -:2' },
+    ],
+  },
+
   /** The ending: warm and unhurried. */
   ending: {
     bpm: 100,
@@ -241,7 +317,7 @@ export const MUSIC: NonNullable<World['music']> = {
   boss: 'boss',
   victory: 'victory',
   indoors: 'indoors',
-  maps: { town: 'town' },
+  maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave' },
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------
@@ -267,10 +343,13 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   faint: { tones: [beep(620, 0.5, 0.3, 0, 70), hiss(0.2, 0.3, 0.2, 0.3, 0.05)] },
   low: { tones: [beep(1000, 0.07, 0.2, 0.25), beep(1000, 0.07, 0.2, 0.42)] },
   run: { tones: [beep(400, 0.05, 0.25), beep(600, 0.05, 0.25, 0.05), beep(800, 0.05, 0.25, 0.1), beep(1200, 0.08, 0.25, 0.15)] },
+  // The volume wheel: one step down, one step up. They sound at the new volume, so the step can be heard.
+  quieter: { tones: [beep(740, 0.05, 0.25), beep(587, 0.07, 0.25, 0.05)] },
+  louder: { tones: [beep(740, 0.05, 0.25), beep(988, 0.07, 0.25, 0.05)] },
   encounter: {
     tones: [hiss(0.1, 0.45, 0.3, 0, 1), beep(300, 0.15, 0.25, 0, 1200), beep(300, 0.15, 0.25, 0.15, 1200), beep(300, 0.2, 0.25, 0.3, 1600)],
   },
 };
 
 /** Cues that play a track of TRACKS once, over the music, instead of an effect. */
-export const JINGLES: Partial<Record<Cue, string>> = { badge: 'badge' };
+export const JINGLES: Partial<Record<Cue, string>> = { badge: 'badge', levelup: 'levelup' };
