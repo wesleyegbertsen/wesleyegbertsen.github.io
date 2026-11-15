@@ -102,12 +102,12 @@ export class Pilot {
     const game = gameOf(this.page);
     const offered = async () => (await game.getAttribute('data-learn')) !== '';
     const busy = async () => (await game.getAttribute('data-battle')) !== '' || (await game.getAttribute('data-dialogue')) === 'true' || (await offered());
-    for (let i = 0; i < 200 && (await busy()); i++) {
+    for (let i = 0; i < 600 && (await busy()); i++) {
       if (untilOffer && (await offered())) break;
       await this.page.keyboard.press('z');
     }
     if (!untilOffer) expect(await busy()).toBe(false);
-    for (let i = 0; i < 200 && (this.state.battle || this.state.dialogue || this.state.learn); i++) {
+    for (let i = 0; i < 600 && (this.state.battle || this.state.dialogue || this.state.learn); i++) {
       if (untilOffer && this.state.learn) break;
       this.sim({ a: true });
     }

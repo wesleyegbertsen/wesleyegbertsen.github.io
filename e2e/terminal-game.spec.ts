@@ -218,9 +218,20 @@ test.describe('the adventure in the terminal', () => {
     await pilot.goTo('library:m');
     await expect(game(page)).toHaveAttribute('data-badges', '4');
     await pilot.goTo('town:P');
+    // Wesley is the final boss: three battles in a row, and only then the contact details.
     await pilot.goTo('contact:H');
     await pilot.press('a');
     await pilot.read();
+    await expect(game(page)).toHaveAttribute('data-battle', 'interview');
+    await expect(game(page)).toHaveAttribute('data-music', 'final');
+    await expect(status(page)).toHaveText('JOB INTERVIEW wants to battle!');
+    await expect(game(page)).toHaveAttribute('data-finished', 'false');
+    const met = new Set<string>();
+    for (let i = 0; i < 600 && (await game(page).getAttribute('data-finished')) !== 'true'; i++) {
+      met.add((await game(page).getAttribute('data-battle')) ?? '');
+      await page.keyboard.press('z');
+    }
+    expect([...met].filter(Boolean)).toEqual(['interview', 'review', 'impostor']);
 
     await expect(game(page)).toHaveAttribute('data-finished', 'true');
     await expect(game(page)).toContainText(profile.links.email);

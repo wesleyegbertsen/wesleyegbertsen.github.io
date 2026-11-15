@@ -7,7 +7,7 @@ import { Pilot, gameOf as game } from './pilot.ts';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Command' });
 const status = (page: Page) => page.getByRole('status');
-const VOLUME = 0.25;
+const VOLUME = 0.125;
 
 async function run(page: Page, line: string) {
   await input(page).fill(line);

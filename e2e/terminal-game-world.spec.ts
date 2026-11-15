@@ -43,14 +43,14 @@ async function touch(page: Page, name: string) {
 }
 
 test.describe('the volume wheel', () => {
-  test('starts at 50%, turns with left and right on the volume row of the Start menu, and says so', async ({ page }) => {
+  test('starts at 50%, turns with left and right on the volume row of the Settings tab, and says so', async ({ page }) => {
     const { pilot, errors } = await play(page);
     await pilot.start();
     await expect(game(page)).toHaveAttribute('data-volume', '50');
-    expect(await master(page)).toBe(0.25);
+    expect(await master(page)).toBe(0.125);
 
     await pilot.press('start');
-    await pilot.press('down');
+    await pilot.press('left');
     await pilot.press('down');
     await expect(game(page)).toHaveAttribute('data-row', 'volume');
     await expect(status(page)).toHaveText('Volume. Left and right change it.');
@@ -58,19 +58,19 @@ test.describe('the volume wheel', () => {
     await pilot.press('right');
     await expect(game(page)).toHaveAttribute('data-volume', '60');
     await expect(status(page)).toHaveText('Volume 60%');
-    expect(await master(page)).toBeCloseTo(0.3, 6);
+    expect(await master(page)).toBeCloseTo(0.15, 6);
 
     for (let i = 0; i < 6; i++) await pilot.press('right');
     await expect(game(page)).toHaveAttribute('data-volume', '100');
     await expect(status(page)).toHaveText('Volume 100%');
-    expect(await master(page)).toBe(0.5);
+    expect(await master(page)).toBe(0.25);
 
     for (let i = 0; i < 12; i++) await pilot.press('left');
     await expect(game(page)).toHaveAttribute('data-volume', '0');
     await expect(status(page)).toHaveText('Volume 0%');
     expect(await master(page)).toBe(0);
-    // Still the bag: left and right did not switch the tab.
-    await expect(game(page)).toHaveAttribute('data-menu', 'items');
+    // Still the settings: left and right did not switch the tab.
+    await expect(game(page)).toHaveAttribute('data-menu', 'settings');
     expect(errors).toEqual([]);
   });
 
@@ -78,10 +78,10 @@ test.describe('the volume wheel', () => {
     const { pilot } = await play(page);
     await pilot.start();
     await pilot.press('start');
+    await pilot.press('left');
     await pilot.press('down');
-    await pilot.press('down');
-    // The ten steps of the wheel sit at 56..96 by 93..101 on the 160 x 144 screen.
-    const wheel = () => darkIn(page, 56, 93, 40, 8);
+    // The ten steps of the wheel sit at 64..104 by 59..67 on the 160 x 144 screen.
+    const wheel = () => darkIn(page, 64, 59, 40, 8);
     const half = (await wheel()).dark;
     expect(half).toBeGreaterThan(0);
     for (let i = 0; i < 5; i++) await pilot.press('right');
@@ -97,7 +97,7 @@ test.describe('the volume wheel', () => {
     await page.keyboard.press('m');
     await expect(game(page)).toHaveAttribute('data-sound', 'off');
     await pilot.press('start');
-    await pilot.press('down');
+    await pilot.press('left');
     await pilot.press('down');
     await pilot.press('right');
     await pilot.press('right');
@@ -106,14 +106,14 @@ test.describe('the volume wheel', () => {
     expect(await master(page)).toBe(0);
     await page.keyboard.press('m');
     await expect(game(page)).toHaveAttribute('data-sound', 'on');
-    expect(await master(page)).toBeCloseTo(0.35, 6);
+    expect(await master(page)).toBeCloseTo(0.175, 6);
   });
 
   test('lasts for the session, in memory only: a reload starts at 50% again', async ({ page }) => {
     const { pilot } = await play(page);
     await pilot.start();
     await pilot.press('start');
-    await pilot.press('down');
+    await pilot.press('left');
     await pilot.press('down');
     await pilot.press('left');
     await expect(game(page)).toHaveAttribute('data-volume', '40');
@@ -134,7 +134,7 @@ test.describe('the volume wheel', () => {
     await touch(page, 'A');
     for (let i = 0; i < 12 && (await game(page).getAttribute('data-dialogue')) === 'true'; i++) await touch(page, 'A');
     await touch(page, 'Start');
-    await touch(page, 'Down');
+    await touch(page, 'Left');
     await touch(page, 'Down');
     await expect(game(page)).toHaveAttribute('data-row', 'volume');
     await touch(page, 'Right');
@@ -143,7 +143,72 @@ test.describe('the volume wheel', () => {
     await expect(status(page)).toHaveText('Volume 70%');
     await touch(page, 'Left');
     await expect(game(page)).toHaveAttribute('data-volume', '60');
-    expect(await master(page)).toBeCloseTo(0.3, 6);
+    expect(await master(page)).toBeCloseTo(0.15, 6);
+  });
+});
+
+test.describe('the settings', () => {
+  test('are the third tab of the Start menu, and SOUND there is the same switch as M', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.press('start');
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-menu', 'badges');
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-menu', 'settings');
+    await expect(game(page)).toHaveAttribute('data-row', 'sound');
+    await expect(status(page)).toHaveText('Settings. Sound, volume and screen.');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-sound', 'off');
+    await expect(status(page)).toHaveText('Sound off');
+    expect(await master(page)).toBe(0);
+    await page.keyboard.press('m');
+    await expect(game(page)).toHaveAttribute('data-sound', 'on');
+    expect(await master(page)).toBe(0.125);
+    // The bag no longer has a volume row: down stays in the list.
+    await pilot.press('right');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-menu', 'items');
+    await expect(game(page)).toHaveAttribute('data-row', '');
+  });
+
+  test('the screen has an LCD look laid over it, which SCREEN switches off and on', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    const lcd = page.getByTestId('lcd');
+    await expect(game(page)).toHaveAttribute('data-lcd', 'on');
+    await expect(lcd).toHaveAttribute('aria-hidden', 'true');
+    // Exactly over the screen, and it lets the pointer through.
+    const over = await box(lcd);
+    const under = await box(canvas(page));
+    for (const side of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(over[side] - under[side])).toBeLessThan(1);
+    expect(await lcd.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+    expect(await lcd.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('linear-gradient');
+    // The grid is one cell per game pixel.
+    const cell = await lcd.evaluate((el) => parseFloat(getComputedStyle(el).backgroundSize));
+    expect(cell).toBeCloseTo(under.width / 160, 1);
+    // The picture under it is untouched: still the four shades and nothing else.
+    const shades = await canvas(page).evaluate((el) => {
+      const { data } = (el as HTMLCanvasElement).getContext('2d')!.getImageData(0, 0, 160, 144);
+      const seen = new Set<string>();
+      for (let i = 0; i < data.length; i += 4) seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+      return seen.size;
+    });
+    expect(shades).toBeLessThanOrEqual(4);
+
+    await pilot.press('start');
+    await pilot.press('left');
+    await pilot.press('down');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-row', 'screen');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-lcd', 'off');
+    await expect(status(page)).toHaveText('LCD look off');
+    await expect(lcd).toHaveCount(0);
+    await pilot.press('a');
+    await expect(lcd).toHaveCount(1);
+    await expect(status(page)).toHaveText('LCD look on');
+    expect(errors).toEqual([]);
   });
 });
 
@@ -195,6 +260,8 @@ test.describe('beyond the town', () => {
     await pilot.goTo('town:)');
     await expect(game(page)).toHaveAttribute('data-map', 'east');
     await expect(game(page)).toHaveAttribute('data-music', 'route');
+    // A road, not a door: it sounds like steps.
+    await expect(game(page)).toHaveAttribute('data-cue', 'path');
     await expect(status(page)).toHaveText('East Road');
     await pilot.goTo('east:)');
     await expect(game(page)).toHaveAttribute('data-map', 'hills');
@@ -243,6 +310,10 @@ test.describe('beyond the town', () => {
     await expect(game(page)).toHaveAttribute('data-map', 'cave');
     await expect(game(page)).toHaveAttribute('data-music', 'cave');
     await expect(status(page)).toHaveText('The Cave');
+    // Walked in going left: arrived at the east side of the cave, still facing left, with the sound of a cave.
+    await expect(game(page)).toHaveAttribute('data-dir', 'left');
+    await expect(game(page)).toHaveAttribute('data-x', '21');
+    await expect(game(page)).toHaveAttribute('data-cue', 'cave');
 
     const whole = await darkIn(page, 0, 0, 160, 144);
     expect(whole.dark / whole.all).toBeGreaterThan(0.6);
@@ -251,14 +322,14 @@ test.describe('beyond the town', () => {
     expect(corner.dark).toBe(corner.all);
     const x = Number(await game(page).getAttribute('data-x'));
     const y = Number(await game(page).getAttribute('data-y'));
-    // The cave is 20 x 13 cells and the view 10 x 9: the camera holds the player near the bottom left.
-    const left = Math.max(0, Math.min(20 * 16 - 160, x * 16 + 8 - 80));
-    const top = Math.max(0, Math.min(13 * 16 - 144, y * 16 + 8 - 72));
+    // The cave is 24 x 17 cells and the view 10 x 9: the camera holds the player near the right edge.
+    const left = Math.max(0, Math.min(24 * 16 - 160, x * 16 + 8 - 80));
+    const top = Math.max(0, Math.min(17 * 16 - 144, y * 16 + 8 - 72));
     const here = await darkIn(page, x * 16 - left, y * 16 - top, 16, 16);
     expect(here.dark).toBeLessThan(here.all * 0.8);
     // A step on, the light has moved along.
-    await pilot.press('up');
-    await expect(game(page)).toHaveAttribute('data-y', String(y - 1));
+    await pilot.press('left');
+    await expect(game(page)).toHaveAttribute('data-x', String(x - 1));
     const after = await darkIn(page, 0, 0, 160, 144);
     expect(after.dark / after.all).toBeGreaterThan(0.6);
     expect(errors).toEqual([]);
