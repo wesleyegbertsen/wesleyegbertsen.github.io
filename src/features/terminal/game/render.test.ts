@@ -796,6 +796,41 @@ describe('a dark place', () => {
     expect(Math.abs(black(moving.fills).length - still)).toBeLessThan(20);
   });
 
+  it('is lit around a fire bowl too, far from the player, and the bowl flickers', () => {
+    const fire: Record<string, TileDef> = { ...legend, t: { sprite: 'brazier', solid: true, animated: true, light: 1 } };
+    const lighted = parseMap({ id: 'pit', name: 'Pit', ground: '.', rows: rows.map((row, y) => (y === 5 ? '......@...t..' : row)), dark: 1, objects: { '@': { solid: false, trigger: 'interact', branches: [] } } }, fire);
+    expect(lighted.lights).toEqual([{ x: 10, y: 5, radius: 1 }]);
+    const withBowl = drawn(there(), undefined, { ...dark, maps: { pit: lighted } });
+    const without = drawn(there(), undefined, dark);
+    const player = spriteDraws(withBowl.draws, 'player-down-0')[0]!;
+    const at = (list: { x: number; y: number }[], dx: number, dy: number) => list.some((item) => item.x === player.x + dx * TILE && item.y === player.y + dy * TILE);
+    // Four cells to the right of the player: black without the bowl, clear with it, and the cell above it too.
+    expect(at(black(without.fills), 4, 0)).toBe(true);
+    for (const [dx, dy] of [[4, 0], [4, -1], [3, 1]] as const) {
+      expect(at(black(withBowl.fills), dx, dy) || at(shade(withBowl.draws, 'shade-1'), dx, dy) || at(shade(withBowl.draws, 'shade-2'), dx, dy), `${dx},${dy}`).toBe(false);
+    }
+    // Further up the light falls off as it does around the player.
+    expect(at(shade(withBowl.draws, 'shade-1'), 4, -2)).toBe(true);
+    expect(black(withBowl.fills).length).toBeLessThan(black(without.fills).length);
+    const bowl = (list: Draw[], name: 'brazier' | 'brazier-b') => list.filter((draw) => draw.sheet === 'tiles' && draw.sx === tiles[name][0] && draw.sy === tiles[name][1]);
+    expect(bowl(withBowl.draws, 'brazier')).toHaveLength(1);
+    expect(bowl(drawn({ ...there(), clock: FRAME_TICKS }, undefined, { ...dark, maps: { pit: lighted } }).draws, 'brazier-b')).toHaveLength(1);
+  });
+
+  it('draws a slide with the legs still, and a pushed boulder between two cells at walking pace', () => {
+    const sliding = { ...there(), x: 7, dir: 'right' as const, walk: { fromX: 6, fromY: 5, t: WALK_TICKS / 2, slide: true as const } };
+    expect(spriteDraws(drawn(sliding, undefined, dark).draws, 'player-right-0')).toHaveLength(1);
+    const rock = parseMap({ id: 'pit', name: 'Pit', ground: '.', rows: rows.map((row, y) => (y === 5 ? '......@b.....' : row)), objects: { '@': { solid: false, trigger: 'interact', branches: [] }, b: { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' } } }, legend);
+    const pushing: GameState = { ...there(), x: 7, dir: 'right', clock: WALK_TICKS / 2, walk: { fromX: 6, fromY: 5, t: WALK_TICKS / 2 }, roam: { 'pit:b': { x: 8, y: 5, fromX: 7, fromY: 5, at: 0, ticks: WALK_TICKS } } };
+    const { draws } = drawn(pushing, undefined, { ...dark, maps: { pit: rock } });
+    const player = spriteDraws(draws, 'player-right-1')[0]!;
+    const [bx, by] = tiles.boulder;
+    const boulder = draws.find((draw) => draw.sheet === 'tiles' && draw.sx === bx && draw.sy === by)!;
+    // Exactly one cell ahead of the player all the way, half a cell along.
+    expect(boulder.x - player.x).toBe(TILE);
+    expect(boulder.y).toBe(player.y);
+  });
+
   it('leaves a map that is not dark alone', () => {
     const lit: World = { ...dark, maps: { pit: { ...pit, dark: undefined } } };
     const { draws, fills } = drawn(there(), undefined, lit);

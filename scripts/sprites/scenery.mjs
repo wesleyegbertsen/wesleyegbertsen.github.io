@@ -966,6 +966,96 @@ const scratches = [
   '................',
 ];
 
+// --- the deep cave: its puzzles -----------------------------------------------------------------------------------
+
+/** A pressure plate in the floor: a boulder is pushed onto it. */
+const plate = [
+  '................',
+  '................',
+  '..333333333333..',
+  '..300000000003..',
+  '..301111111103..',
+  '..301111111103..',
+  '..301133331103..',
+  '..301130031103..',
+  '..301130031103..',
+  '..301133331103..',
+  '..301111111103..',
+  '..301111111103..',
+  '..300000000003..',
+  '..333333333333..',
+  '................',
+  '................',
+];
+/** Slick, wet rock: whoever steps onto it slides on. Lighter than the floor, with a few glints. */
+const ice = ['00000000', '00000100', '00001000', '00010000', '00000000', '01000000', '10000010', '00000100'];
+/** A fire bowl on a foot: it lights a puzzle room, and stands in the way. Two frames: the flame flickers. */
+const bowl = [
+  '..333333333333..',
+  '..322222222223..',
+  '...3222222223...',
+  '....33333333....',
+  '......3223......',
+  '......3223......',
+  '....33333333....',
+  '................',
+];
+const brazier = [
+  '................',
+  '.......2........',
+  '......202.2.....',
+  '.....20002......',
+  '.....200002.....',
+  '....2000002.....',
+  '....2000002.....',
+  '.....20002......',
+  ...bowl,
+];
+const brazierB = [
+  '................',
+  '........2.......',
+  '.....2.202......',
+  '......20002.....',
+  '.....200002.....',
+  '.....2000002....',
+  '....2000002.....',
+  '.....20002......',
+  ...bowl,
+];
+/** A lever on a plate, set in the rock: it puts the boulders back. */
+const lever = [
+  '................',
+  '.....333........',
+  '.....303........',
+  '.....333........',
+  '......33........',
+  '......33........',
+  '...3333333333...',
+  '...3000330003...',
+  '...3000330003...',
+  '...3000000003...',
+  '...3022222203...',
+  '...3000000003...',
+  '...3333333333...',
+  '................',
+  '................',
+  '................',
+];
+/** Iron bars across a passage: a gate that a solved puzzle opens. */
+const bars = '.33..33..33..33.';
+const gate = ['3333333333333333', '3222222222222223', '3333333333333333', ...Array.from({ length: 9 }, () => bars), '3333333333333333', '3222222222222223', '3333333333333333', '................'];
+/** A hole in the floor with a ladder in it: the way down. */
+const hole = Array.from({ length: 16 }, (_, y) => {
+  if (y === 0 || y >= 14) return '................';
+  if (y === 1 || y === 13) return '.33333333333333.';
+  return y % 3 === 1 ? '.33300000000333.' : '.33303333330333.';
+});
+/** A ladder that leans against the rock: the way up. */
+const ladder = Array.from({ length: 16 }, (_, y) => {
+  if (y === 0 || y >= 14) return '................';
+  return y % 3 === 2 ? '....33333333....' : '....3......3....';
+});
+
 /** Darkness, laid over a cell: a sparse dither near the light, a dense one further off. */
 const shade1 = ['3.......', '..3.....', '....3...', '......3.', '.3......', '...3....', '.....3..', '.......3'];
 const shade2 = ['3.3.3.3.', '.333.333', '3.3.3.3.', '33.333.3', '3.3.3.3.', '.333.333', '3.3.3.3.', '33.333.3'];
@@ -1201,6 +1291,14 @@ export const scenery = {
   stalagmite: on(cavefloor, stalagmite),
   notice: on(cavewall, paper),
   scratches: on(cavewall, scratches),
+  plate: on(cavefloor, plate),
+  ice,
+  brazier: on(cavefloor, brazier),
+  'brazier-b': on(cavefloor, brazierB),
+  lever: on(cavewall, lever),
+  gate: on(cavefloor, gate),
+  hole: on(cavefloor, hole),
+  ladder: on(cavefloor, ladder),
   shore,
   'ledge-left': ledgeLeft,
   'ledge-right': flip(ledgeLeft),

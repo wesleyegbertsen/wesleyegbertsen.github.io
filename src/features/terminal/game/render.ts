@@ -4,7 +4,7 @@ import { BATTLE_MENU, usableItems } from './engine/battle.ts';
 import { JUMP_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
-import { dimness } from './engine/light.ts';
+import { lit } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
 import { curtainOf, type Curtain } from './engine/transition.ts';
 import { SETTINGS, type Dir, type GameObject, type GameState, type MoveDef, type World } from './engine/types.ts';
@@ -197,16 +197,17 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   }
   // The player steps with one foot, then the other, and the arms swing against them: the cell tells which.
   const foot = (state.x + state.y) % 2 === 1 ? 2 : 1;
-  const frame = state.walk && (state.walk.jump ? hop > 0 : state.walk.t >= WALK_TICKS / 2) ? foot : 0;
+  // On slippery ground the legs stand still: the player slides.
+  const frame = state.walk && !state.walk.slide && (state.walk.jump ? hop > 0 : state.walk.t >= WALK_TICKS / 2) ? foot : 0;
   if (hop > 0) rect(ctx, px - camX + 4, py - camY + 13, 8, 2, DARK);
   drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY - hop);
 
   // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
-  // the player, so nothing flickers.
+  // the player, so nothing flickers. A fire bowl lights the cells around it the same way, wherever the player is.
   if (map.dark !== undefined) {
     for (let cy = Math.floor(camY / TILE); cy * TILE < camY + SCREEN_H; cy++) {
       for (let cx = Math.floor(camX / TILE); cx * TILE < camX + SCREEN_W; cx++) {
-        const dim = dimness(cx - px / TILE, cy - py / TILE, map.dark);
+        const dim = lit(cx, cy, px / TILE, py / TILE, map.dark, map.lights);
         if (dim === 0) continue;
         if (dim === 3) rect(ctx, cx * TILE - camX, cy * TILE - camY, TILE, TILE, DARKEST);
         else drawSprite(ctx, sheets, SHADES[dim], cx * TILE - camX, cy * TILE - camY);

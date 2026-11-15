@@ -13,3 +13,17 @@ export function dimness(dx: number, dy: number, radius: number): Dimness {
   if (distance <= radius + 2.5) return 2;
   return 3;
 }
+
+/**
+ * How dark a cell is with every light counted: the player's own (`radius` cells around `px`, `py`) and the
+ * lights that stand on the map (a fire bowl). The brightest one wins.
+ */
+export function lit(x: number, y: number, px: number, py: number, radius: number, lights: readonly { x: number; y: number; radius: number }[] = []): Dimness {
+  let best = dimness(x - px, y - py, radius);
+  for (const light of lights) {
+    if (best === 0) break;
+    const dim = dimness(x - light.x, y - light.y, light.radius);
+    if (dim < best) best = dim;
+  }
+  return best;
+}
