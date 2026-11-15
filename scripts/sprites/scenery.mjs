@@ -1288,13 +1288,15 @@ export const scenery = {
   rubble,
   cavewall,
   caveexit,
-  stalagmite: on(cavefloor, stalagmite),
+  // See-through: it stands on the cave floor or on slick rock (the legend says which, with `under`).
+  stalagmite,
   notice: on(cavewall, paper),
   scratches: on(cavewall, scratches),
   plate: on(cavefloor, plate),
   ice,
-  brazier: on(cavefloor, brazier),
-  'brazier-b': on(cavefloor, brazierB),
+  // See-through, like the stalagmite.
+  brazier,
+  'brazier-b': brazierB,
   lever: on(cavewall, lever),
   gate: on(cavefloor, gate),
   hole: on(cavefloor, hole),

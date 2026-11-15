@@ -586,10 +586,10 @@ test.describe('beyond the town', () => {
 });
 
 test.describe('the deep cave', () => {
-  /** Where a cell of the deep cave (24 x 17) is on the 160 x 144 screen, with the player at `px`, `py`. */
+  /** Where a cell of the deep cave (24 x 19) is on the 160 x 144 screen, with the player at `px`, `py`. */
   const onScreen = (px: number, py: number, x: number, y: number) => {
     const left = Math.max(0, Math.min(24 * 16 - 160, px * 16 + 8 - 80));
-    const top = Math.max(0, Math.min(17 * 16 - 144, py * 16 + 8 - 72));
+    const top = Math.max(0, Math.min(19 * 16 - 144, py * 16 + 8 - 72));
     return { x: x * 16 - left, y: y * 16 - top };
   };
 
@@ -662,10 +662,10 @@ test.describe('the deep cave', () => {
     await pilot.goTo('deep:i');
     await expect(game(page)).toHaveAttribute('data-banner', 'Slick Rock');
     await pilot.press('down');
-    await expect(game(page)).toHaveAttribute('data-y', '12');
+    await expect(game(page)).toHaveAttribute('data-y', '14');
     await expect(game(page)).toHaveAttribute('data-x', '19');
     await expect(status(page)).toHaveText('You slide down until something stops you.');
-    const slides = await pilot.solve((state) => state.x === 12 && state.y === 11);
+    const slides = await pilot.solve((state) => state.x === 12 && state.y === 13);
     expect(slides.length).toBeGreaterThanOrEqual(4);
     await expect(game(page)).toHaveAttribute('data-x', '12');
 

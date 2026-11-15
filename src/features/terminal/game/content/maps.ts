@@ -147,7 +147,7 @@ export const CAVE: Record<string, TileDef> = {
   _: { sprite: 'cavefloor', solid: false },
   ',': { sprite: 'rubble', solid: false, grass: true },
   X: { sprite: 'cavewall', solid: true },
-  s: { sprite: 'stalagmite', solid: true },
+  s: { sprite: 'stalagmite', under: 'cavefloor', solid: true },
   // A doorway: it looks like floor, but a boulder cannot be pushed onto it, so the way in and out stays free.
   '=': { sprite: 'cavefloor', solid: false, road: true },
   // A pressure plate: a boulder is pushed onto it.
@@ -155,7 +155,10 @@ export const CAVE: Record<string, TileDef> = {
   // Slick rock: whoever steps onto it slides on until something stops them.
   '~': { sprite: 'ice', solid: false, slide: true },
   // A fire bowl: it stands in the way, and lights the cells around it (2 cells fully, then it fades) in the dark.
-  t: { sprite: 'brazier', solid: true, animated: true, light: 2 },
+  t: { sprite: 'brazier', under: 'cavefloor', solid: true, animated: true, light: 2 },
+  // The same two standing on slick rock: they are what stops a slide.
+  '^': { sprite: 'stalagmite', under: 'ice', solid: true },
+  '*': { sprite: 'brazier', under: 'ice', solid: true, animated: true, light: 2 },
 };
 
 /**
@@ -314,8 +317,9 @@ export const CAVE_MAP = [
  *    boulder to push it a cell on. When a boulder stands on each plate, the gate g opens for good and the
  *    boulders stay where they are. r is the lever that puts them back (so does climbing the ladder and coming
  *    down again). = is a doorway: a boulder cannot be pushed onto it. n is a note that explains it.
- * 2. THE SLICK ROCK (bottom right). ~ is slick rock: one step and you slide on until a rock (s), a fire bowl (t)
+ * 2. THE SLICK ROCK (bottom right). ~ is slick rock: one step and you slide on until a rock (^), a fire bowl (*)
  *    or the wall stops you. You come in at the top right and must get out on the left. i is a note.
+ *    The two rows of solid rock above it keep this floor's rooms off each other's screen.
  * 3. THE PIPELINE (bottom, middle). P, A and C are three terminals in the rock: git push, git add, git commit.
  *    They must be used in the right order (add, commit, push); a wrong one puts all of them out again. h is the
  *    note with the riddle. Then the gate G opens for good.
@@ -334,13 +338,15 @@ export const DEEP_MAP = [
   'X____XXXXX_s___o__X_XXXX',
   'XXXXXXXXXX________X_XXXX',
   'XXXXXXXXXXXXXXXXXXX_XXXX',
+  'XXXXXXXXXXXXXXXXXXX_XXXX',
+  'XXXXXXXXXXXXXXXXXXX_XXXX',
   'XXXXXXXXXXXXXXXXXXX_iXXX',
   'XXXXXXPhAXCXX~~~~~~~~XXX',
-  'XXXXXX_____XX~~~~~~~sXXX',
-  'XXXXXX__t__XXs~~~~~~~XXX',
-  'Xj___G_______~~~~~t~~XXX',
-  'XXDXXX_____XX~ts~~~~~XXX',
-  'XX_XXX_____XX~~~~~~s~XXX',
+  'XXXXXX_____XX~~~~~~~^XXX',
+  'XXXXXX__t__XX^~~~~~~~XXX',
+  'Xj___G_______~~~~~*~~XXX',
+  'XXDXXX_____XX~*^~~~~~XXX',
+  'XX_XXX_____XX~~~~~~^~XXX',
   'XXBXXXXXXXXXXXXXXXXXXXXX',
   'Xc_LXXXXXXXXXXXXXXXXXXXX',
   'XXXXXXXXXXXXXXXXXXXXXXXX',
@@ -446,8 +452,8 @@ export const REGIONS: Record<string, { name: string; x: number; y: number; w: nu
   // The deep cave: its three puzzle rooms, and behind the heavy door the boss, the prize and the ladder.
   deep: [
     { name: 'Boulder Hall', x: 10, y: 1, w: 8, h: 5, holds: '1' },
-    { name: 'Slick Rock', x: 13, y: 7, w: 8, h: 7, holds: 'i' },
-    { name: 'Pipeline Room', x: 6, y: 8, w: 5, h: 6, holds: 'A' },
-    { name: 'Incident Room', x: 1, y: 13, w: 3, h: 3, holds: 'B' },
+    { name: 'Slick Rock', x: 13, y: 9, w: 8, h: 7, holds: 'i' },
+    { name: 'Pipeline Room', x: 6, y: 10, w: 5, h: 6, holds: 'A' },
+    { name: 'Incident Room', x: 1, y: 15, w: 3, h: 3, holds: 'B' },
   ],
 };
