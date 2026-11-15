@@ -124,8 +124,9 @@ export function createSound(options: SoundOptions): Sound {
   function build(): boolean {
     if (ctx) return true;
     if (closed) return false;
+    let made: AudioLike | null | undefined;
     try {
-      const made = options.context();
+      made = options.context();
       if (!made) return false;
       const out = made.createGain();
       out.gain.value = muted ? 0 : volume;
@@ -140,7 +141,9 @@ export function createSound(options: SoundOptions): Sound {
       effectBus = effects;
       return true;
     } catch {
+      // A half-built graph is useless, and each later try would leave another context open.
       ctx = null;
+      if (made) safely(() => quietly(made!.close?.()));
       return false;
     }
   }
@@ -279,7 +282,7 @@ export function createSound(options: SoundOptions): Sound {
       if (closed) return;
       const fresh = !ctx;
       if (!build()) return;
-      if (ctx!.state === 'suspended' && !paused) safely(() => quietly(ctx!.resume()));
+      if (ctx!.state !== 'running' && ctx!.state !== 'closed' && !paused) safely(() => quietly(ctx!.resume()));
       if (fresh) start();
     },
 

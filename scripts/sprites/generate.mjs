@@ -17,6 +17,8 @@ import { glyphs } from './font.mjs';
 import { scenery } from './scenery.mjs';
 import { tiles as plain } from './tiles.mjs';
 
+const clash = Object.keys(scenery).filter((name) => name in plain);
+if (clash.length > 0) throw new Error(`Tile names used twice (tiles.mjs and scenery.mjs): ${clash.join(", ")}`);
 const tiles = { ...plain, ...scenery };
 
 /** The four shades, lightest first. Change them here to recolour every sheet. */

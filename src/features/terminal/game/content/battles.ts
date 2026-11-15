@@ -4,7 +4,7 @@ import type { BadgeDef, EnemyDef, ItemDef, MoveDef } from '../engine/types.ts';
  * Battle numbers and names. HOW TO EDIT
  *
  * - Damage is the move's power, give or take 1. `accuracy` is the chance to hit (1 = always).
- * - The first move in PLAYER_MOVES is the default one. A test (balance.test.ts) proves that every enemy can be
+ * - The first move in PLAYER_MOVES is the default one. A test (world.test.ts) proves that every enemy can be
  *   beaten with that move alone, from full energy, at the worst luck. If you make an enemy tougher than that,
  *   the test fails and tells you which one.
  * - `sprite` is a name from scripts/sprites/enemies.mjs.

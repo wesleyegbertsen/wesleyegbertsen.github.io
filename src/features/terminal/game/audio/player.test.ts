@@ -76,6 +76,32 @@ describe('the sound player', () => {
     expect(audio.state).toBe('running');
   });
 
+  it('wakes a context that the browser left interrupted, as iOS does after a call', () => {
+    const { sound, audio } = setup({ interrupted: true });
+    sound.unlock();
+    expect(audio.calls.resume).toBe(1);
+    expect(audio.state).toBe('running');
+  });
+
+  it('closes a context it could not finish setting up, instead of leaking one per key press', () => {
+    const audios: FakeAudio[] = [];
+    const sound = createSound({
+      context: () => {
+        const audio = new FakeAudio({ failGainAt: 2 });
+        audios.push(audio);
+        return audio.as();
+      },
+      tracks: TRACKS,
+      effects: EFFECTS,
+      timer: fakeTimer().timer,
+    });
+    sound.unlock();
+    expect(audios[0]!.calls.close).toBe(1);
+    sound.unlock();
+    expect(audios).toHaveLength(2);
+    expect(audios[1]!.calls.close).toBe(1);
+  });
+
   it('starts the wanted tune as soon as there is a context: the notes within the lookahead, at their times', () => {
     const { sound, audio, pitches } = setup();
     sound.music('walk');

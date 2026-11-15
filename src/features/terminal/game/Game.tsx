@@ -223,6 +223,8 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
       onKeyDown={keyDown}
       onKeyUp={keyUp}
       onPointerDown={sound.unlock}
+      // iOS only counts the end of a touch as a gesture that may start sound.
+      onPointerUp={sound.unlock}
       onFocus={(event) => setFocused(event.target === event.currentTarget)}
       onBlur={() => {
         setFocused(false);
@@ -277,13 +279,11 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
                     aria-pressed={!sound.muted}
                     data-off={sound.muted}
                     onPointerDown={(event) => {
+                      // Keep the focus on the game; the toggle waits for the click, so a scroll that starts here is harmless.
                       event.preventDefault();
                       sound.unlock();
-                      toggleSound();
                     }}
-                    onClick={(event) => {
-                      if (event.detail === 0) toggleSound();
-                    }}
+                    onClick={toggleSound}
                   >
                     Sound
                   </button>

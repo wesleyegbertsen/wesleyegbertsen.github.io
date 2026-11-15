@@ -87,6 +87,10 @@ export class FakeBufferSource extends FakeSource {
 export type FakeOptions = {
   /** Start as a browser does before a gesture. */
   suspended?: boolean;
+  /** Start as iOS leaves a context after a call or a lock: not running, and not 'suspended' either. */
+  interrupted?: boolean;
+  /** The n-th gain this context is asked for (1 is the first) throws, as a broken graph would. */
+  failGainAt?: number;
   /** `resume()` is refused, as a browser may. */
   refuse?: boolean;
   /** Leave out what an old browser lacks. */
@@ -95,7 +99,7 @@ export type FakeOptions = {
 
 export class FakeAudio {
   currentTime = 0;
-  state: 'suspended' | 'running' | 'closed';
+  state: 'suspended' | 'running' | 'closed' | 'interrupted';
   sampleRate = 8000;
   destination = { name: 'destination' };
   oscillators: FakeOscillator[] = [];
@@ -106,7 +110,7 @@ export class FakeAudio {
   createPeriodicWave?: (real: Float32Array, imag: Float32Array) => unknown;
 
   constructor(private readonly options: FakeOptions = {}) {
-    this.state = options.suspended ? 'suspended' : 'running';
+    this.state = options.interrupted ? 'interrupted' : options.suspended ? 'suspended' : 'running';
     if (!options.without?.includes('createBuffer')) {
       this.createBuffer = (_channels, length) => {
         const data = new Float32Array(length);
@@ -124,6 +128,7 @@ export class FakeAudio {
     return oscillator;
   }
   createGain() {
+    if (this.options.failGainAt === this.gains.length + 1) throw new Error('no more gains');
     const gain = new FakeGain();
     this.gains.push(gain);
     return gain;

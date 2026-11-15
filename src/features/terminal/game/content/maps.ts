@@ -6,7 +6,7 @@ import type { TileDef } from '../engine/types.ts';
  * - One character is one cell (16x16 pixels). Every row of a map must be equally long.
  * - The characters in the legends below are ground and scenery: OUTDOORS for the town, `indoors()` for the rooms.
  *   `solid` ones cannot be walked on. `road` ones are kept free: the townsfolk who stroll never step on them, so
- *   the way from door to door is never blocked. Every door must have a road cell in front of it (a test checks).
+ *   the way from door to door is never blocked. Every door of the town must have a road cell in front of it (a test checks).
  *   `animated` ones have a second picture (`<name>-b` in scripts/sprites/scenery.mjs) and move.
  * - Every other character is a thing (a door, a person, a sign, a chest, a star) and must appear exactly once on
  *   its map. What it is and what it says is in story.ts, under the same map and character.

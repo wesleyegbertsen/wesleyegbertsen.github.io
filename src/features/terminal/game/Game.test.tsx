@@ -213,7 +213,14 @@ describe('Game', () => {
     const { game, sound, user } = setup(started(), true);
     const button = screen.getByRole('button', { name: 'Sound' });
     expect(button).toHaveAttribute('aria-pressed', 'true');
+    // A press that is then dragged away or cancelled (a scroll) is not a tap: nothing changes until the click.
     fireEvent.pointerDown(button);
+    expect(sound.muted()).toBe(false);
+    fireEvent.pointerCancel(button);
+    expect(sound.muted()).toBe(false);
+    fireEvent.pointerDown(button);
+    fireEvent.pointerUp(button);
+    fireEvent.click(button, { detail: 1 });
     expect(sound.muted()).toBe(true);
     expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(game).toHaveAttribute('data-sound', 'off');
