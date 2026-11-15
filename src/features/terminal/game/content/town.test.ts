@@ -268,7 +268,7 @@ describe('the gold stars and the errands', () => {
 
   it('counts every star on the ground and the one that is handed out', () => {
     expect(stars.length).toBeGreaterThanOrEqual(8);
-    expect(world.collect![0]).toEqual({ item: COLLECT, total: stars.length + 1, label: 'STARS', mark: '*' });
+    expect(world.collect![0]).toEqual({ item: COLLECT, total: stars.length + 1, label: 'STARS', mark: '*', icon: 'star-mini' });
     expect(new Set(stars.map((object) => object.hideWhen?.flag)).size).toBe(stars.length);
   });
 
