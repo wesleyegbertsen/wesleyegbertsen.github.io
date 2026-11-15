@@ -34,7 +34,11 @@ export type Action =
   /** Puts every pushed thing of this map back where the map put it (a reset lever). See engine/push.ts. */
   | { reset: true }
   | { badge: string }
-  | { heal: true }
+  /**
+   * Restores energy and moves. `rest`: a real rest (the cafe), with its jingle (the cue `rest`) played through for
+   * this many ticks before the next action runs; with reduced motion the next action runs at once.
+   */
+  | { heal: true; rest?: number }
   /** `quick`: this battle follows another one at once (the last fight), so the way into it is the short one. */
   | { battle: string; win: Action[]; quick?: true }
   /** `cue`: what the way sounds like. A door by default; `path` for the edge of a map, `cave` for a cave mouth. */
@@ -331,6 +335,8 @@ export type GameState = {
   repel: number;
   /** Who is being talked to, and which way they turned for it. They turn back a moment after the talk is over: at clock `until`. */
   face: { id: string; dir: Dir; until?: number } | null;
+  /** Ticks left of a rest that is played through (its jingle): nothing happens until they are over. */
+  pause?: number;
   /** Where a defeat sends the player back to. */
   heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;
@@ -398,6 +404,8 @@ export type Cue =
   | 'switch'
   | 'gate'
   | 'heal'
+  /** A rest in the cafe: a jingle of a few seconds, played through before the barista speaks. */
+  | 'rest'
   | 'hit'
   | 'hurt'
   | 'miss'

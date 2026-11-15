@@ -6,6 +6,7 @@ import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
 import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ECONOMY, ENEMIES, FINAL_BOSSES, REWARDS, SHOPS, STAMP } from './battles.ts';
+import { REST_TICKS } from './music.ts';
 import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
@@ -259,8 +260,8 @@ const barista = (): ObjectSpec => ({
   solid: true,
   trigger: 'interact',
   branches: [
-    { when: { noItem: 'coffee' }, do: [{ heal: true }, { say: CAFE_TEXT.refill }, { give: 'coffee' }] },
-    { do: [{ heal: true }, { say: CAFE_TEXT.barista }] },
+    { when: { noItem: 'coffee' }, do: [{ heal: true, rest: REST_TICKS }, { say: CAFE_TEXT.refill }, { give: 'coffee' }] },
+    { do: [{ heal: true, rest: REST_TICKS }, { say: CAFE_TEXT.barista }] },
   ],
 });
 

@@ -1,4 +1,4 @@
-import { EFFECTS, TRACKS } from '../content/music.ts';
+import { EFFECTS, JINGLES, REST_TICKS, TRACKS } from '../content/music.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import { VOLUME_MAX } from '../settingsStore.ts';
 import { gainFor, MAX_GAIN } from '../useGameSound.ts';
@@ -195,5 +195,32 @@ describe('the sound effects', () => {
     const length = lengthOf(EFFECTS[name]!);
     expect(length).toBeLessThanOrEqual(ticks / 60);
     expect(length).toBeGreaterThan(ticks / 60 / 2);
+  });
+});
+
+describe('the rest in the cafe', () => {
+  it('is a jingle of two to three seconds: five or six notes up and down, the last one held, over before the barista speaks', () => {
+    const track = TRACKS[JINGLES.rest!]!;
+    expect(track.loop).toBe(false);
+    const seconds = trackSteps(track) * stepSeconds(track);
+    expect(seconds).toBeGreaterThanOrEqual(2);
+    expect(seconds).toBeLessThanOrEqual(3);
+    // The text waits for it: the pause is as long as the jingle, and not much longer.
+    expect(REST_TICKS / 60).toBeGreaterThanOrEqual(seconds);
+    expect(REST_TICKS / 60).toBeLessThanOrEqual(seconds + 0.25);
+    // The melody: the first voice.
+    const melody = parseVoice(track.voices[0]!.notes).notes;
+    expect(melody.length).toBeGreaterThanOrEqual(5);
+    expect(melody.length).toBeLessThanOrEqual(6);
+    const pitches = melody.map((note) => note.frequency!);
+    const top = pitches.indexOf(Math.max(...pitches));
+    // It rises to its highest note and falls from it again.
+    expect(top).toBeGreaterThan(0);
+    expect(top).toBeLessThan(pitches.length - 1);
+    for (let i = 1; i <= top; i++) expect(pitches[i]!).toBeGreaterThan(pitches[i - 1]!);
+    expect(pitches.at(-1)!).toBeLessThan(pitches[top]!);
+    // The last note is held: the longest by far.
+    const last = melody.at(-1)!;
+    for (const note of melody.slice(0, -1)) expect(last.steps).toBeGreaterThanOrEqual(note.steps * 2);
   });
 });

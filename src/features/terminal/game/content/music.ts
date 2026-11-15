@@ -322,6 +322,21 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /**
+   * A rest in the cafe: a calm little tune of six notes over the music, up to the top and down again to a long held
+   * note, with a second voice a third under it and a slow bass. It is played through before the barista speaks
+   * (REST_TICKS below).
+   */
+  rest: {
+    bpm: 168,
+    loop: false,
+    voices: [
+      lead(['F5:3 A5:3 C6:6 Bb5:3 G5:3 A5:14'], 0.4),
+      { wave: 'thin', volume: 0.22, notes: 'C5:3 F5:3 A5:6 G5:3 E5:3 F5:14' },
+      { wave: 'triangle', volume: 0.55, notes: 'F3:12 C3:6 F3:14' },
+    ],
+  },
+
   /** A new level: one rising bar over the music. */
   levelup: {
     bpm: 150,
@@ -437,4 +452,10 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
 };
 
 /** Cues that play a track of TRACKS once, over the music, instead of an effect. */
-export const JINGLES: Partial<Record<Cue, string>> = { badge: 'badge', levelup: 'levelup' };
+export const JINGLES: Partial<Record<Cue, string>> = { badge: 'badge', levelup: 'levelup', rest: 'rest' };
+
+/**
+ * How long the rest in the cafe waits before the barista speaks, in ticks of the game (60 a second): as long as the
+ * jingle `rest` above (two bars at 168 bpm, 2.86 s), and a breath. A test keeps the two together.
+ */
+export const REST_TICKS = 176;

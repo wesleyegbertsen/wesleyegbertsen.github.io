@@ -285,11 +285,33 @@ test.describe('the cafe', () => {
     await expect(game(page)).toHaveAttribute('data-music', 'cafe');
     await expect(status(page)).toHaveText('Cafe');
     await pilot.goTo('cafe:B');
+    // With motion the rest is played through: its jingle first, and only after it her words, on the screen and in
+    // the status region. The moments are taken in the page, frame by frame.
+    await pilot.motion(true);
+    await game(page).evaluate((el) => {
+      const times: Record<string, number> = {};
+      (window as unknown as { __rest: Record<string, number> }).__rest = times;
+      const region = document.querySelector('[role="status"]')!;
+      const before = region.textContent;
+      const look = () => {
+        const data = (el as HTMLElement).dataset;
+        if (data.cue === 'rest') times.rest ??= performance.now();
+        if (data.dialogue === 'true') times.words ??= performance.now();
+        if (region.textContent !== before) times.told ??= performance.now();
+        if (!times.words || !times.told) requestAnimationFrame(look);
+      };
+      look();
+    });
     await pilot.press('a');
-    await expect(status(page)).toHaveText(/^Welcome to the CAFE!/);
-    await expect(game(page)).toHaveAttribute('data-cue', 'heal');
+    // (The cue is `rest` while it plays; with motion the typing of her words blips after it.)
+    const times = await page.evaluate(() => (window as unknown as { __rest: Record<string, number> }).__rest);
+    expect(times.rest).toBeGreaterThan(0);
+    expect(times.words! - times.rest!).toBeGreaterThanOrEqual(2500);
+    expect(times.told! - times.rest!).toBeGreaterThanOrEqual(2500);
+    await expect(status(page)).not.toHaveText('Cafe');
     await pilot.read();
     await expect(game(page)).toHaveAttribute('data-hp', '30');
+    await pilot.motion(false);
     // Back out onto the road in front of its door.
     await pilot.goTo('cafe:m');
     await expect(game(page)).toHaveAttribute('data-map', 'town');

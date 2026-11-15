@@ -114,8 +114,10 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     return say({ ...state, badges, maxHp, hp: maxHp, pp: fullPp(world, state.moves) }, [text], ctx, 'badge');
   }
   if ('heal' in action) {
-    ctx.cues.push('heal');
-    return { ...state, hp: state.maxHp, pp: fullPp(world, state.moves), heal: { map: state.map, x: state.x, y: state.y } };
+    ctx.cues.push(action.rest ? 'rest' : 'heal');
+    // A rest is played through: the script waits until its jingle is over (with reduced motion it does not wait).
+    const pause = action.rest && !ctx.instant ? { pause: action.rest } : {};
+    return { ...state, ...pause, hp: state.maxHp, pp: fullPp(world, state.moves), heal: { map: state.map, x: state.x, y: state.y } };
   }
   if ('boost' in action) {
     const bonusHp = state.bonusHp + action.boost;
@@ -150,7 +152,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
 /** Runs the waiting actions until one of them opens a dialogue or a battle, which the player has to finish first. */
 function runScript(state: GameState, ctx: Ctx): GameState {
   let current = state;
-  while (current.script.length > 0 && !current.dialogue && !current.battle && !current.learn && !current.shop && current.scene === 'world') {
+  while (current.script.length > 0 && !current.dialogue && !current.battle && !current.learn && !current.shop && !current.pause && current.scene === 'world') {
     const [action, ...script] = current.script;
     current = apply({ ...current, script }, action!, ctx);
   }
@@ -484,6 +486,12 @@ export function step(state: GameState, input: Input, world: World, options: Opti
     if (!input.a && !input.start) return done(state);
     ctx.cues.push('confirm');
     return done(runScript({ ...state, scene: 'world', script: [{ say: world.intro }] }, ctx));
+  }
+  // A rest is being played through: every key waits, and then whatever comes after it runs.
+  if (state.pause) {
+    const left = ctx.instant ? 0 : state.pause - 1;
+    if (left > 0) return done({ ...state, pause: left });
+    return done(runScript({ ...state, pause: undefined }, ctx));
   }
   if (state.dialogue) return done(stepDialogue(state, input, ctx));
   if (state.battle) {

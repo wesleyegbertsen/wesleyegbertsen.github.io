@@ -193,6 +193,30 @@ describe('things on the map', () => {
     expect(rested).toMatchObject({ hp: 20, pp: { hit: 2, nap: 1 }, heal: { map: 'main', x: 4, y: 1 } });
   });
 
+  it('plays the rest through before it goes on: the jingle first, then the words, and nothing moves meanwhile', () => {
+    // The same machine, as a rest that takes 30 ticks (the cafe's barista).
+    const main = world.maps.main!;
+    const resting = { ...world, maps: { ...world.maps, main: { ...main, objects: main.objects.map((object) => (object.id === 'main:k' ? { ...object, branches: [{ do: [{ heal: true as const, rest: 30 }, { say: ['Rested.'] }] }] } : object)) } } };
+    const hurt = { ...play(started(), 'right', 'right', 'up', 'right'), hp: 3 };
+    const pressed = step(hurt, { ...NO_INPUT, a: true }, resting);
+    expect(pressed.cues).toContain('rest');
+    expect(pressed.cues).not.toContain('heal');
+    expect(pressed.state).toMatchObject({ hp: 20, dialogue: null, pause: 30 });
+    expect(pressed.events).toEqual([]);
+    // Held keys do nothing while it plays.
+    let state = pressed.state;
+    for (let i = 0; i < 29; i++) state = step(state, { ...NO_INPUT, dir: 'left', a: true }, resting).state;
+    expect(state).toMatchObject({ x: hurt.x, y: hurt.y, dialogue: null, pause: 1 });
+    const done = step(state, NO_INPUT, resting);
+    expect(done.state.dialogue?.pages).toEqual([['Rested.']]);
+    expect(done.events).toEqual([{ kind: 'say', text: 'Rested.' }]);
+    expect(done.state.pause).toBeFalsy();
+    // With reduced motion the words come at once, as all text does.
+    const instant = step(hurt, { ...NO_INPUT, a: true }, resting, { instant: true });
+    expect(instant.cues).toContain('rest');
+    expect(instant.state.dialogue?.pages).toEqual([['Rested.']]);
+  });
+
   it('ends the game at the host', () => {
     const inRoom = play(started(), 'right', 'right', 'right');
     const talking = play(inRoom, 'a');

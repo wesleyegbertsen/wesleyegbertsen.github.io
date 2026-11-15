@@ -12,6 +12,7 @@ import { COLS, ROWS, fold, wrap } from '../engine/text.ts';
 import { NO_INPUT, type Action, type GameMap, type GameState, type Input } from '../engine/types.ts';
 import { DELTA, resolveSpot } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, ECONOMY, FINAL_BOSSES, ITEMS, REWARDS, SHOPS, START_ITEMS } from './battles.ts';
+import { REST_TICKS } from './music.ts';
 import { CAFE_TEXT } from './story.ts';
 import { buildWorld } from './world.ts';
 
@@ -146,7 +147,9 @@ describe('the barista', () => {
     const result = told(goTo(tired, 'cafe:B'), { a: true });
     expect(result.state.hp).toBe(result.state.maxHp);
     expect(result.state.pp).toEqual({ debug: 25, refactor: 10, deploy: 5, break: 5 });
-    expect(result.cues).toContain('heal');
+    // A rest: its jingle (`rest`), played through before she speaks when motion is allowed.
+    expect(result.cues).toContain('rest');
+    expect(thing(cafe, 'B').branches.every((branch) => branch.do.some((action) => 'heal' in action && action.rest === REST_TICKS))).toBe(true);
     expect(result.events.at(-1)?.text).toMatch(/^Welcome to the CAFE!/);
     expect(result.state.dialogue?.pages.flat().join(' ')).toContain('energy and moves are restored');
     // She turns to the player: a picture of her own for every side.
