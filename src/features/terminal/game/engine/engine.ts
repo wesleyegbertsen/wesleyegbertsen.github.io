@@ -132,7 +132,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     return say({ ...state, coins: state.coins + action.coins }, [`You got ${money(action.coins, world)}!`], ctx, 'item');
   }
   if ('shop' in action) return openShop(state, action.shop, ctx);
-  if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx);
+  if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx, 0, action.quick);
   if ('warp' in action) {
     const spot = resolveSpot(world, action.warp);
     ctx.cues.push(action.cue ?? 'door');

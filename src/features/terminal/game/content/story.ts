@@ -394,14 +394,16 @@ export const FINALE = {
 /**
  * Wesley as the final boss: three battles in a row, energy and moves restored in between; only after the third
  * come the contact details and the ending. A defeat loses nothing: talk to him again and the fight goes on with
- * the boss that won.
+ * the boss that won. The first battle of a talk gets the whole transition of a boss; the ones that follow it are
+ * marked `quick` and get the short one.
  */
 function lastFight(data: FsData): ObjectSpec['branches'] {
   const goodbye: Action[] = [{ say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { ending: true }];
-  const from = (round: number): Action[] => {
+  const from = (round: number, quick = false): Action[] => {
     const enemy = FINAL_BOSSES[round];
     if (!enemy) return goodbye;
-    return [{ say: FINALE.before[round] ?? [] }, { battle: enemy, win: [{ flag: `beat:${enemy}` }, { heal: true }, { say: [FINALE.after[round] ?? ''] }, ...from(round + 1)] }];
+    const win: Action[] = [{ flag: `beat:${enemy}` }, { heal: true }, { say: [FINALE.after[round] ?? ''] }, ...from(round + 1, true)];
+    return [{ say: FINALE.before[round] ?? [] }, quick ? { battle: enemy, win, quick } : { battle: enemy, win }];
   };
   // The furthest round first: whoever is beaten stays beaten.
   const resumed = FINAL_BOSSES.map((enemy, round) => ({ when: { flag: `beat:${enemy}` }, do: [{ say: ['Back for more? Good.'] }, ...from(round + 1)] })).reverse();

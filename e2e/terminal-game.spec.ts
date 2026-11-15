@@ -220,13 +220,55 @@ test.describe('the adventure in the terminal', () => {
     await pilot.goTo('town:P');
     // Wesley is the final boss: three battles in a row, and only then the contact details.
     await pilot.goTo('contact:H');
-    await pilot.press('a');
-    await pilot.read();
+    // With motion from here until the third battle is on: the way into the first one is the whole show of a
+    // boss, the way into the two that follow it is the short one. Written down in the page, frame by frame.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.evaluate(() => {
+      const scope = window as unknown as { ways: Record<string, { kind: string; cue: string; from: number; to: number }>; watching: boolean };
+      scope.ways = {};
+      scope.watching = true;
+      const root = document.querySelector<HTMLElement>('[role="application"]')!;
+      const look = () => {
+        if (!scope.watching) return;
+        const { transition = '', battle = '', cue = '' } = root.dataset;
+        if (transition) {
+          const way = (scope.ways[battle] ??= { kind: transition, cue, from: performance.now(), to: 0 });
+          way.to = performance.now();
+        }
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    const met = new Set<string>();
+    const on = async (enemy: string) => (await game(page).getAttribute('data-battle')) === enemy && (await game(page).getAttribute('data-transition')) === '';
+    // The text types itself now: A, with a moment in between, until the first battle is on the screen.
+    for (let i = 0; i < 400 && !(await on('interview')); i++) {
+      await page.keyboard.press('z');
+      await page.waitForTimeout(30);
+    }
     await expect(game(page)).toHaveAttribute('data-battle', 'interview');
     await expect(game(page)).toHaveAttribute('data-music', 'final');
     await expect(status(page)).toHaveText('JOB INTERVIEW wants to battle!');
     await expect(game(page)).toHaveAttribute('data-finished', 'false');
-    const met = new Set<string>();
+    for (let i = 0; i < 1500 && !(await on('impostor')); i++) {
+      met.add((await game(page).getAttribute('data-battle')) ?? '');
+      await page.keyboard.press('z');
+      await page.waitForTimeout(30);
+    }
+    const ways = await page.evaluate(() => {
+      const scope = window as unknown as { ways: Record<string, { kind: string; cue: string; from: number; to: number }>; watching: boolean };
+      scope.watching = false;
+      return Object.fromEntries(Object.entries(scope.ways).map(([enemy, way]) => [enemy, { kind: way.kind, cue: way.cue, ms: way.to - way.from }]));
+    });
+    expect(Object.fromEntries(Object.entries(ways).map(([enemy, way]) => [enemy, `${way.kind} ${way.cue}`]))).toEqual({ interview: 'boss showdown', review: 'quick round', impostor: 'quick round' });
+    // 108 ticks at 60 a second are 1.8 seconds, 36 are 0.6: give or take a slow frame.
+    expect(ways.interview!.ms).toBeGreaterThan(1400);
+    for (const enemy of ['review', 'impostor']) {
+      expect(ways[enemy]!.ms, enemy).toBeGreaterThan(350);
+      expect(ways[enemy]!.ms, enemy).toBeLessThan(1300);
+    }
+    // The rest of it at one press per move again.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     for (let i = 0; i < 600 && (await game(page).getAttribute('data-finished')) !== 'true'; i++) {
       met.add((await game(page).getAttribute('data-battle')) ?? '');
       await page.keyboard.press('z');

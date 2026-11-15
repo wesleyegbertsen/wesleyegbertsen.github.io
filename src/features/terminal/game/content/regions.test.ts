@@ -11,6 +11,7 @@ import { maxHpOf } from '../engine/level.ts';
 import { fold } from '../engine/text.ts';
 import { NO_INPUT, type Action, type Dir, type GameMap, type GameObject, type GameState, type Input } from '../engine/types.ts';
 import { placeOf } from '../engine/wander.ts';
+import { BOSS_TICKS, QUICK_TICKS, curtainOf } from '../engine/transition.ts';
 import { DELTA, landing, resolveSpot } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
@@ -1054,6 +1055,40 @@ describe('the last fight', () => {
     expect(text.indexOf('JOB INTERVIEW wants to battle!')).toBeLessThan(text.indexOf('YEARLY REVIEW wants to battle!'));
     expect(text.indexOf('YEARLY REVIEW wants to battle!')).toBeLessThan(text.indexOf('THE IMPOSTOR wants to battle!'));
     for (const id of FINAL_BOSSES) expect(state.flags[`beat:${id}`]).toBe(true);
+  });
+
+  it('plays the whole transition for the first battle and the short one for those that follow, and never flashes', () => {
+    // With motion, A held down on every tick: as fast as anyone can go through it.
+    const play = (from: GameState) => {
+      let state = from;
+      const ways: Record<string, { ticks: number; quick: boolean; cue: string }> = {};
+      const bright: boolean[] = [];
+      for (let i = 0; i < 60000 && !state.finished; i++) {
+        const next = step(state, { ...NO_INPUT, a: true }, world);
+        const { battle } = next.state;
+        if (battle && battle !== state.battle && state.battle?.enemy !== battle.enemy) ways[battle.enemy] = { ticks: battle.intro, quick: !!battle.quick, cue: next.cues.at(-1) ?? '' };
+        state = next.state;
+        // Bright: a wash of the transition, or the battle screen itself (its ground is the lightest shade).
+        const curtain = state.battle && curtainOf(state.battle);
+        bright.push(curtain ? curtain.flash : !!state.battle);
+      }
+      const onsets = bright.map((on, i) => on && !bright[i - 1]);
+      let worst = 0;
+      for (let i = 0; i < onsets.length; i++) if (onsets[i]) worst = Math.max(worst, onsets.slice(i, i + 60).filter(Boolean).length);
+      return { state, ways, worst };
+    };
+    const whole = play(facing({ level: world.levels.max }));
+    expect(whole.state.finished).toBe(true);
+    expect(whole.ways).toEqual({
+      interview: { ticks: BOSS_TICKS, quick: false, cue: 'showdown' },
+      review: { ticks: QUICK_TICKS, quick: true, cue: 'round' },
+      impostor: { ticks: QUICK_TICKS, quick: true, cue: 'round' },
+    });
+    expect(whole.worst).toBeLessThan(3);
+    // Back after a defeat: the boss that won is the first of that talk, so it gets the whole show again.
+    const back = play(facing({ level: world.levels.max, flags: { 'beat:interview': true } }));
+    expect(back.ways).toEqual({ review: { ticks: BOSS_TICKS, quick: false, cue: 'showdown' }, impostor: { ticks: QUICK_TICKS, quick: true, cue: 'round' } });
+    expect(back.worst).toBeLessThan(3);
   });
 
   it('does not give the contact details away before it: the first thing Wesley does is fight', () => {

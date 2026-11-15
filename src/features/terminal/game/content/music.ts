@@ -19,7 +19,8 @@ import type { Cue, World } from '../engine/types.ts';
  *   with a start (`at`, seconds), a pitch (`from`, sliding to `to`), a length and a volume. For noise, `from` and
  *   `to` are how bright it is (1 is hiss, 0.1 is rumble). `gap` is the least time between two of the same.
  * - A battle starts with a transition on the screen (engine/transition.ts). The music is silent while it plays;
- *   its sound is the effect `encounter` (a wild enemy) or `showdown` (a boss), and the battle tune starts after.
+ *   its sound is the effect `encounter` (a wild enemy), `showdown` (a boss) or `round` (the next boss of the last
+ *   fight, a short one), and the battle tune starts after.
  * - All melodies are original. Volumes are 0 to 1 and sit under the master volume in useGameSound.ts.
  */
 
@@ -421,6 +422,16 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
       hiss(0.1, 0.9, 0.3, 0.83, 1),
       beep(200, 0.9, 0.25, 0.83, 1600),
       beep(100, 0.9, 0.3, 0.83, 400, 'triangle'),
+    ],
+  },
+  // The next boss of a fight that goes on: one alarm call and a short climb. It must end within QUICK_TICKS (0.6 seconds).
+  round: {
+    tones: [
+      beep(880, 0.15, 0.25, 0.03, 440),
+      beep(220, 0.15, 0.3, 0.03, 110, 'triangle'),
+      hiss(0.1, 0.35, 0.3, 0.2, 1),
+      beep(200, 0.35, 0.25, 0.2, 1600),
+      beep(100, 0.35, 0.3, 0.2, 400, 'triangle'),
     ],
   },
 };

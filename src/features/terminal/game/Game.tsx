@@ -95,7 +95,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     setFinished(state.finished);
     const music = sound.follow(state) ?? '';
     const banner = bannerText(state);
-    const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : 'boss') : '';
+    const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : state.battle.quick ? 'quick' : 'boss') : '';
     // Where the things that can be pushed on this map are now (boulders), as "x,y x,y", in the order of the map.
     const pushed = (world.maps[state.map]?.objects ?? []).filter((object) => object.push).map((object) => placeOf(object, state)).map((at) => `${at.x},${at.y}`).join(' ');
     const root = focusRef.current;

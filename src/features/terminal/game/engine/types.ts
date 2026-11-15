@@ -34,7 +34,8 @@ export type Action =
   | { reset: true }
   | { badge: string }
   | { heal: true }
-  | { battle: string; win: Action[] }
+  /** `quick`: this battle follows another one at once (the last fight), so the way into it is the short one. */
+  | { battle: string; win: Action[]; quick?: true }
   /** `cue`: what the way sounds like. A door by default; `path` for the edge of a map, `cave` for a cave mouth. */
   | { warp: Spot; cue?: Cue }
   /** Max energy grows by this much, for good (the prize at the end of the cave). */
@@ -263,6 +264,8 @@ export type Battle = {
   wild: boolean;
   /** Ticks left of the way in: the transition over the map before the battle screen (engine/transition.ts). 0 once it is up. */
   intro: number;
+  /** This boss follows another one at once: the way in is the short one (QUICK_TICKS), with the sound `round`. */
+  quick?: true;
   phase: 'steps' | 'menu' | 'moves' | 'items';
   steps: BattleStep[];
   shown: number;
@@ -385,6 +388,8 @@ export type Cue =
   | 'encounter'
   /** A boss steps up: the longer sound of the longer transition. */
   | 'showdown'
+  /** The next boss of a fight that goes on: the short sound of the short transition. */
+  | 'round'
   | 'levelup'
   /** Walking off the edge of a map onto the next one, and going into or out of a cave: not doors. */
   | 'path'

@@ -1,11 +1,11 @@
 import { EFFECTS, JINGLES, MUSIC, TRACKS } from '../content/music.ts';
 import { JUMP_TICKS } from '../engine/engine.ts';
-import { BOSS_TICKS, WILD_TICKS } from '../engine/transition.ts';
+import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import type { Cue } from '../engine/types.ts';
 import { createSequencer, flatten, frequencyOf, parseVoice, stepSeconds, trackSteps, type Track } from './score.ts';
 
 // Written as a record so that a new cue in the engine is a type error here until it is listed.
-const CUE_LIST = { cursor: true, confirm: true, cancel: true, blip: true, door: true, item: true, coin: true, star: true, badge: true, bump: true, jump: true, heal: true, hit: true, hurt: true, miss: true, faint: true, low: true, run: true, encounter: true, showdown: true, levelup: true, quieter: true, louder: true, path: true, cave: true, sound: true, screen: true, push: true, slide: true, switch: true, gate: true } satisfies Record<Cue, true>;
+const CUE_LIST = { cursor: true, confirm: true, cancel: true, blip: true, door: true, item: true, coin: true, star: true, badge: true, bump: true, jump: true, heal: true, hit: true, hurt: true, miss: true, faint: true, low: true, run: true, encounter: true, showdown: true, round: true, levelup: true, quieter: true, louder: true, path: true, cave: true, sound: true, screen: true, push: true, slide: true, switch: true, gate: true } satisfies Record<Cue, true>;
 const CUES = Object.keys(CUE_LIST) as Cue[];
 
 const tune = (notes: string, extra: Partial<Track> = {}): Track => ({ bpm: 150, loop: false, voices: [{ wave: 'pulse', volume: 0.5, notes }], ...extra });
@@ -202,6 +202,10 @@ describe('the scores of the game', () => {
     expect(ends('encounter')).toBeLessThanOrEqual(WILD_TICKS / 60);
     expect(ends('showdown')).toBeLessThanOrEqual(BOSS_TICKS / 60);
     expect(ends('showdown')).toBeGreaterThan(ends('encounter') * 1.5);
+    // The next boss of the last fight: a cut-down of the boss's sound that fits the short transition.
+    expect(ends('round')).toBeLessThanOrEqual(QUICK_TICKS / 60);
+    expect(ends('round')).toBeGreaterThan(0.3);
+    expect(ends('round')).toBeLessThan(ends('showdown') / 2);
     // The hop over a ledge: a small sound that is over when the hop is.
     expect(ends('jump')).toBeLessThanOrEqual(JUMP_TICKS / 60 + 0.05);
     for (const tone of EFFECTS.jump!.tones) expect(tone.volume).toBeLessThanOrEqual(0.25);

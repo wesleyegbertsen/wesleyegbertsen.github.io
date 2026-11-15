@@ -58,8 +58,11 @@ function reveal(state: GameState, ctx: Ctx): GameState {
   };
 }
 
-/** `level`: the level a wild enemy shows up at; never under its own. A boss is always at its own level. */
-export function startBattle(state: GameState, enemyId: string, win: Action[], wild: boolean, ctx: Ctx, level = 0): GameState {
+/**
+ * `level`: the level a wild enemy shows up at; never under its own. A boss is always at its own level. `quick`: a
+ * boss that follows another one at once, with the short way in.
+ */
+export function startBattle(state: GameState, enemyId: string, win: Action[], wild: boolean, ctx: Ctx, level = 0, quick = false): GameState {
   const enemy = ctx.world.enemies[enemyId];
   if (!enemy) throw new Error(`No enemy '${enemyId}'`);
   const at = Math.max(enemy.level, level);
@@ -72,7 +75,8 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
     enemyHp: enemyMax,
     wild,
     // With reduced motion there is no transition: the battle screen is there at once.
-    intro: ctx.instant ? 0 : introTicks(wild),
+    intro: ctx.instant ? 0 : introTicks(wild, quick),
+    ...(quick && !wild ? { quick: true as const } : {}),
     phase: 'steps',
     steps: [],
     shown: 0,
@@ -82,7 +86,7 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
   };
   const intro = wild ? `A wild ${enemy.name} appeared!` : `${enemy.name} wants to battle!`;
   // The line is told (and its sound asked for) at once; on the screen it waits for the transition.
-  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : 'showdown' }], ctx);
+  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : quick ? 'round' : 'showdown' }], ctx);
 }
 
 type Choice = { move: MoveDef; id?: string } | { item: string };

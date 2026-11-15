@@ -2,7 +2,7 @@ import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
-import { BOSS_TICKS, WILD_TICKS } from './engine/transition.ts';
+import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -451,6 +451,26 @@ describe('the way into a battle', () => {
     expect(left.w).toBeLessThan(60);
     expect(area(dark(battle(false, 60)))).toBeLessThan(area(half));
     expect(area(dark(battle(false, BOSS_TICKS - 1)))).toBe(SCREEN_W * SCREEN_H);
+  });
+
+  it('closes the same iris in a third of the time, after one wash, for a boss that follows another', () => {
+    const quick = (t: number): GameState => {
+      const state = battle(false, 0);
+      return { ...state, battle: { ...state.battle!, quick: true, intro: QUICK_TICKS - t } };
+    };
+    const on = Array.from({ length: QUICK_TICKS }, (_, t) => {
+      const { fills } = drawn(quick(t));
+      return whole(fills.at(-1)) && fills.at(-1)!.shade === PALETTE[0];
+    });
+    expect(on.filter((now, i) => now && !on[i - 1])).toHaveLength(1);
+    expect(dark(quick(9))).toEqual([]);
+    const half = dark(quick(20));
+    expect(half).toHaveLength(4);
+    expect(half[2]!.w).toBe(half[3]!.w);
+    expect(area(half)).toBeGreaterThan(area(dark(quick(14))));
+    expect(area(dark(quick(QUICK_TICKS - 1)))).toBe(SCREEN_W * SCREEN_H);
+    // Over: the battle screen.
+    expect(spriteDraws(drawn(quick(QUICK_TICKS)).draws, 'bug')).toHaveLength(1);
   });
 
   it('uses the four shades only, and hides the speaker under the dark', () => {
