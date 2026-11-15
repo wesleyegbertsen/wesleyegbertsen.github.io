@@ -29,6 +29,16 @@ const KEYS: Record<Press, string> = {
 export const gameOf = (page: Page) => page.getByRole('application');
 
 /**
+ * Switches motion on or off in the middle of a game and waits until the game has followed (`data-motion`). Never
+ * press a key right after `page.emulateMedia` without this wait: the game follows the media query one render
+ * later, and a key that lands before that is still one whole move, with nothing held, no transition and no hop.
+ */
+export async function setMotion(page: Page, on: boolean) {
+  await page.emulateMedia({ reducedMotion: on ? 'no-preference' : 'reduce' });
+  await expect(gameOf(page)).toHaveAttribute('data-motion', on ? 'full' : 'reduced');
+}
+
+/**
  * Plays the game on the page and in a copy of the engine at the same time, so a test can ask for "walk to the
  * Academy's door" instead of a list of keys. Start with reduced motion on the page: one key is then one whole
  * move. `motion(true)` switches motion on later (for the puzzles of the deep cave); the Pilot then waits for
@@ -70,8 +80,7 @@ export class Pilot {
    * while nothing is under way.
    */
   async motion(on: boolean) {
-    await this.page.emulateMedia({ reducedMotion: on ? 'no-preference' : 'reduce' });
-    await expect(gameOf(this.page)).toHaveAttribute('data-motion', on ? 'full' : 'reduced');
+    await setMotion(this.page, on);
     this.moving = on;
   }
 

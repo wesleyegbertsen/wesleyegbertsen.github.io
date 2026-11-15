@@ -135,7 +135,14 @@ test.describe('the sound of the adventure', () => {
     if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
     await page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: 'Projects' }).click();
     await expect(page).toHaveURL(/#\/projects$/);
-    expect((await only(page)).state).toBe('closed');
+    // The address changes first; the page follows a render later, and the game tidies up after that. Wait for the
+    // other page, and then for the context to be closed, in the page (a look straight after the address is too early).
+    await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
+    await expect(game(page)).toHaveCount(0);
+    await page.waitForFunction(() => (window as unknown as { __audio: { state: string }[] }).__audio.every((context) => context.state === 'closed'));
+    const left = await only(page);
+    expect(left.state).toBe('closed');
+    expect(left.closes).toBe(1);
   });
 
   test('a hidden tab freezes the sound, and it carries on when the tab shows again', async ({ page }) => {

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { audioLog, box, openSite, stubAudioContext } from './helpers.ts';
-import { Pilot, gameOf as game } from './pilot.ts';
+import { Pilot, gameOf as game, setMotion } from './pilot.ts';
 
 // The wider world of Career Quest: the volume wheel, levels and XP, the roads out of town, Hobby Hills and the
 // dark cave. Reduced motion is on (one key is one whole move), and the page gets a recording AudioContext.
@@ -534,7 +534,7 @@ test.describe('beyond the town', () => {
     await pilot.press('down');
     await expect(game(page)).toHaveAttribute('data-y', '5');
 
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await setMotion(page, true);
     // Every frame the browser draws: where the game says the player is, whether a hop is under way, and how much
     // of the shadow under the hop shows. The view follows the player here, who is always drawn at 72, 64; the
     // shadow is 8 by 2 pixels of the dark shade at the feet, and the feet themselves cover it on the ground.
@@ -567,9 +567,13 @@ test.describe('beyond the town', () => {
     // Sixteen ticks at sixty a second, about a quarter of a second. The game counts the player as landed from the
     // start, two cells on: never a stop on the ledge's own cell. After it, plain steps again.
     expect(hop.length).toBeGreaterThanOrEqual(5);
-    const lasted = hop.at(-1)!.at - hop[0]!.at;
-    expect(lasted).toBeGreaterThan(120);
-    expect(lasted).toBeLessThan(700);
+    // It ended somewhere between the last frame that showed it and the first frame after. When the browser skips
+    // a few frames right at the landing, the frames in the air alone look too short (112 ms was seen once), so
+    // the least it must have lasted is measured up to the first frame on the ground, the most over the frames in the air.
+    const landed = frames.find((frame) => frame.at > hop.at(-1)!.at)!;
+    expect(landed.jump).toBe('false');
+    expect(landed.at - hop[0]!.at).toBeGreaterThan(120);
+    expect(hop.at(-1)!.at - hop[0]!.at).toBeLessThan(700);
     for (const frame of hop) expect(frame.x).toBe(17);
     // In the air the whole shadow shows; on the ground it never does.
     expect(hop.some((frame) => frame.shadow === 16)).toBe(true);

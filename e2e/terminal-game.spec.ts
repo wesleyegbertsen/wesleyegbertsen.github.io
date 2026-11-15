@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { education } from '../src/data/education.ts';
 import { profile } from '../src/data/profile.ts';
 import { box, openSite } from './helpers.ts';
-import { Pilot, gameOf as game } from './pilot.ts';
+import { Pilot, gameOf as game, setMotion } from './pilot.ts';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Command' });
 const log = (page: Page) => page.getByRole('log', { name: 'Terminal output' });
@@ -222,7 +222,7 @@ test.describe('the adventure in the terminal', () => {
     await pilot.goTo('contact:H');
     // With motion from here until the third battle is on: the way into the first one is the whole show of a
     // boss, the way into the two that follow it is the short one. Written down in the page, frame by frame.
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await setMotion(page, true);
     await page.evaluate(() => {
       const scope = window as unknown as { ways: Record<string, { kind: string; cue: string; from: number; to: number }>; watching: boolean };
       scope.ways = {};
@@ -268,7 +268,7 @@ test.describe('the adventure in the terminal', () => {
       expect(ways[enemy]!.ms, enemy).toBeLessThan(1300);
     }
     // The rest of it at one press per move again.
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await setMotion(page, false);
     for (let i = 0; i < 600 && (await game(page).getAttribute('data-finished')) !== 'true'; i++) {
       met.add((await game(page).getAttribute('data-battle')) ?? '');
       await page.keyboard.press('z');

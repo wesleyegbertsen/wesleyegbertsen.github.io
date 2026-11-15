@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openSite, stubAudioContext } from './helpers.ts';
-import { Pilot, gameOf as game } from './pilot.ts';
+import { Pilot, gameOf as game, setMotion } from './pilot.ts';
 
 // The battle screen and the way into it: the boxes of the two fighters, and the transition that plays over the
 // map before a battle (a wild enemy: a blink and blinds; a boss: two blinks and an iris, longer). The transition
@@ -104,7 +104,7 @@ test.describe('the battle screen', () => {
 test.describe('the way into a battle', () => {
   test('a boss: two blinks and an iris over the map, in silence, then the battle screen and the boss tune', async ({ page }) => {
     const { errors } = await toTheExaminer(page);
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await setMotion(page, true);
     await record(page);
     // The examiner talks first; the text types itself. A, until the transition starts.
     for (let i = 0; i < 200 && (await game(page).getAttribute('data-battle')) === ''; i++) {
@@ -141,7 +141,7 @@ test.describe('the way into a battle', () => {
     await pilot.start();
     // Into the meadow at the bottom left of town; whatever jumps out on the way is fought off.
     await pilot.goTo('town:3');
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await setMotion(page, true);
     await record(page);
     // Up and down the tall grass until something jumps out.
     for (let i = 0; i < 80 && (await game(page).getAttribute('data-battle')) === ''; i++) {
