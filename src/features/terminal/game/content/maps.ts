@@ -44,6 +44,7 @@ export const OUTDOORS: Record<string, TileDef> = {
   u: { sprite: 'bush', solid: true },
   h: { sprite: 'hedge', solid: true },
   r: { sprite: 'rock', solid: true },
+  y: { sprite: 'boulder', under: 'shore', solid: true }, // a rock in the sand
   ';': { sprite: 'flowerbed', solid: true, animated: true },
   f: { sprite: 'fence', solid: true },
   // Water
@@ -190,32 +191,43 @@ export const EAST = [
 ];
 
 /**
- * Hobby Hills: a ring road around a pond with a sandy shore (+), with ten stops, one per hobby. 1 the telescope, 2 the arcade cabinet,
- * 3 the torii gate, 4 the cat, 5 the old console, 6 the rabbit in its pen, 7 the soldering bench, 8 the kanji board,
- * 9 the home server, 0 the flask. ? keeps the stamp rally, s is the signpost, k a coffee machine, m a second cat
- * who strolls. ( leads back to the road.
+ * Hobby Hills: a ring road with ten stops, one per hobby, around a pond. Every stop is on the ring road or a few
+ * steps from it or from a path (a test checks), so walking the ring once finds them all.
+ *
+ * The stops: 1 the telescope, 2 the arcade cabinet, 3 the torii gate (north of the ring); 4 the cat, 6 the rabbit
+ * in its pen, 5 the old console, 7 the soldering bench, 8 the kanji board (inside it); 9 the home server, 0 the
+ * flask (south of it).
+ * The pond: a sandy shore (+) all round, reeds (*), a jetty (_) with E, who fishes, at its end, and a stream that
+ * runs east under the road (|); t are stepping stones across it. Paths lead from the ring to the pond on three sides.
+ * Scenery: two cottages (doors a and b) and a shed (door S) nobody is home in, a sand garden with a rock by the
+ * kanji board (y is a rock in the sand), flower beds, fences, benches.
+ * People: ? keeps the stamp rally, P plays the arcade, B looks after the gate; H a kid, D a dog and m a second cat
+ * stroll (keep their ranges apart, and never the only way to a stop). s is the signpost at the entrance, p and o the
+ * ones that say where the stops are, k a coffee machine. ( leads back to the road.
  */
 export const HILLS = [
-  'TYTTYTTTYTTYTTTTYTTYTTTYTTYT',
-  'T..,....Y......,.....Y...,.T',
-  'T.#1#.....#2#......#3#.....T',
-  'T.i##..i..###..i...###.i...T',
-  'T.========================.T',
-  'T.=..,....++++++++...,...=.T',
-  'T.=.4,....+*~^~~~+...#5#.=.T',
-  'T.=.......+~~~~d~+.......=.T',
-  'T.=..ff...+~^~_~*+...n...=.T',
-  'T.=..f6...++++++++.......=.T',
-  '(==.......,..?...........=.T',
-  'T.=....,......s......u...=.T',
-  'T.=#7#............m...#8#=.T',
-  'T.=..,.......,........,..=.T',
-  'T.========================.T',
-  'T.i....i.......i.......i...T',
-  'T..#9#......#0#......k.....T',
-  'T.,......Y.........,....Y..T',
-  'T...,.....Y.......,....Y...T',
-  'TYTTTYTTYTTTTYTTTYTTYTTTYTTT',
+  'TYTTYTTTYTTYTTTTYTTYTTTYTTYTTT',
+  'T,,..Y.,RRR.,..,Y.RRR.;.,.;.YT',
+  'T.#1#.u.Waw.P#2#..wbWB;#3#;..T',
+  'T.i##..,.=.n.###i..=.,.###.i.T',
+  'T.==========================.T',
+  'T,=p,..T..,..n=..,....#5#.Y=,T',
+  'T.=..4,..+++++++++++..###..=.T',
+  'T.=,....u+*~~^~~~~*+.,..H..=,T',
+  'T,=.fff..+~~~~~~d~~+..,,..u=.T',
+  'T.=.f6...+~^~~~~~~~t~~~t~~~|~~',
+  'T.=.fff.,+*~~~E~~^~+..,.+++=,T',
+  '(========+**~~_~~~*+....+y+=.T',
+  'T,=s.,.,.+++++++++++.n..+++=.T',
+  'T.=...jjj.,..?=.;;..,..,...=,T',
+  'T,=#7#vS>..D..=...m...#8#,.=.T',
+  'T.=###.=.,.,..=.,.,.T.###n.=.T',
+  'T.=.,..=.;;,..=.;;.,...=..o=,T',
+  'T.==========================.T',
+  'T,i..#..,i..,..#i..,...i..,..T',
+  'T.,.#9#...Y..,#0#..u..k.,.fffT',
+  'T.,,..Y..,..,,...Y..,,..Y.,..T',
+  'TYTTTYTTYTTTTYTTTYTTYTTTYTTTYT',
 ];
 
 /**

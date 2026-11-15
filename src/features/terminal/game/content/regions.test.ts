@@ -10,10 +10,11 @@ import { initialGame, step } from '../engine/engine.ts';
 import { maxHpOf } from '../engine/level.ts';
 import { fold } from '../engine/text.ts';
 import { NO_INPUT, type Action, type Dir, type GameMap, type GameState, type Input } from '../engine/types.ts';
+import { placeOf } from '../engine/wander.ts';
 import { DELTA, landing, resolveSpot } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
-import { HOBBIES, ROUTE_BACK } from './story.ts';
+import { HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -453,6 +454,198 @@ describe('Hobby Hills', () => {
     state = talk(state, 'hills:?');
     expect(state.items).toMatchObject({ omamori: 1, bento: 1 });
     expect(world.items.bento!.heal).toBeGreaterThan(0);
+  });
+});
+
+describe('Hobby Hills as a place', () => {
+  const entrance = resolveSpot(world, { map: 'hills', at: '(', dx: 1 });
+  const thing = (char: string) => hills!.objects.find((object) => object.id === `hills:${char}`)!;
+  const stopsOf = () => HOBBIES.map((stop) => ({ ...stop, ...thing(stop.at) }));
+  const strollers = hills!.objects.filter((object) => object.wander);
+  const spritesUsed = new Set(hills!.cells.flat().map((char) => hills!.tiles[char]!.sprite));
+  const onlyTalks = (char: string) => thing(char).branches.flatMap((branch) => deep(branch.do)).every((action) => 'say' in action);
+  /** The road cells that hang together with a cell (the entrance, unless told otherwise), with some cells closed. */
+  function roads(closed: string[] = [], from: Cell = entrance): Set<string> {
+    const seen = new Set([keyOf(from)]);
+    const queue: Cell[] = [from];
+    for (let cell = queue.shift(); cell; cell = queue.shift()) {
+      for (const { dx, dy } of Object.values(DELTA)) {
+        const next = { x: cell.x + dx, y: cell.y + dy };
+        if (seen.has(keyOf(next)) || closed.includes(keyOf(next)) || !tileOf(hills!, next.x, next.y)?.road) continue;
+        seen.add(keyOf(next));
+        queue.push(next);
+      }
+    }
+    return seen;
+  }
+  /** How many steps it is from a road to a cell beside a thing, over ground that can be stood on. */
+  function stepsFromRoad(object: { x: number; y: number }): number {
+    const network = roads();
+    const start = Object.values(DELTA).map(({ dx, dy }) => ({ x: object.x + dx, y: object.y + dy })).filter((cell) => standable(hills!, cell.x, cell.y));
+    const seen = new Set(start.map(keyOf));
+    let front = start;
+    for (let steps = 0; front.length > 0; steps++) {
+      if (front.some((cell) => network.has(keyOf(cell)))) return steps;
+      front = front.flatMap((cell) => moves(hills!, cell)).filter((cell) => !seen.has(keyOf(cell)) && !!seen.add(keyOf(cell)));
+    }
+    return Infinity;
+  }
+
+  it('has a ring road that is one closed loop, with the entrance on it', () => {
+    const network = roads();
+    const cells = [...network].map((key) => ({ x: Number(key.split(',')[0]), y: Number(key.split(',')[1]) }));
+    // The entrance meets the ring at its left side; its top and bottom are where that side ends.
+    const left = entrance.x + 1;
+    const side = cells.filter((cell) => cell.x === left).map((cell) => cell.y);
+    const top = Math.min(...side);
+    const bottom = Math.max(...side);
+    const right = Math.max(...cells.filter((cell) => cell.y === top).map((cell) => cell.x));
+    // It goes round most of the map.
+    expect(right - left).toBeGreaterThanOrEqual(hills!.width - 8);
+    expect(bottom - top).toBeGreaterThanOrEqual(hills!.height - 10);
+    const ring = cellsOf(hills!, (x, y) => x >= left && x <= right && y >= top && y <= bottom && (x === left || x === right || y === top || y === bottom));
+    for (const cell of ring) expect(network.has(keyOf(cell)), keyOf(cell)).toBe(true);
+    // A loop: with any one cell of it closed, the rest is still one road.
+    for (const cell of ring) {
+      const rest = roads([keyOf(cell)], ring.find((other) => other !== cell));
+      expect(ring.every((other) => other === cell || rest.has(keyOf(other))), keyOf(cell)).toBe(true);
+    }
+    // Paths lead from the ring to the pond, on three sides of it at the least.
+    const paths = cells.filter((cell) => cell.x > left && cell.x < right && cell.y > top && cell.y < bottom);
+    const atShore = paths.filter((cell) => Object.values(DELTA).some(({ dx, dy }) => tileOf(hills!, cell.x + dx, cell.y + dy)!.sprite === 'shore'));
+    expect(atShore.length).toBeGreaterThanOrEqual(3);
+    // Nothing that strolls is ever dropped onto it: the way in is a road cell.
+    expect(tileOf(hills!, entrance.x, entrance.y)!.road).toBe(true);
+  });
+
+  it('keeps every stop easy to find: on the ring road or a path, or three steps from one at the most', () => {
+    for (const stop of stopsOf()) expect(stepsFromRoad(stop), stop.id).toBeLessThanOrEqual(3);
+    // Most of them are right beside a road or one step from it.
+    expect(stopsOf().filter((stop) => stepsFromRoad(stop) <= 1).length).toBeGreaterThanOrEqual(7);
+    // The rally keeper and the coffee machine too.
+    expect(stepsFromRoad(thing('?'))).toBeLessThanOrEqual(1);
+    expect(stepsFromRoad(thing('k'))).toBeLessThanOrEqual(1);
+  });
+
+  it('has signposts that name every stop, at the entrance and at two corners of the ring', () => {
+    const signs = hills!.objects.filter((object) => object.sprite === 'sign');
+    expect(signs.length).toBeGreaterThanOrEqual(3);
+    for (const sign of signs) expect(stepsFromRoad(sign), sign.id).toBe(0);
+    const text = said(hills!);
+    for (const stop of HOBBIES) {
+      expect(STOP_NAMES[stop.id], stop.id).toBeDefined();
+      expect(text, stop.id).toContain(`the ${STOP_NAMES[stop.id]}`);
+    }
+    expect(Object.keys(STOP_NAMES).sort()).toEqual(HOBBIES.map((stop) => stop.id).sort());
+    expect(text).toContain('The ring road passes every stop');
+  });
+
+  it('is no longer mostly grass: water, sand, cobbles, fences, flower beds, benches, trees and houses', () => {
+    for (const sprite of ['water', 'shore', 'reeds', 'jetty', 'stones', 'bridge', 'cobble', 'fence', 'flowerbed', 'flowers', 'bench', 'tree', 'pine', 'bush', 'boulder', 'lamp', 'roof', 'wall', 'pane', 'tin', 'planks']) {
+      expect(spritesUsed, sprite).toContain(sprite);
+    }
+    // Inside the border of trees, less than two cells in five are plain grass.
+    const inside = cellsOf(hills!, (x, y) => x > 0 && y > 0 && x < hills!.width - 1 && y < hills!.height - 1);
+    const plain = inside.filter((cell) => tileOf(hills!, cell.x, cell.y)!.sprite === 'grass' && !hills!.objects.some((object) => object.x === cell.x && object.y === cell.y));
+    expect(plain.length / inside.length).toBeLessThan(0.4);
+    // Still no tall grass, and nothing wild.
+    expect(spritesUsed).not.toContain('tallgrass');
+    expect(hills!.encounters).toBeUndefined();
+  });
+
+  it('has a stream out of the pond, with stepping stones over it and a bridge under the ring road', () => {
+    const wet = (x: number, y: number) => WET.includes(tileOf(hills!, x, y)?.sprite ?? '');
+    const pond = new Set(pondOf(hills!).map(keyOf));
+    const stream = cellsOf(hills!, (x, y) => wet(x, y) && !pond.has(`${x},${y}`));
+    expect(stream.length).toBeGreaterThanOrEqual(6);
+    const stones = cellsOf(hills!, (x, y) => tileOf(hills!, x, y)!.sprite === 'stones');
+    expect(stones.length).toBeGreaterThanOrEqual(2);
+    const reach = dryReach(hills!, entrance);
+    for (const cell of stones) {
+      // Water on two opposite sides, ground to step from and to on the other two.
+      const across = [DELTA.left, DELTA.right].every(({ dx }) => wet(cell.x + dx, cell.y)) ? [DELTA.up, DELTA.down] : [DELTA.left, DELTA.right];
+      for (const { dx, dy } of across) expect(standable(hills!, cell.x + dx, cell.y + dy), keyOf(cell)).toBe(true);
+      expect(reach.has(keyOf(cell)), keyOf(cell)).toBe(true);
+    }
+    const bridges = cellsOf(hills!, (x, y) => tileOf(hills!, x, y)!.sprite === 'bridge');
+    expect(bridges).toHaveLength(1);
+    expect(roads().has(keyOf(bridges[0]!))).toBe(true);
+    expect(wet(bridges[0]!.x - 1, bridges[0]!.y) && wet(bridges[0]!.x + 1, bridges[0]!.y)).toBe(true);
+    // Both banks of the stream can be walked to without crossing the road: the stones are the way over.
+    expect(reach.has(`${stones.at(-1)!.x},${stones.at(-1)!.y - 1}`)).toBe(true);
+    expect(reach.has(`${stones.at(-1)!.x},${stones.at(-1)!.y + 1}`)).toBe(true);
+  });
+
+  it('has houses nobody is home in: a door with a note under a roof, at the end of a path', () => {
+    const doors = hills!.objects.filter((object) => object.sprite?.startsWith('door'));
+    expect(doors.length).toBeGreaterThanOrEqual(3);
+    const roofs = new Set<string>();
+    for (const door of doors) {
+      expect(door.trigger, door.id).toBe('interact');
+      expect(onlyTalks(door.id.split(':')[1]!), door.id).toBe(true);
+      const roof = tileOf(hills!, door.x, door.y - 1)!.sprite;
+      expect(['roof', 'tin', 'slate', 'shingle'], door.id).toContain(roof);
+      roofs.add(roof);
+      expect(tileOf(hills!, door.x, door.y + 1)!.road, door.id).toBe(true);
+      expect(roads().has(`${door.x},${door.y + 1}`), door.id).toBe(true);
+      // Walls on both sides of it.
+      expect(tileOf(hills!, door.x - 1, door.y)!.solid && tileOf(hills!, door.x + 1, door.y)!.solid, door.id).toBe(true);
+    }
+    expect(roofs.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('has people who talk about the hobbies, some standing and some strolling, and all of them optional', () => {
+    const first = profile.name.split(' ')[0]!;
+    const text = said(hills!);
+    for (const lines of [HILLS_FOLK.gamer(first), HILLS_FOLK.keeper(first), HILLS_FOLK.kid(), HILLS_FOLK.angler(), HILLS_FOLK.dog(), HILLS_FOLK.cat()]) {
+      for (const line of lines) {
+        expect(text).toContain(line);
+        expect(fold(line).length, line).toBeLessThanOrEqual(110);
+      }
+    }
+    expect(HILLS_FOLK.gamer(first).join(' ')).toContain(first);
+    const people = hills!.objects.filter((object) => ['dev', 'gardener', 'elder', 'kid', 'dog', 'cat', 'maker'].includes(object.sprite ?? '') && !HOBBIES.some((stop) => `hills:${stop.at}` === object.id));
+    expect(people.length).toBeGreaterThanOrEqual(7);
+    expect(strollers.length).toBeGreaterThanOrEqual(3);
+    expect(people.filter((object) => !object.wander).length).toBeGreaterThanOrEqual(4);
+    for (const person of people) if (person.id !== 'hills:?') expect(onlyTalks(person.id.split(':')[1]!), person.id).toBe(true);
+    // The angler stands on the jetty, at its end: water ahead and on both sides.
+    const angler = thing('E');
+    expect(tileOf(hills!, angler.x, angler.y)!.sprite).toBe('jetty');
+    expect(tileOf(hills!, angler.x, angler.y + 1)!.sprite).toBe('jetty');
+    expect(WET).toContain(tileOf(hills!, angler.x, angler.y - 1)!.sprite);
+  });
+
+  it('lets the ones who stroll walk for minutes without a step on a road, on a thing, on each other or out of range', () => {
+    for (const a of strollers) {
+      for (const b of strollers) {
+        if (a !== b) expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)), `${a.id} and ${b.id}`).toBeGreaterThan(a.wander!.radius + b.wander!.radius);
+      }
+    }
+    const seen = new Map(strollers.map((object) => [object.id, new Set<string>()]));
+    let state = at('hills', '(', {}, 1);
+    for (let tick = 0; tick < 20_000; tick++) {
+      state = step(state, NO_INPUT, world).state;
+      const places = strollers.map((object) => placeOf(object, state));
+      strollers.forEach((object, i) => {
+        const spot = places[i]!;
+        const tile = tileOf(hills!, spot.x, spot.y)!;
+        if (tile.solid || tile.road || tile.grass) throw new Error(`${object.id} stands on ${tile.sprite} at ${spot.x},${spot.y}`);
+        if (Math.max(Math.abs(spot.x - object.x), Math.abs(spot.y - object.y)) > object.wander!.radius) throw new Error(`${object.id} left its range`);
+        if (hills!.objects.some((other) => other !== object && !other.wander && other.x === spot.x && other.y === spot.y)) throw new Error(`${object.id} stands on a thing at ${spot.x},${spot.y}`);
+        seen.get(object.id)!.add(keyOf(spot));
+      });
+    }
+    for (const [id, cells] of seen) expect(cells.size, id).toBeGreaterThan(3);
+  });
+
+  it('never lets a stroller shut a stop, the keeper or the coffee off: there is a second cell to stand on, or one out of their reach', () => {
+    const inRange = (cell: Cell) => strollers.some((object) => Math.max(Math.abs(cell.x - object.x), Math.abs(cell.y - object.y)) <= object.wander!.radius && !tileOf(hills!, cell.x, cell.y)!.road);
+    for (const target of [...stopsOf(), thing('?'), thing('k'), thing('E')]) {
+      const beside = Object.values(DELTA).map(({ dx, dy }) => ({ x: target.x + dx, y: target.y + dy })).filter((cell) => standable(hills!, cell.x, cell.y));
+      const free = beside.filter((cell) => !inRange(cell));
+      expect(free.length > 0 || beside.length >= 2, target.id).toBe(true);
+    }
   });
 });
 

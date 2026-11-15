@@ -27,7 +27,8 @@ import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOOR
  * - The roads east and west are routes: the way out crosses tall grass, the way back hops down ledges (see
  *   maps.ts). Their signposts say so (ROUTE_BACK), and name the levels of the wild things from AREAS.
  * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
- *   A new hobby needs a line there, a digit on the HILLS map and a picture (scripts/sprites/scenery.mjs).
+ *   A new hobby needs a line there, a digit on the HILLS map, a picture (scripts/sprites/scenery.mjs) and a name
+ *   in STOP_NAMES for the signposts. HILLS_FOLK is what the people of the hills say: a draft too.
  * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
  * - After a change run `npm test`: a bot plays the whole game and fails if it can no longer be finished.
  */
@@ -145,6 +146,52 @@ export const HOBBIES: { at: string; id: string; sprite: string; animated?: boole
   { at: '9', id: 'homeserver', sprite: 'server', animated: true, lines: ['A home server hums in the grass. Its lights blink.', 'Home server: my own little cloud. When it breaks, I am the helpdesk.'] },
   { at: '0', id: 'science', sprite: 'flask', lines: ['A flask bubbles away. Better not drink it.', 'Science: my favourite rabbit hole. Space, physics, how things work.'] },
 ];
+
+/**
+ * What the signposts in Hobby Hills call each stop, by its `id` in HOBBIES. A new hobby needs a name here, and a
+ * mention on one of the two signposts (`p` and `o` in the hills below): a test fails for a stop no signpost names.
+ */
+export const STOP_NAMES: Record<string, string> = {
+  astronomy: 'TELESCOPE',
+  gaming: 'ARCADE',
+  japan: 'GATE',
+  cats: 'CAT',
+  retro: 'OLD CONSOLE',
+  animals: 'RABBIT',
+  soldering: 'SOLDERING BENCH',
+  language: 'KANJI BOARD',
+  homeserver: 'HOME SERVER',
+  science: 'FLASK',
+};
+
+/** "the TELESCOPE, the ARCADE and the GATE": the stops with these ids, as a signpost lists them. */
+const stops = (...ids: string[]): string => {
+  const names = ids.map((id) => `the ${STOP_NAMES[id]}`);
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : (names[0] ?? '');
+};
+
+/**
+ * The people of Hobby Hills, and the notes on the doors of the houses nobody is home in. They talk about the
+ * hobbies, in a friendly voice. A DRAFT: rewrite them freely. `who` is the first name from the profile.
+ */
+export const HILLS_FOLK = {
+  /** By the arcade cabinet. */
+  gamer: (who: string) => [`My high score on that cabinet stood for a week. Then ${who} came by.`, 'I am not bitter. I am practising.'],
+  /** By the flower beds at the gate. */
+  keeper: (who: string) => ['I sweep around the gate every morning. A quiet place wants looking after.', `${who} says that is what to bring home from Japan: the care for small things.`],
+  /** Strolls near the old console. */
+  kid: () => ['That console is older than I am! The games still work. You blow on them first.'],
+  /** At the end of the jetty, fishing. */
+  angler: () => ['I come here to fish. I have never caught a thing.', 'That is the nice part of a hobby: it does not have to ship.'],
+  /** Strolls south of the pond. */
+  dog: () => ['Woof! (It has a stick. It would like you to know about the stick.)'],
+  /** Strolls too. */
+  cat: () => ['Mrrp. (A second cat. In these hills there is always a second cat.)'],
+  /** The doors of the two cottages and of the shed. */
+  cottage: () => ['Nobody answers. A note on the door: "Out stargazing. Back when it gets light."'],
+  neighbour: () => ['Locked. Through the glass you can see a shelf of games, sorted by year.'],
+  shed: () => ['A shed. Inside, something beeps. A note: "Do not unplug. It finally works."'],
+};
 
 /**
  * The last page of the signposts on the two roads out of town. The roads are routes now: nobody gets out without
@@ -640,6 +687,18 @@ export function buildMaps(data: FsData): BuiltMap[] {
       s: sign(
         `HOBBY HILLS. What ${who} does when the laptop is closed.`,
         `${stamps} stops, ${stamps} stamps. Look at each one, then see the rally keeper by the pond.`,
+        'The ring road passes every stop: walk it once round. The paths lead in to the pond.',
+      ),
+      // Where the stops are, from two corners of the ring road.
+      p: sign(
+        'RING ROAD, north side.',
+        `East along the road: ${stops('astronomy', 'gaming', 'japan')}.`,
+        `Inside the ring: ${stops('cats', 'animals')} on this side of the pond, ${stops('retro')} across it.`,
+      ),
+      o: sign(
+        'RING ROAD, south side.',
+        `West along the road: ${stops('science', 'homeserver')}.`,
+        `Inside the ring: ${stops('language')} right here, ${stops('soldering')} by the shed in the west.`,
       ),
       '?': {
         sprite: 'maker',
@@ -660,7 +719,17 @@ export function buildMaps(data: FsData): BuiltMap[] {
         ],
       },
       k: coffee(),
-      m: stroll(person('cat', ['Mrrp. (A second cat. In these hills there is always a second cat.)']), 2, 110),
+      // The people of the hills. The ones with stroll() walk about, off the roads and away from each other.
+      P: person('dev', HILLS_FOLK.gamer(who)),
+      B: person('gardener', HILLS_FOLK.keeper(who)),
+      E: person('elder', HILLS_FOLK.angler(), '_'),
+      H: stroll(person('kid', HILLS_FOLK.kid()), 2, 100),
+      D: stroll(person('dog', HILLS_FOLK.dog()), 2, 80),
+      m: stroll(person('cat', HILLS_FOLK.cat()), 2, 110),
+      // Houses nobody is home in: the doors are scenery with a note on them.
+      a: thing('door', HILLS_FOLK.cottage()),
+      b: thing('door', HILLS_FOLK.neighbour()),
+      S: thing('door-wood', HILLS_FOLK.shed()),
     },
   };
 

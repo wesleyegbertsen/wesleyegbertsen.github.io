@@ -127,6 +127,23 @@ const rock = [
   '1111111111111111',
 ];
 
+/**
+ * The same drawing with the grass around it cut away (everything of the grass shade that hangs together with the
+ * edge of the tile), so it can stand on any ground: a rock in the sand.
+ */
+function cutOut(rows, ground = '1') {
+  const cells = rows.map((row) => [...row]);
+  const queue = [];
+  for (let i = 0; i < 16; i++) queue.push([i, 0], [i, 15], [0, i], [15, i]);
+  while (queue.length > 0) {
+    const [x, y] = queue.pop();
+    if (cells[y]?.[x] !== ground) continue;
+    cells[y][x] = '.';
+    queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  return cells.map((row) => row.join(''));
+}
+
 const fence = [
   '1111111111111111',
   '1111111111111111',
@@ -1079,6 +1096,7 @@ export const scenery = {
   pine,
   bush,
   rock,
+  boulder: cutOut(rock),
   fence,
   lamp,
   bench,

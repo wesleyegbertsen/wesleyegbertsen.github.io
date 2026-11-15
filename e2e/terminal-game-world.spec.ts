@@ -290,6 +290,22 @@ test.describe('beyond the town', () => {
     await pilot.read();
     await expect(status(page)).not.toHaveText(/HOBBY STAMP/);
     expect(pilot.state.items.stamp).toBe(1);
+
+    // A signpost at the corner of the ring road says where the stops are.
+    await pilot.goTo('hills:p');
+    await pilot.press('a');
+    await expect(status(page)).toHaveText('RING ROAD, north side.');
+    await pilot.press('a');
+    await expect(status(page)).toHaveText('East along the road: the TELESCOPE, the ARCADE and the GATE.');
+    await pilot.read();
+    // Someone fishes at the end of the jetty in the pond: out onto the planks, over the water, to talk.
+    await pilot.goTo('hills:E');
+    await expect(game(page)).toHaveAttribute('data-x', '14');
+    await expect(game(page)).toHaveAttribute('data-y', '11');
+    await expect(game(page)).toHaveAttribute('data-dir', 'up');
+    await pilot.press('a');
+    await expect(status(page)).toContainText('I come here to fish.');
+    await pilot.read();
     expect(errors).toEqual([]);
   });
 
