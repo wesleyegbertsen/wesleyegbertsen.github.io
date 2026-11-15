@@ -83,6 +83,8 @@ describe('cues', () => {
   });
 
   it('wins the badge with a jingle, and faints when beaten', () => {
+    // A boss steps up with a sound of its own.
+    expect(cues(play(started(), 'down', 'down', 'right', 'a'), { a: true })).toEqual(['confirm', 'showdown']);
     const boss = play(started(), 'down', 'down', 'right', 'a', 'a');
     const won = fight(boss);
     expect(won.state.badges).toEqual(['one']);

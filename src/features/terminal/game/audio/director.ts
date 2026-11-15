@@ -10,6 +10,8 @@ export function trackFor(state: GameState, world: World): string | null {
   if (state.scene === 'title') return music.title;
   if (state.scene === 'ending') return music.ending;
   if (state.battle) {
+    // The way in: the music stops, so the sound of the transition stands alone and leads into the battle tune.
+    if (state.battle.intro > 0) return null;
     // The fanfare starts with the line that says the enemy is beaten, and lasts through the XP and the new level.
     if (state.battle.cheer) return music.victory;
     return state.battle.wild ? music.wild : (world.enemies[state.battle.enemy]?.tune ?? music.boss);

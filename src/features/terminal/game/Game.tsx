@@ -94,13 +94,15 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
     setFinished(state.finished);
     const music = sound.follow(state) ?? '';
     const banner = bannerText(state);
+    const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : 'boss') : '';
     const root = focusRef.current;
-    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner].join('|');
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
         music,
         banner,
+        transition,
         scene: state.scene,
         map: state.map,
         x: String(state.x),

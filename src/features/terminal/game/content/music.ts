@@ -18,6 +18,8 @@ import type { Cue, World } from '../engine/types.ts';
  * - EFFECTS are the short sounds, one per cue of the engine (see `Cue` in engine/types.ts): each is a few tones
  *   with a start (`at`, seconds), a pitch (`from`, sliding to `to`), a length and a volume. For noise, `from` and
  *   `to` are how bright it is (1 is hiss, 0.1 is rumble). `gap` is the least time between two of the same.
+ * - A battle starts with a transition on the screen (engine/transition.ts). The music is silent while it plays;
+ *   its sound is the effect `encounter` (a wild enemy) or `showdown` (a boss), and the battle tune starts after.
  * - All melodies are original. Volumes are 0 to 1 and sit under the master volume in useGameSound.ts.
  */
 
@@ -371,8 +373,23 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   // The volume wheel: one step down, one step up. They sound at the new volume, so the step can be heard.
   quieter: { tones: [beep(740, 0.05, 0.25), beep(587, 0.07, 0.25, 0.05)] },
   louder: { tones: [beep(740, 0.05, 0.25), beep(988, 0.07, 0.25, 0.05)] },
+  // The way into a battle. The music is silent meanwhile, and the battle tune starts when they are over, so each
+  // must end within its transition (WILD_TICKS and BOSS_TICKS in engine/transition.ts, 60 ticks a second: 0.8 and
+  // 1.8 seconds). A wild enemy: three quick sweeps up and a last one that climbs higher.
   encounter: {
-    tones: [hiss(0.1, 0.45, 0.3, 0, 1), beep(300, 0.15, 0.25, 0, 1200), beep(300, 0.15, 0.25, 0.15, 1200), beep(300, 0.2, 0.25, 0.3, 1600)],
+    tones: [hiss(0.1, 0.7, 0.3, 0, 1), beep(300, 0.15, 0.25, 0, 1200), beep(300, 0.15, 0.25, 0.15, 1200), beep(300, 0.15, 0.25, 0.3, 1200), beep(300, 0.3, 0.25, 0.45, 1800)],
+  },
+  // A boss: two low alarm calls (the screen blinks with them), then a long climb while the dark closes in.
+  showdown: {
+    tones: [
+      beep(880, 0.2, 0.25, 0.03, 440),
+      beep(220, 0.2, 0.3, 0.03, 110, 'triangle'),
+      beep(880, 0.2, 0.25, 0.43, 440),
+      beep(220, 0.2, 0.3, 0.43, 110, 'triangle'),
+      hiss(0.1, 0.9, 0.3, 0.83, 1),
+      beep(200, 0.9, 0.25, 0.83, 1600),
+      beep(100, 0.9, 0.3, 0.83, 400, 'triangle'),
+    ],
   },
 };
 

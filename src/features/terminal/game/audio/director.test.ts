@@ -27,6 +27,27 @@ describe('the tune a moment wants', () => {
     expect(trackFor(play(started(), 'down', 'down', 'right', 'a', 'a'), world)).toBe('boss');
   });
 
+  it('falls silent for the way into a battle, so its sound stands alone, and strikes up when the battle screen is there', () => {
+    const tick = (state: GameState) => step(state, NO_INPUT, world).state;
+    // Into the tall grass with motion: the walk takes its ticks, then the transition starts.
+    let state = step(play(started(), 'down'), { ...NO_INPUT, dir: 'right' }, world).state;
+    for (let i = 0; i < 20 && !state.battle; i++) state = tick(state);
+    expect(state.battle!.intro).toBeGreaterThan(0);
+    const heard = new Set<string | null>();
+    for (let i = 0; i < 200 && state.battle!.intro > 0; i++) {
+      heard.add(trackFor(state, world));
+      state = tick(state);
+    }
+    expect(heard).toEqual(new Set([null]));
+    expect(trackFor(state, world)).toBe('wild');
+    // A boss: the same, and then its own tune.
+    let boss = step(play(started(), 'down', 'down', 'right', 'a'), { ...NO_INPUT, a: true }, world).state;
+    expect(boss.battle!.intro).toBeGreaterThan(0);
+    expect(trackFor(boss, world)).toBeNull();
+    for (let i = 0; i < 200 && boss.battle!.intro > 0; i++) boss = tick(boss);
+    expect(trackFor(boss, world)).toBe('boss');
+  });
+
   it('turns into the fanfare on the line that says the enemy is beaten, and back to the map after', () => {
     let state = play(started(), 'down', 'right');
     const heard: (string | null)[] = [];

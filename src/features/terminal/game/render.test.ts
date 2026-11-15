@@ -2,6 +2,7 @@ import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, testWorld as world } from './engine/testWorld.ts';
+import { BOSS_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -356,6 +357,85 @@ describe('the battle screen', () => {
     expect(moves.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 56, w: SCREEN_W, h: 88 });
     expect(textAt(moves.draws, 6)).toBe('RATLv2');
     expect(dark(moves.fills)).toContainEqual({ shade: PALETTE[3], x: 4, y: 6, w: 2, h: 22 });
+  });
+});
+
+describe('the way into a battle', () => {
+  const battle = (wild: boolean, t: number): GameState => {
+    const state = wild ? play(started(), 'down', 'right') : play(started(), 'down', 'down', 'left', 'a');
+    return { ...state, banner: null, battle: { ...state.battle!, intro: (wild ? WILD_TICKS : BOSS_TICKS) - t } };
+  };
+  const whole = (fill: Fill | undefined) => !!fill && fill.x === 0 && fill.y === 0 && fill.w === SCREEN_W && fill.h === SCREEN_H;
+  /** The dark laid over the map by the transition: everything painted after the last picture. */
+  const dark = (state: GameState) => {
+    const { fills } = drawn(state);
+    return fills.filter((fill) => fill.shade === PALETTE[3] && fill.w >= 8 && fill.h >= 8 && !whole(fill));
+  };
+  const area = (fills: Fill[]) => fills.reduce((sum, fill) => sum + fill.w * fill.h, 0);
+
+  it('shows the map, not the battle screen, until it is over', () => {
+    const { draws } = drawn(battle(true, 0));
+    expect(draws.filter((draw) => draw.sheet === 'tiles').length).toBeGreaterThan(30);
+    expect(spriteDraws(draws, 'player-right-0')).toHaveLength(1);
+    expect(spriteDraws(draws, 'bug')).toHaveLength(0);
+    expect(draws.some((draw) => draw.sheet === 'font')).toBe(false);
+    // Over: the battle screen, with the line.
+    const after = drawn(battle(true, WILD_TICKS));
+    expect(spriteDraws(after.draws, 'bug')).toHaveLength(1);
+    expect(textAt(after.draws, 110)).toBe('AwildRATappeared!');
+  });
+
+  it('washes the whole screen out to the lightest shade for a blink: once for a wild enemy, twice for a boss', () => {
+    const washes = (wild: boolean) => {
+      const on = Array.from({ length: wild ? WILD_TICKS : BOSS_TICKS }, (_, t) => {
+        const { fills } = drawn(battle(wild, t));
+        return whole(fills.at(-1)) && fills.at(-1)!.shade === PALETTE[0];
+      });
+      return on.filter((now, i) => now && !on[i - 1]).length;
+    };
+    expect(washes(true)).toBe(1);
+    expect(washes(false)).toBe(2);
+  });
+
+  it('closes blinds from both sides for a wild enemy, on whole steps, until the screen is dark', () => {
+    expect(dark(battle(true, 9))).toEqual([]);
+    const half = dark(battle(true, 26));
+    // One bar per 16 pixels, in turn from the left and from the right.
+    expect(half).toHaveLength(9);
+    expect(half.every((bar) => bar.h === 16 && bar.w % 8 === 0)).toBe(true);
+    expect(half.filter((bar) => bar.x === 0)).toHaveLength(5);
+    expect(half.filter((bar) => bar.x + bar.w === SCREEN_W && bar.x > 0)).toHaveLength(4);
+    expect(area(half)).toBeGreaterThan(SCREEN_W * SCREEN_H * 0.4);
+    expect(area(half)).toBeLessThan(SCREEN_W * SCREEN_H * 0.6);
+    expect(area(dark(battle(true, 20)))).toBeLessThan(area(half));
+    expect(area(dark(battle(true, WILD_TICKS - 1)))).toBe(SCREEN_W * SCREEN_H);
+  });
+
+  it('closes an iris around the middle for a boss, until the screen is dark', () => {
+    expect(dark(battle(false, 49))).toEqual([]);
+    const half = dark(battle(false, 75));
+    expect(half).toHaveLength(4);
+    // The hole is in the middle: as much dark left as right, above as below.
+    const [top, bottom, left, right] = half as [Fill, Fill, Fill, Fill];
+    expect(top).toMatchObject({ x: 0, y: 0, w: SCREEN_W });
+    expect(bottom.y + bottom.h).toBe(SCREEN_H);
+    expect(top.h).toBe(bottom.h);
+    expect(left.x).toBe(0);
+    expect(right.x + right.w).toBe(SCREEN_W);
+    expect(left.w).toBe(right.w);
+    expect(left.w).toBeGreaterThan(20);
+    expect(left.w).toBeLessThan(60);
+    expect(area(dark(battle(false, 60)))).toBeLessThan(area(half));
+    expect(area(dark(battle(false, BOSS_TICKS - 1)))).toBe(SCREEN_W * SCREEN_H);
+  });
+
+  it('uses the four shades only, and hides the speaker under the dark', () => {
+    const { fills } = drawn(battle(false, BOSS_TICKS - 1), { muted: false, volume: 5 });
+    expect(new Set(fills.map((fill) => fill.shade)).size).toBeLessThanOrEqual(4);
+    for (const fill of fills) expect(PALETTE).toContain(fill.shade);
+    const speaker = fills.findIndex((fill) => fill.x === 146 && fill.y === 2 && fill.w === 13);
+    const curtain = fills.map((fill) => fill.shade === PALETTE[3] && fill.w === SCREEN_W && fill.y === 0 && fill.h >= 70).lastIndexOf(true);
+    expect(curtain).toBeGreaterThan(speaker);
   });
 });
 

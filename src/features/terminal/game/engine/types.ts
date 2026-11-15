@@ -208,6 +208,8 @@ export type Battle = {
   cheer: boolean;
   enemyHp: number;
   wild: boolean;
+  /** Ticks left of the way in: the transition over the map before the battle screen (engine/transition.ts). 0 once it is up. */
+  intro: number;
   phase: 'steps' | 'menu' | 'moves' | 'items';
   steps: BattleStep[];
   shown: number;
@@ -307,6 +309,8 @@ export type Cue =
   | 'low'
   | 'run'
   | 'encounter'
+  /** A boss steps up: the longer sound of the longer transition. */
+  | 'showdown'
   | 'levelup'
   /** Walking off the edge of a map onto the next one, and going into or out of a cave: not doors. */
   | 'path'

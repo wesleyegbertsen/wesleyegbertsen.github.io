@@ -174,7 +174,7 @@ test.describe('the sound of the adventure', () => {
     await pilot.read();
     await expect(game(page)).toHaveAttribute('data-battle', 'exam');
     await expect(game(page)).toHaveAttribute('data-music', 'boss');
-    await expect(game(page)).toHaveAttribute('data-cue', 'encounter');
+    await expect(game(page)).toHaveAttribute('data-cue', 'showdown');
     // The boss tune opens on an E5 (659 Hz) over a low E.
     const battle = await only(page);
     expect(battle.started).toBeGreaterThan(before);

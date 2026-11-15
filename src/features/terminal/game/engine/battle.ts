@@ -1,6 +1,7 @@
 import { attackBonus, enemyHpAt, levelFor, maxHpOf, xpFor } from './level.ts';
 import { random } from './rng.ts';
 import { fold } from './text.ts';
+import { introTicks } from './transition.ts';
 import type { Action, Battle, BattleStep, Cue, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
 
 /** The battle menu, in order. The first entry is the default. */
@@ -68,6 +69,8 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
     cheer: false,
     enemyHp: enemyMax,
     wild,
+    // With reduced motion there is no transition: the battle screen is there at once.
+    intro: ctx.instant ? 0 : introTicks(wild),
     phase: 'steps',
     steps: [],
     shown: 0,
@@ -76,7 +79,8 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
     win,
   };
   const intro = wild ? `A wild ${enemy.name} appeared!` : `${enemy.name} wants to battle!`;
-  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: 'encounter' }], ctx);
+  // The line is told (and its sound asked for) at once; on the screen it waits for the transition.
+  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : 'showdown' }], ctx);
 }
 
 type Choice = { move: MoveDef; id?: string } | { item: string };
@@ -188,6 +192,9 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
   const battle = state.battle!;
   const enemy = world.enemies[battle.enemy]!;
   const press = input.a || input.b;
+
+  // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
+  if (battle.intro > 0) return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
 
   if (battle.phase === 'steps') {
     const length = battle.steps[0]?.text.length ?? 0;

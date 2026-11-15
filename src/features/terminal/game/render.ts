@@ -5,6 +5,7 @@ import { WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { dimness } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
+import { curtainOf, type Curtain } from './engine/transition.ts';
 import { SETTINGS, type Dir, type GameObject, type GameState, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
@@ -412,6 +413,28 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   });
 }
 
+/**
+ * The way into a battle, over the map. A blink washes the whole screen out to the lightest shade; then the dark
+ * closes: blinds from both sides for a wild enemy, an iris around the middle for a boss. It moves on whole steps
+ * of 8 (blinds) and 4 (iris) pixels, like the Game Boy would.
+ */
+function drawCurtain(ctx: Painter, curtain: Curtain) {
+  if (curtain.flash) return rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  if (curtain.cover <= 0) return;
+  if (curtain.shape === 'blinds') {
+    const width = Math.min(SCREEN_W, Math.ceil((curtain.cover * SCREEN_W) / 8) * 8);
+    for (let row = 0; row * TILE < SCREEN_H; row++) rect(ctx, row % 2 === 0 ? 0 : SCREEN_W - width, row * TILE, width, TILE, DARKEST);
+    return;
+  }
+  // The iris: a frame that grows inwards until nothing is left of the hole.
+  const side = Math.min(SCREEN_W / 2, Math.ceil((curtain.cover * SCREEN_W) / 2 / 4) * 4);
+  const lid = Math.min(SCREEN_H / 2, Math.ceil((curtain.cover * SCREEN_H) / 2 / 4) * 4);
+  rect(ctx, 0, 0, SCREEN_W, lid, DARKEST);
+  rect(ctx, 0, SCREEN_H - lid, SCREEN_W, lid, DARKEST);
+  rect(ctx, 0, lid, side, SCREEN_H - 2 * lid, DARKEST);
+  rect(ctx, SCREEN_W - side, lid, side, SCREEN_H - 2 * lid, DARKEST);
+}
+
 function drawScenery(ctx: Painter, sheets: Sheets, cast: string[]) {
   for (let x = 0; x < SCREEN_W; x += TILE) {
     drawSprite(ctx, sheets, x < 32 || x >= SCREEN_W - 32 ? 'tree' : 'grass', x, 112);
@@ -454,6 +477,14 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
     return;
   }
   if (state.scene === 'ending') return drawEnding(ctx, sheets, world);
+  const curtain = state.battle && curtainOf(state.battle);
+  if (curtain) {
+    // The way into a battle: still the map, with the transition closing over everything on it.
+    drawWorld(ctx, sheets, state, world);
+    if (hud) drawSpeaker(ctx, hud.muted);
+    drawCurtain(ctx, curtain);
+    return;
+  }
   if (state.battle) drawBattle(ctx, sheets, state, world);
   else if (state.learn) drawLearn(ctx, sheets, state, world);
   else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
