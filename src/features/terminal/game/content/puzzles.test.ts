@@ -5,14 +5,14 @@ import { projects } from '../../../../data/projects.ts';
 import { skills } from '../../../../data/skills.ts';
 import type { FsData } from '../../fs.ts';
 import { routeTo } from '../engine/bot.ts';
-import { initialGame } from '../engine/engine.ts';
+import { initialGame, step } from '../engine/engine.ts';
 import { loose } from '../engine/push.ts';
 import { calm, canReach, explore, keyOf, pressIn, pressesTo, solve, type Explored } from '../engine/solve.ts';
-import type { GameMap, GameState } from '../engine/types.ts';
+import { NO_INPUT, type GameMap, type GameState } from '../engine/types.ts';
 import { areaAt, resolveSpot, tileAt } from '../engine/world.ts';
 import { DEEP_CAVE_LEVEL } from './battles.ts';
 import { REGIONS } from './maps.ts';
-import { DEEP_FLAGS, PUZZLES } from './story.ts';
+import { DEEP_FLAGS, DEEP_TEXT, PUZZLES } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -182,6 +182,68 @@ describe('the puzzles of the deep cave', () => {
     expect(back!.length).toBeGreaterThanOrEqual(5);
     // Nothing stands on the slick rock: what stops a slide is rock, fire or the wall, so a planner and the game agree.
     for (const object of deep.objects) expect(tileAt(deep, object.x, object.y).slide ?? false, object.id).toBe(false);
+  });
+
+  it('the slick rock: every slide tells the status region which way it went, how far, and what stopped it', () => {
+    const puzzle = PUZZLES[1]!;
+    const told = (state: GameState, key: 'up' | 'down' | 'left' | 'right') => step(state, { ...NO_INPUT, dir: key, pressed: key }, world, { instant: true });
+    // The first step off the corridor: down the column, five cells, to the rock at the bottom.
+    const first = told(standing(puzzle), 'down');
+    expect(first.events.filter((event) => event.kind === 'say').map((event) => event.text)).toEqual(['You slide down 5 steps and stop against a rock.']);
+    expect(first.cues).toEqual(['slide', 'bump']);
+    // Pressing on into that rock goes nowhere, and says so.
+    expect(told(first.state, 'down').events.map((event) => event.text)).toEqual(['You cannot slide down: a rock is in the way.']);
+    // Every press of the solution is one line of the same kind: the rocks, the fire bowls and the wall have names.
+    let state = standing(puzzle);
+    const lines: string[] = [];
+    for (const key of solve(world, state, solvedBy(puzzle))!) {
+      expect(key).not.toBe('a');
+      const result = told(state, key as 'up');
+      expect(result.events.filter((event) => event.kind === 'say'), key).toHaveLength(1);
+      lines.push(result.events.find((event) => event.kind === 'say')!.text);
+      state = result.state;
+    }
+    for (const line of lines) expect(line).toMatch(/^You slide (up|down|left|right) \d+ steps? and stop (against (a rock|a fire bowl|the wall)|on firm ground)\.$/);
+    // The last one is off the slick rock at the far left: a slide that ends on firm ground (one step, when it began beside it).
+    expect(lines.at(-1)).toMatch(/^You slide left \d+ steps? and stop on firm ground\.$/);
+    // What can stop a slide in this room is one of those three: nothing nameless.
+    expect(new Set(lines.map((line) => line.replace(/^.* and stop /, '')))).not.toContain('against something.');
+  });
+
+  it('the slick rock: the note beside the way in explains the slide, and says in words where everything on the floor is', () => {
+    const note = deep.objects.find((object) => object.id === 'deep:i')!;
+    // It is read from the cell where the puzzle begins, before the first step onto the slick rock.
+    const from = resolveSpot(world, PUZZLES[1]!.from);
+    expect(Math.abs(note.x - from.x) + Math.abs(note.y - from.y)).toBe(1);
+    expect(tileAt(deep, from.x, from.y).slide ?? false).toBe(false);
+    const textOf = (id: string) => deep.objects.find((object) => object.id === id)!.branches[0]!.do.flatMap((action) => ('say' in action ? action.say : [])).join(' ');
+    expect(textOf('deep:i')).toBe(DEEP_TEXT.slick.join(' '));
+    expect(textOf('deep:i')).toMatch(/cannot steer/);
+    expect(textOf('deep:i')).toMatch(/a rock, a fire bowl or the wall/);
+    // Short enough to read in passing: the long description is on a note of its own, on the other side of the way in.
+    expect(DEEP_TEXT.slick.length).toBeLessThanOrEqual(3);
+    const words = deep.objects.find((object) => object.id === 'deep:v')!;
+    expect(Math.abs(words.x - from.x) + Math.abs(words.y - from.y)).toBe(1);
+    expect(words.sprite).toBe('notice');
+    const text = textOf('deep:v');
+    expect(text).toBe(DEEP_TEXT.slickWords.join(' '));
+    // The floor in words, checked against the map: its size, and every rock and fire bowl on it, by row and place.
+    const slick = deep.cells.flatMap((row, y) => row.flatMap((char, x) => (deep.tiles[char]!.slide ? [{ x, y }] : [])));
+    const left = Math.min(...slick.map((cell) => cell.x));
+    const top = Math.min(...slick.map((cell) => cell.y));
+    const wide = Math.max(...slick.map((cell) => cell.x)) - left + 1;
+    const high = Math.max(...slick.map((cell) => cell.y)) - top + 1;
+    expect(text).toContain(`${wide} wide and ${high} deep`);
+    const named = [...text.matchAll(/Row (\d+): ([^.]*)\./g)].flatMap(([, row, things]) =>
+      [...things!.matchAll(/(a rock|a fire bowl) at (\d+)/g)].map(([, name, place]) => ({ name, x: left + Number(place) - 1, y: top + Number(row) - 1 })),
+    );
+    const standingThere = Array.from({ length: high }, (_, dy) => Array.from({ length: wide }, (_, dx) => ({ x: left + dx, y: top + dy }))).flat().filter((cell) => tileAt(deep, cell.x, cell.y).solid);
+    expect(standingThere.length).toBeGreaterThanOrEqual(4);
+    expect(named.map((thing) => `${thing.x},${thing.y} ${thing.name}`).sort()).toEqual(standingThere.map((cell) => `${cell.x},${cell.y} ${tileAt(deep, cell.x, cell.y).name}`).sort());
+    // And the ways on and off: above the place where the player comes in, and at the left of the row that leads on.
+    const goal = resolveSpot(world, 'at' in PUZZLES[1]!.goal ? PUZZLES[1]!.goal.at : PUZZLES[1]!.from);
+    expect(text).toContain(`above place ${from.x - left + 1} of row 1`);
+    expect(text).toContain(`left of row ${goal.y - top + 1}`);
   });
 
   it('the pipeline: only add, commit, push in that order opens the gate, and a wrong step starts it over', () => {

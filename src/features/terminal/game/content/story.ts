@@ -314,6 +314,45 @@ export const countCollectibles = (maps: MapSpec[], item: string): number =>
 /** The flags the deep cave sets: the boulders are on their plates, and the three steps of the riddle. */
 export const DEEP_FLAGS = { plates: 'deep:plates', add: 'git:add', commit: 'git:commit', shipped: 'deep:shipped' };
 
+/**
+ * A slick floor in words, read off the map, for whoever cannot see it: how big it is, where one gets on and off
+ * it, and what stands on it, by row (from the top) and place (from the left). The second note at the slick rock
+ * is this, so it is still true after the room is redrawn. The words around the numbers can be changed here.
+ */
+export function slickInWords(rows: string[], legend: Record<string, TileDef>): string[] {
+  const tile = (x: number, y: number): TileDef | undefined => legend[rows[y]?.[x] ?? ''];
+  const slick = rows.flatMap((row, y) => [...row].flatMap((_, x) => (tile(x, y)?.slide ? [{ x, y }] : [])));
+  if (slick.length === 0) return [];
+  const left = Math.min(...slick.map((cell) => cell.x));
+  const top = Math.min(...slick.map((cell) => cell.y));
+  const wide = Math.max(...slick.map((cell) => cell.x)) - left + 1;
+  const deep = Math.max(...slick.map((cell) => cell.y)) - top + 1;
+  // Firm ground that touches the floor from outside: the ways on and off.
+  const firm = (x: number, y: number) => !!tile(x, y) && !tile(x, y)!.solid && !tile(x, y)!.slide;
+  const ways: string[] = [];
+  for (let i = 0; i < wide; i++) {
+    if (firm(left + i, top - 1)) ways.push(`above place ${i + 1} of row 1`);
+    if (firm(left + i, top + deep)) ways.push(`below place ${i + 1} of row ${deep}`);
+  }
+  for (let i = 0; i < deep; i++) {
+    if (firm(left - 1, top + i)) ways.push(`left of row ${i + 1}`);
+    if (firm(left + wide, top + i)) ways.push(`right of row ${i + 1}`);
+  }
+  // What stands on it: everything in the rectangle that is not slick.
+  const inTheWay: string[] = [];
+  for (let y = 0; y < deep; y++) {
+    const things = Array.from({ length: wide }, (_, x) => ({ at: tile(left + x, top + y), place: x + 1 }))
+      .filter(({ at }) => !at?.slide)
+      .map(({ at, place }) => `${at?.solid === false ? 'firm ground' : (at?.name ?? 'the wall')} at ${place}`);
+    if (things.length > 0) inTheWay.push(`Row ${y + 1}: ${things.join(', ')}.`);
+  }
+  return [
+    `"The slick floor is ${wide} wide and ${deep} deep. Rows are counted from the top, places from the left."`,
+    `"Ways on and off it: ${ways.join('; ')}."`,
+    `"${inTheWay.join(' ')}"`,
+  ];
+}
+
 /** What is said in the deep cave. A DRAFT: rewrite it freely. */
 export const DEEP_TEXT = {
   /** The bricked-up doorway on the first floor, where the last chamber used to be. */
@@ -329,8 +368,17 @@ export const DEEP_TEXT = {
   gate: ['An iron gate. It will not move. Something in this hall holds it shut.'],
   lever: ['You pull the lever. The boulders roll back to where they started.'],
   leverDone: ['The lever is stuck. The boulders are where they belong.'],
-  /** The note at the slick rock. */
-  slick: ['A note: "Slick rock ahead. One step and you slide until something stops you."', '"The way on is at the far left. Plan the slide before you take it."'],
+  /** The note at the slick rock, on the right of the way in: what a slide is. */
+  slick: [
+    'A note: "Slick rock ahead: the pale, shiny floor. One step onto it and you slide. You cannot steer and you cannot stop."',
+    '"You go on until a rock, a fire bowl or the wall stops you, or until the ground is firm again. Then you pick the next direction."',
+    '"The way on is at the far left. Plan the slide before you take it."',
+  ],
+  /**
+   * The second note there, on the left: the floor itself in words. Only the first line is written here; the rest
+   * is read off the map (slickInWords above), so it follows the map by itself.
+   */
+  slickWords: ['A second note, in big letters, for whoever cannot see the floor:', ...slickInWords(DEEP_MAP, CAVE)],
   /** The riddle of the pipeline: the note, the three terminals and the gate. */
   riddle: ['A sticky note: "The gate ships with the code. First stage your work. Then seal it with a message. Then send it off."', '"One wrong step and you start over."'],
   add: ['$ git add .', 'Staged. A green light comes on: 1 of 3.'],
@@ -946,6 +994,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
 
       // 2. The slick rock.
       i: thing('notice', DEEP_TEXT.slick),
+      v: thing('notice', DEEP_TEXT.slickWords),
 
       // 3. The pipeline: add, commit, push.
       h: thing('notice', DEEP_TEXT.riddle),

@@ -5,7 +5,7 @@ import { covered, loose, platesDown, putBack, roomFor } from './push.ts';
 import { random } from './rng.ts';
 import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
-import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
+import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { placeOf, stroll } from './wander.ts';
 import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -322,24 +322,37 @@ function shove(state: GameState, object: GameObject, dir: Dir, ctx: Ctx): GameSt
   return ctx.instant ? arrive({ ...walking, walk: null }, ctx) : walking;
 }
 
+/** What the status region calls whatever is in the way on a cell: the thing that stands there, or the ground itself. */
+function obstacle(map: GameMap, x: number, y: number, state: GameState): string {
+  const object = objectAt(map, x, y, state);
+  if (object) return object.push ? `the ${object.push}` : 'something';
+  const tile = tileAt(map, x, y);
+  return tile.name ?? (tile.ledge ? 'a ledge' : 'the wall');
+}
+
+const stepsOf = (count: number) => (count === 1 ? '1 step' : `${count} steps`);
+
 /**
  * Slippery ground: whoever arrives on it keeps going the same way, cell by cell, until the next cell is not free
- * or the ground is firm again. Nobody steers a slide. With reduced motion the whole slide is one move.
+ * or the ground is firm again. Nobody steers a slide. With reduced motion the whole slide is one move. `moved` is
+ * how many cells the press has moved the player so far: when the slide ends, the status region is told which way
+ * it went, how far and what ended it, so the slick rock can be played without the picture.
  */
-function glide(state: GameState, ctx: Ctx): GameState {
+function glide(state: GameState, ctx: Ctx, moved: number): GameState {
   if (!idle(state)) return state;
   const map = ctx.world.maps[state.map]!;
   if (!tileAt(map, state.x, state.y).slide) return state;
   const to = landing(map, state.x, state.y, state.dir);
   const ahead = to ? objectAt(map, to.x, to.y, state) : undefined;
   if (!to || to.jump || (ahead && !passable(ahead, state))) {
+    const { dx, dy } = DELTA[state.dir];
     ctx.cues.push('bump');
-    ctx.events.push({ kind: 'say', text: `You slide ${state.dir} until something stops you.` });
+    ctx.events.push({ kind: 'say', text: `You slide ${state.dir} ${stepsOf(moved)} and stop against ${obstacle(map, state.x + dx, state.y + dy, state)}.` });
     return state;
   }
-  if (!tileAt(map, to.x, to.y).slide) ctx.events.push({ kind: 'say', text: `You slide ${state.dir}, onto firm ground.` });
-  const walking = { ...state, x: to.x, y: to.y, walk: { fromX: state.x, fromY: state.y, t: 0, slide: true as const } };
-  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx) : walking;
+  if (!tileAt(map, to.x, to.y).slide) ctx.events.push({ kind: 'say', text: `You slide ${state.dir} ${stepsOf(moved + 1)} and stop on firm ground.` });
+  const walking = { ...state, x: to.x, y: to.y, walk: { fromX: state.x, fromY: state.y, t: 0, slide: moved + 1 } };
+  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx, moved + 1) : walking;
 }
 
 /**
@@ -354,25 +367,27 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
   const y = state.y + DELTA[dir].dy;
   const object = objectAt(map, x, y, turned);
   if (object && loose(object, map, turned)) return shove(turned, object, dir, ctx);
+  /** Nothing moves. On slippery ground a press that goes nowhere says why (once per press, not while it is held). */
+  const blocked = () => {
+    ctx.cues.push('bump');
+    if (ctx.pressed && tileAt(map, state.x, state.y).slide) ctx.events.push({ kind: 'say', text: `You cannot slide ${dir}: ${obstacle(map, x, y, turned)} is in the way.` });
+    return turned;
+  };
   if (object && !passable(object, turned)) {
-    if (object.trigger !== 'step') {
-      ctx.cues.push('bump');
-      return turned;
-    }
+    if (object.trigger !== 'step') return blocked();
     return runScript({ ...turned, script: [...(branchFor(object, turned)?.do ?? [])] }, ctx);
   }
   // The ground decides where the step ends: the next cell, or the cell behind a ledge that is jumped this way.
   const to = landing(map, state.x, state.y, dir);
   const taken = to?.jump ? objectAt(map, to.x, to.y, turned) : undefined;
-  if (!to || (taken && !passable(taken, turned))) {
-    ctx.cues.push('bump');
-    return turned;
-  }
+  if (!to || (taken && !passable(taken, turned))) return blocked();
   if (to.jump) ctx.cues.push('jump');
   if (tileAt(map, to.x, to.y).slide) ctx.cues.push('slide');
+  // Off slippery ground in one step: told like the end of any other slide.
+  else if (tileAt(map, state.x, state.y).slide) ctx.events.push({ kind: 'say', text: `You slide ${dir} ${stepsOf(to.jump ? 2 : 1)} and stop on firm ground.` });
   const walk = { fromX: state.x, fromY: state.y, t: 0, ...(to.jump ? { jump: true as const } : {}) };
   const walking = { ...turned, x: to.x, y: to.y, walk };
-  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx) : walking;
+  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx, to.jump ? 2 : 1) : walking;
 }
 
 function interact(state: GameState, ctx: Ctx): GameState {
@@ -427,7 +442,7 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
     if (t < ticks) return { ...state, walk: { ...state.walk, t } };
     const arrived = arrive({ ...state, walk: null }, ctx);
     // On slippery ground the slide goes on, whatever is held.
-    const sliding = glide(arrived, ctx);
+    const sliding = glide(arrived, ctx, state.walk.slide ?? (state.walk.jump ? 2 : 1));
     if (sliding.walk) return sliding;
     // Still holding the direction: keep walking without a pause between the cells.
     return idle(arrived) && input.dir ? tryMove(arrived, input.dir, ctx) : arrived;

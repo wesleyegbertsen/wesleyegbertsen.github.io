@@ -147,7 +147,8 @@ export const CAVE: Record<string, TileDef> = {
   _: { sprite: 'cavefloor', solid: false },
   ',': { sprite: 'rubble', solid: false, grass: true },
   X: { sprite: 'cavewall', solid: true },
-  s: { sprite: 'stalagmite', under: 'cavefloor', solid: true },
+  // `name` is what the status region calls a tile that stops a slide ("...and stop against a rock."); without one it is "the wall".
+  s: { sprite: 'stalagmite', under: 'cavefloor', solid: true, name: 'a rock' },
   // A doorway: it looks like floor, but a boulder cannot be pushed onto it, so the way in and out stays free.
   '=': { sprite: 'cavefloor', solid: false, road: true },
   // A pressure plate: a boulder is pushed onto it.
@@ -155,10 +156,10 @@ export const CAVE: Record<string, TileDef> = {
   // Slick rock: whoever steps onto it slides on until something stops them.
   '~': { sprite: 'ice', solid: false, slide: true },
   // A fire bowl: it stands in the way, and lights the cells around it (2 cells fully, then it fades) in the dark.
-  t: { sprite: 'brazier', under: 'cavefloor', solid: true, animated: true, light: 2 },
+  t: { sprite: 'brazier', under: 'cavefloor', solid: true, animated: true, light: 2, name: 'a fire bowl' },
   // The same two standing on slick rock: they are what stops a slide.
-  '^': { sprite: 'stalagmite', under: 'ice', solid: true },
-  '*': { sprite: 'brazier', under: 'ice', solid: true, animated: true, light: 2 },
+  '^': { sprite: 'stalagmite', under: 'ice', solid: true, name: 'a rock' },
+  '*': { sprite: 'brazier', under: 'ice', solid: true, animated: true, light: 2, name: 'a fire bowl' },
 };
 
 /**
@@ -320,7 +321,10 @@ export const CAVE_MAP = [
  *    boulders stay where they are. r is the lever that puts them back (so does climbing the ladder and coming
  *    down again). = is a doorway: a boulder cannot be pushed onto it. n is a note that explains it.
  * 2. THE SLICK ROCK (bottom right). ~ is slick rock: one step and you slide on until a rock (^), a fire bowl (*)
- *    or the wall stops you. You come in at the top right and must get out on the left. i is a note.
+ *    or the wall stops you. You come in at the top right and must get out on the left. i is a note that says
+ *    what a slide is, v one that says in words where everything on the floor is (the game writes it from this
+ *    map: slickInWords in story.ts). A slide tells the status region which way it went, how far and what
+ *    stopped it; what a tile is called there is its `name` in the CAVE legend.
  *    The two rows of solid rock above it keep this floor's rooms off each other's screen.
  * 3. THE PIPELINE (bottom, middle). P, A and C are three terminals in the rock: git push, git add, git commit.
  *    They must be used in the right order (add, commit, push); a wrong one puts all of them out again. h is the
@@ -342,7 +346,7 @@ export const DEEP_MAP = [
   'XXXXXXXXXXXXXXXXXXX_XXXX',
   'XXXXXXXXXXXXXXXXXXX_XXXX',
   'XXXXXXXXXXXXXXXXXXX_XXXX',
-  'XXXXXXXXXXXXXXXXXXX_iXXX',
+  'XXXXXXXXXXXXXXXXXXv_iXXX',
   'XXXXXXPhAXCXX~~~~~~~~XXX',
   'XXXXXX_____XX~~~~~~~^XXX',
   'XXXXXX__t__XX^~~~~~~~XXX',

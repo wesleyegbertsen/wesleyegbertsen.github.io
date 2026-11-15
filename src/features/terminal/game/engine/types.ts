@@ -108,6 +108,8 @@ export type TileDef = {
   slide?: boolean;
   /** A light in a dark place: this many cells around it are lit, like around the player (a brazier). */
   light?: number;
+  /** What the status region calls it when it stops a slide ("a rock"). Without one it is "the wall". */
+  name?: string;
 };
 
 /** A named part of a map: a rectangle of cells. Walking into it shows its name, like walking onto another map does. */
@@ -287,9 +289,10 @@ export type GameState = {
   /**
    * While walking: where the step started and how many ticks of it have passed. x and y are already the target.
    * `jump`: this step is a hop over a ledge, two cells long, and takes JUMP_TICKS instead of WALK_TICKS.
-   * `slide`: this step is part of a slide over slippery ground: nobody steered it, and the legs stand still.
+   * `slide`: this step is part of a slide over slippery ground: nobody steered it, and the legs stand still. The
+   * number is how many cells the press that began it has moved the player once this step is done.
    */
-  walk: { fromX: number; fromY: number; t: number; jump?: true; slide?: true } | null;
+  walk: { fromX: number; fromY: number; t: number; jump?: true; slide?: number } | null;
   hp: number;
   maxHp: number;
   /** 1 to `world.levels.max`, and the XP gathered so far. */

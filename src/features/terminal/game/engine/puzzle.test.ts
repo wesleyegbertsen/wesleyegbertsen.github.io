@@ -20,7 +20,7 @@ const legend: Record<string, TileDef> = {
   o: { sprite: 'plate', solid: false, plate: true },
   '~': { sprite: 'ice', solid: false, slide: true },
   '>': { sprite: 'ledge-right', solid: true, ledge: 'right' },
-  t: { sprite: 'brazier', solid: true, light: 2 },
+  t: { sprite: 'brazier', solid: true, light: 2, name: 'a fire bowl' },
 };
 
 const boulder: ObjectSpec = { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' };
@@ -249,6 +249,7 @@ const rink = parseMap(
       '#..~m~..#', // a mat on the ice: slid over, and it still does what it does
       '#..~~>..#', // a ledge is not slid over
       '#..~~~~E#', // E ends the game
+      '#..~~~t.#', // a fire bowl: a tile with a name of its own
       '#########',
     ],
     objects: {
@@ -269,25 +270,59 @@ describe('slippery ground', () => {
     const result = slide(onIce(2, 1), 'right');
     expect(result.state).toMatchObject({ x: 7, y: 1, dir: 'right', walk: null });
     expect(result.cues).toEqual(['slide']);
-    expect(result.events.map((event) => event.text)).toEqual(['You slide right, onto firm ground.']);
+    expect(result.events.map((event) => event.text)).toEqual(['You slide right 5 steps and stop on firm ground.']);
   });
 
   it.each([
-    ['a thing', 2, 4],
-    ['a wall', 3, 4],
-    ['a ledge', 5, 4],
-  ])('is stopped by %s, with a bump and a line', (_, y, x) => {
+    ['a thing', 2, 4, 'You slide right 2 steps and stop against something.'],
+    ['a wall', 3, 4, 'You slide right 2 steps and stop against the wall.'],
+    ['a ledge', 5, 4, 'You slide right 2 steps and stop against a ledge.'],
+    ['a tile with a name', 7, 5, 'You slide right 3 steps and stop against a fire bowl.'],
+  ])('is stopped by %s, with a bump and a line that says which way, how far and what stopped it', (_, y, x, text) => {
     const result = slide(onIce(2, y), 'right');
     expect(result.state).toMatchObject({ x, y, dir: 'right' });
     expect(result.cues).toEqual(['slide', 'bump']);
-    expect(result.events.map((event) => event.text)).toEqual(['You slide right until something stops you.']);
+    expect(result.events.map((event) => event.text)).toEqual([text]);
+  });
+
+  it('counts a single step as one step', () => {
+    // From the ice beside the wall of row 3, one cell back: a step onto the last cell of ice, and the wall.
+    const result = slide(onIce(3, 3), 'right');
+    expect(result.state).toMatchObject({ x: 4, y: 3 });
+    expect(result.events.map((event) => event.text)).toEqual(['You slide right 1 step and stop against the wall.']);
+  });
+
+  it('tells a step off the ice onto firm ground like the end of a slide', () => {
+    const result = slide(onIce(6, 1), 'right');
+    expect(result.state).toMatchObject({ x: 7, y: 1 });
+    expect(result.cues).toEqual([]);
+    expect(result.events.map((event) => event.text)).toEqual(['You slide right 1 step and stop on firm ground.']);
+    // From firm ground to firm ground is a plain step: nothing to tell.
+    expect(slide(onIce(1, 1), 'right').events).toEqual([]);
+  });
+
+  it('says so when a slide goes nowhere: once per press, and only on slippery ground', () => {
+    const blocked = slide(onIce(4, 3), 'right');
+    expect(blocked.state).toMatchObject({ x: 4, y: 3, dir: 'right' });
+    expect(blocked.cues).toEqual(['bump']);
+    expect(blocked.events.map((event) => event.text)).toEqual(['You cannot slide right: the wall is in the way.']);
+    expect(slide(onIce(4, 2), 'right').events.map((event) => event.text)).toEqual(['You cannot slide right: something is in the way.']);
+    expect(slide(onIce(5, 7), 'right').events.map((event) => event.text)).toEqual(['You cannot slide right: a fire bowl is in the way.']);
+    // Held, not pressed (sixty ticks a second): a bump, no line.
+    const held = step(onIce(4, 3), { ...NO_INPUT, dir: 'right' }, iceWorld);
+    expect(held.cues).toEqual(['bump']);
+    expect(held.events).toEqual([]);
+    // On firm ground a wall is just a wall.
+    const firm = slide(onIce(1, 1), 'left');
+    expect(firm.cues).toEqual(['bump']);
+    expect(firm.events).toEqual([]);
   });
 
   it('lets the player step off sideways after a stop, and slide again', () => {
     const stopped = slide(onIce(2, 3), 'right').state;
     expect(stopped).toMatchObject({ x: 4, y: 3 });
     expect(slide(stopped, 'up').state).toMatchObject({ x: 4, y: 1 });
-    expect(slide(stopped, 'down').state).toMatchObject({ x: 4, y: 6 });
+    expect(slide(stopped, 'down').state).toMatchObject({ x: 4, y: 7 });
     // Into the wall: nothing moves.
     expect(slide(stopped, 'right').state).toMatchObject({ x: 4, y: 3 });
   });
@@ -302,16 +337,21 @@ describe('slippery ground', () => {
     let state = step(onIce(2, 1), { ...NO_INPUT, dir: 'right', pressed: 'right' }, iceWorld).state;
     expect(state.walk).toEqual({ fromX: 2, fromY: 1, t: 0 });
     const seen: number[] = [];
+    const told: string[] = [];
     let ticks = 0;
     // The player lets go at once, and then pushes up and down: the slide does not care.
     for (; ticks < 200 && (state.walk || state.x < 7); ticks++) {
-      state = step(state, { ...NO_INPUT, dir: ticks % 2 ? 'up' : 'down', pressed: ticks % 2 ? 'up' : 'down' }, iceWorld).state;
+      const result = step(state, { ...NO_INPUT, dir: ticks % 2 ? 'up' : 'down', pressed: ticks % 2 ? 'up' : 'down' }, iceWorld);
+      state = result.state;
+      told.push(...result.events.map((event) => event.text));
       if (state.walk?.slide && !seen.includes(state.x)) seen.push(state.x);
       if (state.y !== 1) break;
     }
     expect(state.y).toBe(1);
     expect(seen).toEqual([4, 5, 6, 7]);
     expect(ticks).toBe(5 * WALK_TICKS);
+    // The line is the same as with reduced motion, and it is said once.
+    expect(told).toEqual(['You slide right 5 steps and stop on firm ground.']);
   });
 
   it('ends where a planner says it ends: stopOf agrees with the engine for every cell and direction', () => {

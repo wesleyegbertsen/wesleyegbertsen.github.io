@@ -939,7 +939,7 @@ describe('a dark place', () => {
   });
 
   it('draws a slide with the legs still, and a pushed boulder between two cells at walking pace', () => {
-    const sliding = { ...there(), x: 7, dir: 'right' as const, walk: { fromX: 6, fromY: 5, t: WALK_TICKS / 2, slide: true as const } };
+    const sliding = { ...there(), x: 7, dir: 'right' as const, walk: { fromX: 6, fromY: 5, t: WALK_TICKS / 2, slide: 2 } };
     expect(spriteDraws(drawn(sliding, undefined, dark).draws, 'player-right-0')).toHaveLength(1);
     const rock = parseMap({ id: 'pit', name: 'Pit', ground: '.', rows: rows.map((row, y) => (y === 5 ? '......@b.....' : row)), objects: { '@': { solid: false, trigger: 'interact', branches: [] }, b: { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' } } }, legend);
     const pushing: GameState = { ...there(), x: 7, dir: 'right', clock: WALK_TICKS / 2, walk: { fromX: 6, fromY: 5, t: WALK_TICKS / 2 }, roam: { 'pit:b': { x: 8, y: 5, fromX: 7, fromY: 5, at: 0, ticks: WALK_TICKS } } };

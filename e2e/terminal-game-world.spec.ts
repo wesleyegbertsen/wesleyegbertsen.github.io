@@ -701,7 +701,7 @@ test.describe('the deep cave', () => {
     await pilot.press('down');
     await expect(game(page)).toHaveAttribute('data-y', '14');
     await expect(game(page)).toHaveAttribute('data-x', '19');
-    await expect(status(page)).toHaveText('You slide down until something stops you.');
+    await expect(status(page)).toHaveText('You slide down 5 steps and stop against a rock.');
     const slides = await pilot.solve((state) => state.x === 12 && state.y === 13);
     expect(slides.length).toBeGreaterThanOrEqual(4);
     await expect(game(page)).toHaveAttribute('data-x', '12');
