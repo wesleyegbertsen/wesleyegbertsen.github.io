@@ -205,7 +205,7 @@ describe('drawGame', () => {
     const long: World = { ...lines, ending: ['THE END', ...Array.from({ length: 6 }, (_, i) => `Line ${i + 1}.`)] };
     const full = drawn(ended, undefined, long).draws;
     expect(textAt(full, 96)).toBe('Line6.');
-    expect(full.filter((draw) => draw.sheet === 'font' && draw.y > 40 && draw.y < 112).map((draw) => draw.y).every((y) => (y - 46) % 10 === 0)).toBe(true);
+    expect([...new Set(full.filter((draw) => draw.sheet === 'font' && draw.y > 40).map((draw) => draw.y))]).toEqual([46, 56, 66, 76, 86, 96]);
   });
 });
 
