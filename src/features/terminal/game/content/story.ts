@@ -290,7 +290,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         ],
         '#',
       ),
-      H: stroll(person('kid', [`When I grow up I want to be a ${data.profile.role}, just like ${who}!`]), 2, 50),
+      H: stroll(person('kid', [`When I grow up I want to be a ${data.profile.role}, just like ${who}!`]), 2, 90),
       E: stroll(
         person(
           'elder',
@@ -303,16 +303,16 @@ export function buildMaps(data: FsData): BuiltMap[] {
           '#',
         ),
         2,
-        70,
+        150,
       ),
-      D: stroll(person('dog', ['Woof! (It sniffs your bag. It is hoping for PIZZA.)']), 3, 40),
+      D: stroll(person('dog', ['Woof! (It sniffs your bag. It is hoping for PIZZA.)']), 3, 70),
       m: stroll(
         person('gardener', [
           data.projects[0] ? `I named this flower bed ${data.projects[0].name}. A side project needs daily care too.` : 'I talk to my plants. They are great listeners.',
           'Rumour has it gold stars are hidden all over town. Look behind things.',
         ]),
         2,
-        60,
+        120,
       ),
 
       // Gold stars, off the beaten path.
