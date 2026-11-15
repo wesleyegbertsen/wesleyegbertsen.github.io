@@ -36,6 +36,19 @@ export async function playsOf(page: Page, name: string) {
   return (await plays(page)).filter((p) => p.src.includes(name));
 }
 
+/**
+ * Waits until a sound whose file name contains `name` was started and the browser let it play, and returns the
+ * first such play. The wait happens inside the page and has no time limit of its own (the test's limit holds),
+ * so a page that stands still for a few seconds only makes it later. Polling `playsOf` from the test against a
+ * deadline does not survive that: see trap 16 in the site-e2e skill.
+ */
+export async function played(page: Page, name: string): Promise<PlayLog> {
+  await page.waitForFunction((part) => (window as unknown as { __plays: PlayLog[] }).__plays.some((p) => p.src.includes(part) && p.ok), name);
+  const [first] = (await playsOf(page, name)).filter((play) => play.ok);
+  if (!first) throw new Error(`no play of '${name}' after all`);
+  return first;
+}
+
 export type AudioLog = {
   /** State of the context: suspended, running or closed. */
   state: string;

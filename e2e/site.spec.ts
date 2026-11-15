@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { THEMES } from '../src/features/theme/themes.ts';
-import { box, litPixels, openSite, overlaps, playsOf, type Rect } from './helpers.ts';
+import { box, litPixels, openSite, overlaps, played, playsOf, type Rect } from './helpers.ts';
 
 test('loads cleanly with every part of the page', async ({ page }) => {
   const { errors } = await openSite(page);
@@ -380,10 +380,11 @@ test.describe('easter eggs', () => {
     expect(catches).toHaveLength(4);
     expect(catches.every((c) => c.volume === 0.3 && c.startAt === 0.5)).toBe(true);
 
-    await expect.poll(async () => (await playsOf(page, 'victory')).length, { timeout: 5000 }).toBe(1);
-    const [victory] = await playsOf(page, 'victory');
-    expect(victory?.volume).toBe(0.3);
-    await expect.poll(async () => (await playsOf(page, 'victory'))[0]?.ok).toBe(true);
+    // The fanfare comes two seconds after the last ball. Waited for in the page, without a deadline of its own:
+    // the rain can hold the page up for seconds, and a poll against five seconds then fails for nothing.
+    const victory = await played(page, 'victory');
+    expect(victory.volume).toBe(0.3);
+    expect(await playsOf(page, 'victory')).toHaveLength(1);
   });
 
   test('the name brings the cat; the cat puts on glasses and raps', async ({ page }) => {
