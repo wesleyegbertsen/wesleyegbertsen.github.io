@@ -27,8 +27,9 @@ import type { TileDef } from '../engine/types.ts';
  *   beside it there must be a band of tall grass to walk round it; close every other gap with trees, bushes or
  *   rocks. Tests fail when the way out can be walked dry, when the way back cannot, or when a cell of a route has
  *   no way to both ends.
- * - The cave has two floors. The ladder down from the first is hidden on purpose: no sign points to it. The floor
- *   below (DEEP_MAP) holds three puzzles in a row, then the boss and the prize. Its rules are at DEEP_MAP.
+ * - The cave has two floors. The ladder down from the first is hidden on purpose, behind a cracked wall that
+ *   opens when it is looked at (see CAVE_MAP): no sign points to it, one person in the cave gives a hint. The
+ *   floor below (DEEP_MAP) holds three puzzles in a row, then the boss and the prize. Its rules are at DEEP_MAP.
  * - The screen shows 10 x 9 cells, so a room of that size needs no scrolling.
  * - A typo (an unknown character, a ragged row) fails `npm test` with a message naming the map and the place.
  * - The name of a map (in story.ts, `name`) is shown on a label at the top of the screen when the player walks
@@ -284,17 +285,24 @@ export const WEST = [
  * walking left. k and j are coffee machines, a is scratched into the rock and b a paper pinned to it, E F G are
  * chests, n someone who lost the way. The commas are rubble: wild things hide there.
  *
- * L is the ladder down to the deep cave, and it is meant to be hard to find: it lies at the end of a tunnel that
- * winds away from the far corner of the chest room in the north-west, the furthest dead end from the mouth. No
- * sign points to it. d is a bricked-up doorway at the end of the short tunnel that goes up from the middle room:
- * that is where the last chamber used to be. The ladder is right behind that wall, and there is no way through.
+ * L is the ladder down to the deep cave, and it is meant to be hard to find: it is behind a wall. w, in the east
+ * wall of the chest room in the north-west (the furthest dead end from the mouth), is rock with a crack in it:
+ * it looks almost like the rock around it, and whoever looks at it (A) leans on it and it gives way, for good.
+ * x and y are the rock behind it, which falls away with it (they are drawn as plain rock until then). Behind
+ * those three a short tunnel leads to the ladder. No sign points to it; the one who is lost (n) gives a hint.
+ * d is a bricked-up doorway at the end of the short tunnel that goes up from the middle room: that is where the
+ * last chamber used to be. The ladder is right behind that wall, and there is no way through.
+ *
+ * Keep the tunnel out of sight: no cell of it (the cells of w, x and y aside) may be within three and a half
+ * cells of any cell that can be stood on while the wall is shut, or the light shows floor behind the rock. A test
+ * checks it from every cell (regions.test.ts, "cannot be seen before the wall is open").
  */
 export const CAVE_MAP = [
   'XXXXXXXXXXXXXXXXXXXXXXXX',
-  'XXF___XXX__LXXXXXXXbXXXX',
-  'XX_____X__XXXXXXX____EXX',
-  'XXX_XX,X_XXXXXXXXs____XX',
-  'XXX,XX___XdXXXXXXXX_XXXX',
+  'XXF___wxy_,__XXXXXXbXXXX',
+  'XX____XXXXXXLXXXX____EXX',
+  'XXX_XXXXXXXXXXXXXs____XX',
+  'XXX,XXXXXXdXXXXXXXX_XXXX',
   'XXX_XXXXXX_XXXXXXXX,XXXX',
   'XX__sXXXs____XXXXaX_XXXX',
   'XX___XXX_,___XXXX____kXX',

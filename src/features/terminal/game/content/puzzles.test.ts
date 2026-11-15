@@ -7,10 +7,10 @@ import type { FsData } from '../../fs.ts';
 import { routeTo } from '../engine/bot.ts';
 import { initialGame, step } from '../engine/engine.ts';
 import { loose } from '../engine/push.ts';
-import { calm, canReach, explore, keyOf, pressIn, pressesTo, solve, type Explored } from '../engine/solve.ts';
+import { calm, canReach, explore, keyOf, pressIn, pressesTo, quiet, solve, type Explored } from '../engine/solve.ts';
 import { NO_INPUT, type GameMap, type GameState } from '../engine/types.ts';
 import { areaAt, resolveSpot, tileAt } from '../engine/world.ts';
-import { DEEP_CAVE_LEVEL } from './battles.ts';
+import { CAVE_LEVEL, DEEP_CAVE_LEVEL } from './battles.ts';
 import { REGIONS } from './maps.ts';
 import { DEEP_FLAGS, DEEP_TEXT, PUZZLES } from './story.ts';
 import { buildWorld } from './world.ts';
@@ -330,5 +330,51 @@ describe('the deep cave as a whole', () => {
         if (deep.tiles[char]!.slide) expect(areaAt(deep, x, y)).toBe('Slick Rock');
       }),
     );
+  });
+});
+
+describe('the way down from the first floor of the cave', () => {
+  // The wild things of the cave are left out: a battle never changes where the player stands or what is open.
+  const still = quiet(world, 'cave');
+  const inside = (): GameState => ({ ...started(), ...resolveSpot(world, { map: 'cave', at: 'm', dx: -1 }), dir: 'left', level: CAVE_LEVEL });
+
+  it('is found by a search that plays the game: it looks at the cracked wall, and playing its presses leads down', () => {
+    // Walking alone does not get there: the hint and the wall can be walked to, the ladder cannot.
+    expect(routeTo(world, inside(), 'cave:n')).not.toBeNull();
+    expect(routeTo(world, inside(), 'cave:w')).not.toBeNull();
+    expect(routeTo(world, inside(), 'cave:L')).toBeNull();
+    const keys = solve(still, inside(), (state) => state.map === 'deep');
+    expect(keys, 'no way down found').not.toBeNull();
+    expect(keys).toContain('a');
+    const end = keys!.reduce((state, key) => pressIn(still, state, key), inside());
+    expect(end.map).toBe('deep');
+    expect(end.flags[DEEP_FLAGS.crack]).toBe(true);
+    // It asks for nothing but finding it: no level beyond the one the mouth of the cave asks for.
+    expect(end.level).toBe(CAVE_LEVEL);
+    // And the way out of the mountain needs no A at all.
+    const out = solve(still, inside(), (state) => state.map === 'west');
+    expect(out).toEqual(['right']);
+  });
+
+  it('never traps: wherever a player gets on this floor, with the wall shut or open, the way out and the way down stay within reach', () => {
+    const explored = explore(still, inside());
+    expect(explored.complete).toBe(true);
+    const out = keysWhere(explored, (state) => state.map === 'west');
+    const down = keysWhere(explored, (state) => state.map === 'deep');
+    expect(out.length).toBeGreaterThan(0);
+    expect(down.length).toBeGreaterThan(0);
+    const toMouth = canReach(explored, out);
+    const toLadder = canReach(explored, down);
+    const here = [...explored.nodes].filter(([, node]) => node.state.map === 'cave' && calm(node.state));
+    expect(here.some(([, node]) => node.state.flags[DEEP_FLAGS.crack])).toBe(true);
+    expect(here.some(([, node]) => !node.state.flags[DEEP_FLAGS.crack])).toBe(true);
+    expect(here.length).toBeGreaterThan(300);
+    expect(here.filter(([key]) => !toMouth.has(key)).map(([key]) => key)).toEqual([]);
+    expect(here.filter(([key]) => !toLadder.has(key)).map(([key]) => key)).toEqual([]);
+    // Nobody is ever behind the wall while it is shut.
+    const behind = [...explore(still, { ...inside(), flags: { [DEEP_FLAGS.crack]: true } }).nodes.values()].filter((node) => node.state.map === 'cave').map((node) => `${node.state.x},${node.state.y}`);
+    const before = new Set(here.filter(([, node]) => !node.state.flags[DEEP_FLAGS.crack]).map(([, node]) => `${node.state.x},${node.state.y}`));
+    const secret = behind.filter((cell) => !before.has(cell));
+    expect(new Set(secret).size).toBeGreaterThanOrEqual(7);
   });
 });

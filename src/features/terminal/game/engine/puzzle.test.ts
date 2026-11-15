@@ -522,3 +522,49 @@ describe('the bot', () => {
     expect(run.stuck).toBe(true);
   });
 });
+
+// --- a hidden way ----------------------------------------------------------------------------------------------
+
+/** A wall with a crack in it (w) and the rock behind it (x): both are gone once the crack was looked at. E ends the game. */
+const hideout = parseMap(
+  {
+    id: 'hideout',
+    name: 'Hideout',
+    ground: '.',
+    rows: ['########', '#@.wx.E#', '########'],
+    objects: {
+      '@': marker,
+      w: { sprite: 'crack', solid: true, trigger: 'interact', hideWhen: { flag: 'open' }, branches: [{ do: [{ flag: 'open', cue: 'gate' }, { say: ['It gives way.'] }] }] },
+      x: { sprite: 'cavewall', solid: true, trigger: 'interact', hideWhen: { flag: 'open' }, branches: [] },
+      E: { sprite: 'wesley', solid: true, trigger: 'interact', branches: [{ do: [{ ending: true }] }] },
+    },
+  },
+  legend,
+);
+const hideWorld: World = { ...testWorld, maps: { hideout }, start: { map: 'hideout', at: '@', dir: 'down' } };
+
+describe('a hidden way', () => {
+  const begun = () => playIn(hideWorld, initialGame(hideWorld, 1), 'a', 'a');
+
+  it('is a wall until it is looked at: then a sound, a line, and the way is open for good', () => {
+    const before = playIn(hideWorld, begun(), 'right', 'right');
+    expect(before).toMatchObject({ x: 2, y: 1, dir: 'right' });
+    expect(routeTo(hideWorld, before, 'hideout:E')).toBeNull();
+    const told = step(before, { ...NO_INPUT, a: true }, hideWorld, { instant: true });
+    expect(told.cues).toEqual(['confirm', 'gate']);
+    expect(told.events.map((event) => event.text)).toEqual(['It gives way.']);
+    expect(told.state.flags.open).toBe(true);
+    const after = playIn(hideWorld, told.state, 'a', 'right', 'right', 'right');
+    expect(after).toMatchObject({ x: 5, y: 1 });
+    expect(playIn(hideWorld, after, 'a').finished).toBe(true);
+  });
+
+  it('is found by the search and by the bot, which look at everything they can reach', () => {
+    const keys = solve(hideWorld, begun(), (state) => state.finished);
+    expect(keys).not.toBeNull();
+    expect(keys!.filter((key) => key === 'a').length).toBeGreaterThanOrEqual(2);
+    const run = playthrough(hideWorld, 1, 500);
+    expect(run.stuck).toBe(false);
+    expect(run.state.finished).toBe(true);
+  });
+});

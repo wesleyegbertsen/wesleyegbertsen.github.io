@@ -659,7 +659,7 @@ test.describe('the deep cave', () => {
       return seen;
     });
 
-  test('a hidden ladder leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5; the puzzles are played with motion', async ({ page }) => {
+  test('a ladder behind a cracked wall leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5; the puzzles are played with motion', async ({ page }) => {
     test.slow();
     const { pilot, errors } = await play(page);
     await pilot.start();
@@ -674,7 +674,26 @@ test.describe('the deep cave', () => {
     await pilot.goTo('west:D');
     await expect(game(page)).toHaveAttribute('data-map', 'cave');
 
-    // The ladder: a long walk through the dark, past rubble (the Pilot runs from what jumps out).
+    // The ladder is behind a wall. A long walk through the dark, past rubble (the Pilot runs from what jumps out),
+    // to the chest room at the far end: in its east wall the rock has a crack.
+    await pilot.goTo('cave:w');
+    await expect(game(page)).toHaveAttribute('data-x', '5');
+    await expect(game(page)).toHaveAttribute('data-y', '1');
+    // It is drawn as rock (dark, with the darkest shade in it), and walking into it is walking into rock.
+    const wall = await darkIn(page, 6 * 16 - 8, 16, 16, 16);
+    expect(wall.all).toBe(256);
+    expect(wall.dark).toBeGreaterThan(40);
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-x', '5');
+    await expect(game(page)).toHaveAttribute('data-cue', 'bump');
+    // Looked at, it says what is seen, and then gives way with a rumble: the wall is floor now, for good.
+    await pilot.press('a');
+    await expect(status(page)).toHaveText('This rock has a crack in it. A draught whistles through.');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-cue', 'gate');
+    await expect(status(page)).toHaveText('You lean on it. It gives way! A passage leads on into the dark.');
+    await pilot.read();
+    expect((await darkIn(page, 6 * 16 - 8, 16, 16, 16)).dark).toBe(0);
     await pilot.goTo('cave:L');
     await expect(game(page)).toHaveAttribute('data-map', 'deep');
     await expect(game(page)).toHaveAttribute('data-cue', 'cave');

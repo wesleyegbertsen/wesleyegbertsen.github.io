@@ -27,7 +27,8 @@ export type Action =
   /** `quiet`: no text box, only a line for the status region and a sound (a star picked up in passing). */
   | { give: string; quiet?: true }
   | { take: string }
-  | { flag: string }
+  /** `cue`: a sound to go with it (a hidden way that opens). */
+  | { flag: string; cue?: Cue }
   /** Takes flags back (a riddle that starts over after a wrong answer). */
   | { unflag: string[] }
   /** Puts every pushed thing of this map back where the map put it (a reset lever). See engine/push.ts. */

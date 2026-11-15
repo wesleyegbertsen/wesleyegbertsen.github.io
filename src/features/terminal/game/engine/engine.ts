@@ -95,7 +95,10 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
   if ('take' in action) {
     return { ...state, items: { ...state.items, [action.take]: Math.max(0, (state.items[action.take] ?? 0) - 1) } };
   }
-  if ('flag' in action) return { ...state, flags: { ...state.flags, [action.flag]: true } };
+  if ('flag' in action) {
+    if (action.cue) ctx.cues.push(action.cue);
+    return { ...state, flags: { ...state.flags, [action.flag]: true } };
+  }
   if ('unflag' in action) return { ...state, flags: Object.fromEntries(Object.entries(state.flags).filter(([flag]) => !action.unflag.includes(flag))) };
   if ('reset' in action) {
     ctx.cues.push('switch');

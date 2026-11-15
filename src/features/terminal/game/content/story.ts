@@ -312,7 +312,7 @@ export const countCollectibles = (maps: MapSpec[], item: string): number =>
 // --- the deep cave ----------------------------------------------------------------------------------------------
 
 /** The flags the deep cave sets: the boulders are on their plates, and the three steps of the riddle. */
-export const DEEP_FLAGS = { plates: 'deep:plates', add: 'git:add', commit: 'git:commit', shipped: 'deep:shipped' };
+export const DEEP_FLAGS = { plates: 'deep:plates', add: 'git:add', commit: 'git:commit', shipped: 'deep:shipped', /** The cracked wall on the first floor is open. */ crack: 'cave:crack' };
 
 /**
  * A slick floor in words, read off the map, for whoever cannot see it: how big it is, where one gets on and off
@@ -346,17 +346,31 @@ export function slickInWords(rows: string[], legend: Record<string, TileDef>): s
       .map(({ at, place }) => `${at?.solid === false ? 'firm ground' : (at?.name ?? 'the wall')} at ${place}`);
     if (things.length > 0) inTheWay.push(`Row ${y + 1}: ${things.join(', ')}.`);
   }
-  return [
-    `"The slick floor is ${wide} wide and ${deep} deep. Rows are counted from the top, places from the left."`,
-    `"Ways on and off it: ${ways.join('; ')}."`,
-    `"${inTheWay.join(' ')}"`,
-  ];
+  // A row per page: each is told to the status region by itself.
+  return [`"The slick floor is ${wide} wide and ${deep} deep. Rows are counted from the top, places from the left.`, `Ways on and off it: ${ways.join('; ')}.`, ...inTheWay].map((line, i, all) =>
+    i === all.length - 1 ? `${line}"` : line,
+  );
 }
 
 /** What is said in the deep cave. A DRAFT: rewrite it freely. */
 export const DEEP_TEXT = {
   /** The bricked-up doorway on the first floor, where the last chamber used to be. */
-  bricked: ['A doorway, bricked up. The mortar is still fresh.', 'Chalked on a brick: "INCIDENT ROOM moved. People kept walking in."'],
+  bricked: [
+    'A doorway, bricked up. The mortar is still fresh.',
+    'Chalked on a brick: "INCIDENT ROOM moved. People kept walking in."',
+    'A cold draught comes through the bricks. Something is behind them, but this is not the way in.',
+  ],
+  /**
+   * The hint for whoever is stuck, said by the one who is lost (after their own lines). It says what to look for
+   * and the kind of place, never where: a test fails when it names a direction or the room.
+   */
+  hint: [
+    'One thing I did learn down here: not every wall is as solid as it looks.',
+    'Where the cave comes to a dead end, as far from the daylight as you can get, look closely at the rock. A crack gives it away. Lean on it.',
+  ],
+  /** Looking at the cracked wall (A): what is seen first, and then what is said as it opens, once and for good. */
+  crack: ['This rock has a crack in it. A draught whistles through.'],
+  crackOpen: ['You lean on it. It gives way! A passage leads on into the dark.'],
   /** The note in the hall of the boulders, and what its gate and its lever say. */
   boulders: [
     'A note: "Two plates in the floor, two boulders. Walk into a boulder to push it."',
@@ -959,10 +973,24 @@ export function buildMaps(data: FsData): BuiltMap[] {
       n: person('dev', [
         'I came down here to find the root cause.',
         'That was three sprints ago. Do you know the way out? No, wait, do not tell me. I can feel that I am close.',
+        // The nudge for a player who is stuck: what to look for, not where.
+        ...DEEP_TEXT.hint,
       ]),
       // Where the last chamber used to be: a dead end now.
       d: thing('scratches', DEEP_TEXT.bricked),
-      // The ladder down. Hard to find on purpose: nothing points to it.
+      // The hidden way: rock with a crack in it. Looking at it (A) says what is seen, then opens it for good, with
+      // a rumble; the two cells of rock behind it (x, y) go with it. Until then all three stand in the way and
+      // are drawn as rock.
+      w: {
+        sprite: 'crack',
+        solid: true,
+        trigger: 'interact',
+        hideWhen: { flag: DEEP_FLAGS.crack },
+        branches: [{ do: [{ say: DEEP_TEXT.crack }, { flag: DEEP_FLAGS.crack, cue: 'gate' }, { say: DEEP_TEXT.crackOpen }] }],
+      },
+      x: { sprite: 'cavewall', solid: true, trigger: 'interact', hideWhen: { flag: DEEP_FLAGS.crack }, branches: [] },
+      y: { sprite: 'cavewall', solid: true, trigger: 'interact', hideWhen: { flag: DEEP_FLAGS.crack }, branches: [] },
+      // The ladder down, behind that wall. Hard to find on purpose: no sign points to it.
       L: { sprite: 'hole', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'deep', at: 'u', dy: 1, dir: 'down' }, cue: 'cave' }] }] },
     },
   };
@@ -976,7 +1004,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     // The boulders: a boulder on each plate opens the first gate, for good.
     plates: { flag: DEEP_FLAGS.plates, do: [{ say: DEEP_TEXT.platesDown }] },
     objects: {
-      u: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'cave', at: 'L', dx: -1, dir: 'left' }, cue: 'cave' }] }] },
+      u: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'cave', at: 'L', dy: -1, dir: 'up' }, cue: 'cave' }] }] },
       k: coffee(),
       j: coffee(),
 

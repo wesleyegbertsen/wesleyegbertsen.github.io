@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { education } from '../../../../data/education.ts';
 import { experience } from '../../../../data/experience.ts';
 import { profile } from '../../../../data/profile.ts';
@@ -8,6 +9,7 @@ import { trackFor } from '../audio/director.ts';
 import { playthrough, routeTo } from '../engine/bot.ts';
 import { initialGame, step } from '../engine/engine.ts';
 import { maxHpOf } from '../engine/level.ts';
+import { lit } from '../engine/light.ts';
 import { fold } from '../engine/text.ts';
 import { NO_INPUT, type Action, type Dir, type GameMap, type GameObject, type GameState, type Input } from '../engine/types.ts';
 import { placeOf } from '../engine/wander.ts';
@@ -86,6 +88,7 @@ function dryReach(map: GameMap, from: { x: number; y: number }): Set<string> {
 type Cell = { x: number; y: number };
 const DIRS = Object.keys(DELTA) as Dir[];
 const keyOf = (cell: Cell) => `${cell.x},${cell.y}`;
+const keyOfPair = ([x, y]: [number, number]) => `${x},${y}`;
 /** Whether the player can stand on a cell: ground that is not solid, with nothing solid on it. */
 const standable = (map: GameMap, x: number, y: number) => {
   const tile = tileOf(map, x, y);
@@ -818,15 +821,20 @@ describe('the ladder down', () => {
   const thing = (char: string) => cave!.objects.find((object) => object.id === `cave:${char}`)!;
   const walkable = (x: number, y: number) => !!tileOf(cave!, x, y) && !tileOf(cave!, x, y)!.solid;
   const mouth = resolveSpot(world, { map: 'cave', at: 'm', dx: -1 });
-  /** How many steps it is from the mouth to each cell, walking round the things that stand in the way. `closed` cells are shut. */
-  function steps(closed: string[] = []): Map<string, number> {
+  /** The cracked wall and the rock behind it: the things that are gone once the crack was looked at. */
+  const secret = (object: GameObject) => object.hideWhen?.flag === DEEP_FLAGS.crack;
+  /**
+   * How many steps it is from the mouth to each cell, walking round the things that stand in the way, with the
+   * cracked wall still shut or `open`. `closed` cells are shut.
+   */
+  function steps(open: boolean, closed: string[] = []): Map<string, number> {
     const dist = new Map([[keyOf(mouth), 0]]);
     const queue: Cell[] = [mouth];
     for (let cell = queue.shift(); cell; cell = queue.shift()) {
       for (const { dx, dy } of Object.values(DELTA)) {
         const next = { x: cell.x + dx, y: cell.y + dy };
         if (dist.has(keyOf(next)) || closed.includes(keyOf(next)) || !walkable(next.x, next.y)) continue;
-        if (cave!.objects.some((object) => object.x === next.x && object.y === next.y && object.solid)) continue;
+        if (cave!.objects.some((object) => object.x === next.x && object.y === next.y && object.solid && !(open && secret(object)))) continue;
         dist.set(keyOf(next), dist.get(keyOf(cell))! + 1);
         queue.push(next);
       }
@@ -834,54 +842,139 @@ describe('the ladder down', () => {
     return dist;
   }
   /** The fewest steps to stand on a thing (the ladder) or beside it (everything else). */
-  const walkTo = (object: GameObject, dist = steps()) =>
+  const walkTo = (object: GameObject, dist: Map<string, number>) =>
     Math.min(...[{ dx: 0, dy: 0 }, ...Object.values(DELTA)].map(({ dx, dy }) => dist.get(`${object.x + dx},${object.y + dy}`) ?? Infinity));
   const ladder = thing('L');
+  const crack = thing('w');
+  const shut = steps(false);
+  const opened = steps(true);
+  /** The cells behind the cracked wall: the ones that can only be walked to once it is open. */
+  const hidden = [...opened.keys()].filter((key) => !shut.has(key)).map((key) => key.split(',').map(Number) as [number, number]);
+  /** In front of the crack, facing it. */
+  const atCrack = (extra: Partial<GameState> = {}) => at('cave', 'w', { level: CAVE_LEVEL, dir: 'right', ...extra }, -1);
 
-  it('is the furthest thing from the mouth, by a long way, at the end of a tunnel that leads nowhere else', () => {
-    const dist = steps();
-    const others = cave!.objects.filter((object) => object !== ladder && object.id !== 'cave:m');
-    const furthest = Math.max(...others.map((object) => walkTo(object, dist)));
-    expect(walkTo(ladder, dist)).toBeGreaterThan(furthest + 8);
-    expect(walkTo(ladder, dist)).toBeGreaterThanOrEqual(35);
-    // Its tunnel: the cells that are cut off with the ladder when the one cell where the tunnel leaves the chest room is shut.
-    const open = [...dist.keys()];
-    const entries = open.filter((key) => {
-      const shut = steps([key]);
-      return !shut.has(keyOf(ladder)) && others.every((object) => walkTo(object, shut) < Infinity);
-    });
-    expect(entries.length).toBeGreaterThanOrEqual(8);
-    // Nothing else is down that tunnel: no chest, no note, no coffee to draw anyone in.
-    const first = entries.reduce((best, key) => (dist.get(key)! < dist.get(best)! ? key : best));
-    const tunnel = open.filter((key) => !steps([first]).has(key) && key !== first);
-    expect(tunnel.length).toBeGreaterThanOrEqual(8);
-    for (const key of [first, ...tunnel]) {
-      const [x, y] = key.split(',').map(Number) as [number, number];
-      const beside = cave!.objects.filter((object) => object !== ladder && Math.abs(object.x - x) + Math.abs(object.y - y) <= 1);
-      expect(beside.map((object) => object.id), key).toEqual([]);
-    }
-    // It winds: the tunnel turns at least four times, so the dark hides where it goes.
-    const way = [first, ...tunnel].map((key) => key.split(',').map(Number) as [number, number]).sort((a, b) => dist.get(`${a[0]},${a[1]}`)! - dist.get(`${b[0]},${b[1]}`)!);
-    let turns = 0;
-    for (let i = 2; i < way.length; i++) {
-      const straight = (way[i]![0] - way[i - 1]![0] === way[i - 1]![0] - way[i - 2]![0]) && (way[i]![1] - way[i - 1]![1] === way[i - 1]![1] - way[i - 2]![1]);
-      if (!straight) turns++;
-    }
-    expect(turns).toBeGreaterThanOrEqual(4);
-    // It starts in the chest room in the north-west, the far dead end, and wild things live on the way in.
-    const f = thing('F');
-    const [fx, fy] = first.split(',').map(Number) as [number, number];
-    expect(Math.abs(fx - f.x) + Math.abs(fy - f.y)).toBeLessThanOrEqual(6);
-    expect(dryReach(cave!, mouth).has(keyOf(ladder))).toBe(false);
-    expect(tunnel.some((key) => tileOf(cave!, ...(key.split(',').map(Number) as [number, number]))!.grass) || tileOf(cave!, fx, fy)!.grass).toBe(true);
+  it('is behind a wall: with the cracked wall shut there is no way to it, and no other way round', () => {
+    expect(walkTo(ladder, shut)).toBe(Infinity);
+    expect(walkTo(ladder, opened)).toBeLessThan(Infinity);
+    expect(routeTo(world, atCrack(), 'cave:L')).toBeNull();
+    // The wall is three cells thick: the crack, and two cells of rock behind it that fall away with it.
+    const wall = cave!.objects.filter(secret);
+    expect(wall.map((object) => object.id).sort()).toEqual(['cave:w', 'cave:x', 'cave:y']);
+    for (const object of wall) expect(object.solid, object.id).toBe(true);
+    expect(wall.filter((object) => object.branches.length > 0)).toEqual([crack]);
+    // Walking into it is walking into rock.
+    const bumped = step(atCrack(), { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
+    expect(bumped.state).toMatchObject({ x: crack.x - 1, y: crack.y });
+    expect(bumped.cues).toEqual(['bump']);
+    expect(bumped.events).toEqual([]);
   });
 
-  it('is not signposted: nobody and nothing in the game says where it is, or that it is there', () => {
+  it('cannot be seen before the wall is open: from nowhere a player can stand does the light reach floor behind it', () => {
+    expect(hidden.length).toBeGreaterThanOrEqual(7);
+    // The wall itself is drawn as rock: the crack almost, the two cells behind it exactly.
+    expect(crack.sprite).toBe('crack');
+    expect(thing('x').sprite).toBe('cavewall');
+    expect(thing('y').sprite).toBe('cavewall');
+    const drawnAsRock = (x: number, y: number) => cave!.objects.some((object) => object.x === x && object.y === y && secret(object));
+    const floor = hidden.filter(([x, y]) => !drawnAsRock(x, y));
+    expect(floor.length).toBeGreaterThanOrEqual(4);
+    expect(floor.map(keyOfPair)).toContain(keyOf(ladder));
+    // Every cell behind it that would show as floor is black from every cell that can be stood on (a step under
+    // way is between two such cells, and never nearer to a cell than both of its ends).
+    for (const [x, y] of floor) {
+      for (const from of shut.keys()) {
+        const [px, py] = from.split(',').map(Number) as [number, number];
+        expect(lit(x, y, px, py, cave!.dark!, cave!.lights), `${x},${y} seen from ${from}`).toBe(3);
+      }
+    }
+    // The chest room above all: that is where the tunnel's mouth used to show.
+    const f = thing('F');
+    const room = [...shut.keys()].map((key) => key.split(',').map(Number) as [number, number]).filter(([x, y]) => Math.abs(x - f.x) <= 4 && Math.abs(y - f.y) <= 1);
+    expect(room.length).toBeGreaterThanOrEqual(6);
+    for (const [px, py] of room) {
+      for (const { dx, dy } of Object.values(DELTA)) {
+        const seen = !walkable(px + dx, py + dy) || shut.has(`${px + dx},${py + dy}`) || cave!.objects.some((object) => object.x === px + dx && object.y === py + dy);
+        expect(seen, `${px + dx},${py + dy}`).toBe(true);
+      }
+    }
+  });
+
+  it('opens when the crack is looked at: a rumble, a line that says so, and it stays open', () => {
+    // First what is seen: one page, and the wall still stands while it is read.
+    const seen = step(atCrack(), { ...NO_INPUT, a: true }, world, { instant: true });
+    expect(seen.cues).toEqual(['confirm']);
+    expect(seen.events.map((event) => event.text)).toEqual(DEEP_TEXT.crack);
+    expect(seen.state.dialogue?.pages).toHaveLength(1);
+    expect(seen.state.flags[DEEP_FLAGS.crack]).toBeUndefined();
+    // Then it gives way: the rumble of a gate, and a line that says so, on one page (the status region shows it whole).
+    const told = step(seen.state, { ...NO_INPUT, a: true }, world, { instant: true });
+    expect(told.cues).toEqual(['confirm', 'gate']);
+    expect(told.events.map((event) => event.text)).toEqual(DEEP_TEXT.crackOpen);
+    expect(told.state.dialogue?.pages).toHaveLength(1);
+    expect(told.state.flags[DEEP_FLAGS.crack]).toBe(true);
+    const after = settle(told.state);
+    expect(DEEP_TEXT.crackOpen.join(' ')).toMatch(/gives way/);
+    // Through where the wall was, to the ladder and down.
+    const through = press(after, { dir: 'right', pressed: 'right' });
+    expect(through).toMatchObject({ x: crack.x, y: crack.y });
+    expect(goTo(after, 'cave:L').map).toBe('deep');
+    // For good: nothing in the game takes that flag back, so nobody is ever shut in behind it.
+    const undone = Object.values(world.maps).flatMap((map) => map.objects.flatMap((object) => object.branches.flatMap((branch) => deep(branch.do)))).flatMap((action) => ('unflag' in action ? action.unflag : []));
+    expect(undone).not.toContain(DEEP_FLAGS.crack);
+    // Coming back up the ladder, the way out through the wall is open.
+    const up = goTo({ ...at('deep', 'u', { level: CAVE_LEVEL, flags: after.flags }, 0, 1) }, 'deep:u');
+    expect(up.map).toBe('cave');
+    expect(routeTo(world, up, 'cave:m')).not.toBeNull();
+  });
+
+  it('looks almost like the rock around it: the crack is a few pixels of the wall, no more', () => {
+    const script = "import('./scripts/sprites/scenery.mjs').then(({ scenery }) => console.log(JSON.stringify({ crack: scenery.crack, wall: scenery.cavewall })))";
+    const { crack: drawn, wall } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { crack: string[]; wall: string[] };
+    const rock = wall.length === 8 ? [...wall, ...wall].map((row) => row + row) : wall;
+    expect(drawn).toHaveLength(16);
+    const differ = drawn.flatMap((row, y) => [...row].filter((dot, x) => dot !== rock[y]![x])).length;
+    // Enough to be found by someone who looks, too little to catch the eye in passing.
+    expect(differ).toBeGreaterThanOrEqual(5);
+    expect(differ).toBeLessThanOrEqual(16);
+  });
+
+  it('is the furthest thing from the mouth, at the end of a tunnel that leads nowhere else', () => {
+    const others = cave!.objects.filter((object) => object !== ladder && object.id !== 'cave:m' && !secret(object));
+    const furthest = Math.max(...others.map((object) => walkTo(object, opened)));
+    expect(walkTo(ladder, opened)).toBeGreaterThan(furthest + 5);
+    expect(walkTo(ladder, opened)).toBeGreaterThanOrEqual(30);
+    // Nothing else is behind the wall: no chest, no note, no coffee.
+    for (const [x, y] of hidden) {
+      const beside = cave!.objects.filter((object) => object !== ladder && !secret(object) && Math.abs(object.x - x) + Math.abs(object.y - y) <= 1);
+      expect(beside.map((object) => object.id), `${x},${y}`).toEqual([]);
+    }
+    // The wall is in the chest room in the north-west, the far dead end, and wild things live on the way there.
+    const f = thing('F');
+    expect(crack.y).toBe(f.y);
+    expect(crack.x - f.x).toBeLessThanOrEqual(5);
+    expect(shut.has(`${crack.x - 1},${crack.y}`)).toBe(true);
+    expect(dryReach(cave!, mouth).has(`${crack.x - 1},${crack.y}`)).toBe(false);
+    expect(hidden.some(([x, y]) => tileOf(cave!, x, y)!.grass)).toBe(true);
+  });
+
+  it('is not signposted: no sign points at it and nothing names it, but one person in the cave gives a hint', () => {
     const everything = Object.values(world.maps).filter((map) => map.id !== 'deep').map(said).join('\n') + world.intro.join('\n') + world.hints.map((hint) => hint.text).join('\n');
     expect(everything).not.toMatch(/ladder|second floor|floor below|lower floor|deeper|deep cave|downstairs|way down/i);
     expect(cave!.objects.some((object) => object.sprite === 'sign')).toBe(false);
-    // The paper and the scratches are nowhere near it.
-    for (const char of ['a', 'b', 'd', 'n']) expect(walkTo(ladder) - walkTo(thing(char)), char).toBeGreaterThan(12);
+    // The hint: the one who is lost says what to look for and the kind of place, not where it is.
+    const sayOf = (object: GameObject) => object.branches.flatMap((branch) => deep(branch.do)).flatMap((action) => ('say' in action ? action.say : [])).join(' ');
+    const hinting = cave!.objects.filter((object) => !secret(object) && /crack/i.test(sayOf(object)));
+    expect(hinting.map((object) => object.id)).toEqual(['cave:n']);
+    expect(sayOf(thing('n'))).toContain(DEEP_TEXT.hint.join(' '));
+    expect(DEEP_TEXT.hint.join(' ')).toMatch(/dead end/i);
+    expect(DEEP_TEXT.hint.join(' ')).not.toMatch(/north|west|east|south|left|right|chest|pizza|corner/i);
+    // Both can be walked to while the wall is shut: the hint, and the place it is about.
+    expect(walkTo(thing('n'), shut)).toBeLessThan(Infinity);
+    expect(shut.has(`${crack.x - 1},${crack.y}`)).toBe(true);
+    expect(routeTo(world, at('cave', 'm', { level: CAVE_LEVEL, dir: 'left' }, -1), 'cave:n')).not.toBeNull();
+    expect(routeTo(world, at('cave', 'm', { level: CAVE_LEVEL, dir: 'left' }, -1), 'cave:w')).not.toBeNull();
+    // The paper, the scratches and the one who gives the hint are nowhere near it.
+    for (const char of ['a', 'b', 'd', 'n']) expect(walkTo(ladder, opened) - walkTo(thing(char), opened), char).toBeGreaterThan(12);
     // It is a hole in the floor with a ladder in it, not daylight like the way out.
     expect(ladder.sprite).toBe('hole');
     expect(thing('m').sprite).toBe('caveexit');
@@ -890,26 +983,27 @@ describe('the ladder down', () => {
   it('lies right behind the bricked-up doorway, where the last chamber was: close by, and a long walk', () => {
     const wall = thing('d');
     expect(Math.abs(wall.x - ladder.x) + Math.abs(wall.y - ladder.y)).toBeLessThanOrEqual(4);
-    const dist = steps();
-    expect(walkTo(ladder, dist) - dist.get(`${wall.x},${wall.y + 1}`)!).toBeGreaterThanOrEqual(20);
-    // Too far to be seen from the doorway: the light reaches three cells and a half.
-    expect(Math.hypot(wall.x - ladder.x, wall.y + 1 - ladder.y)).toBeGreaterThan(3.5);
+    expect(walkTo(ladder, opened) - opened.get(`${wall.x},${wall.y + 1}`)!).toBeGreaterThanOrEqual(20);
+    // The bricks say that something is behind them, and that this is not the way in.
+    expect(DEEP_TEXT.bricked.join(' ')).toMatch(/draught/);
   });
 
   it('asks for no level, leads to the deep cave and back, and says where the player is', () => {
     expect(ladder.branches).toHaveLength(1);
     expect(ladder.branches[0]!.when).toBeUndefined();
-    const before = { ...at('cave', 'L', { level: CAVE_LEVEL, dir: 'right' as const }, -1) };
-    const down = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
+    const before = { ...at('cave', 'L', { level: CAVE_LEVEL, dir: 'down' as const, flags: { [DEEP_FLAGS.crack]: true as const } }, 0, -1) };
+    const down = step(before, { ...NO_INPUT, dir: 'down', pressed: 'down' }, world, { instant: true });
     const top = world.maps.deep!.objects.find((object) => object.id === 'deep:u')!;
     expect(down.state).toMatchObject({ map: 'deep', x: top.x, y: top.y + 1, dir: 'down' });
     expect(down.cues).toContain('cave');
     expect(down.events.map((event) => event.text)).toContain('The Deep Cave');
     expect(down.state.banner?.text).toBe('The Deep Cave');
     expect(top.sprite).toBe('ladder');
+    // Back up: beside the hole, on the one cell of the tunnel that leads to it.
     const up = step(down.state, { ...NO_INPUT, dir: 'up', pressed: 'up' }, world, { instant: true });
-    expect(up.state).toMatchObject({ map: 'cave', x: ladder.x - 1, y: ladder.y, dir: 'left' });
+    expect(up.state).toMatchObject({ map: 'cave', x: ladder.x, y: ladder.y - 1, dir: 'up' });
     expect(up.cues).toContain('cave');
+    expect(opened.has(`${ladder.x},${ladder.y - 1}`)).toBe(true);
   });
 });
 
@@ -1185,7 +1279,7 @@ describe('none of it is needed', () => {
             if (item && extra.includes(item)) expect(object.id).toBe('hills:?');
           }
           for (const flag of [cond.flag, cond.notFlag]) {
-            if (flag && /^(hobby|rally|chest:(prize|cave|east|west)|beat:outage|deep:|git:)/.test(flag)) expect(['hills', 'cave', 'deep', 'east', 'west'], object.id).toContain(map.id);
+            if (flag && /^(hobby|rally|chest:(prize|cave|east|west)|beat:outage|deep:|git:|cave:)/.test(flag)) expect(['hills', 'cave', 'deep', 'east', 'west'], object.id).toContain(map.id);
           }
         }
       }
@@ -1199,7 +1293,8 @@ describe('none of it is needed', () => {
     expect(ways.filter((way) => />deep$/.test(way))).toEqual(['cave:L>deep']);
     expect(ways.filter((way) => /^deep:/.test(way)).sort()).toEqual(['deep:L>west', 'deep:u>cave']);
     // The flags of the puzzles are asked for by the deep cave only.
-    expect(Object.values(DEEP_FLAGS)).toHaveLength(4);
+    // (The fifth is the cracked wall on the first floor of the cave.)
+    expect(Object.values(DEEP_FLAGS)).toHaveLength(5);
   });
 });
 
