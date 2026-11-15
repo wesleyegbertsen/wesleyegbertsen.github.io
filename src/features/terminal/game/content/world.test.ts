@@ -55,7 +55,10 @@ describe('the world', () => {
       if ('take' in action) expect(world.items).toHaveProperty([action.take]);
       if ('battle' in action) expect(world.enemies).toHaveProperty([action.battle]);
       if ('badge' in action) expect(world.badges.map((badge) => badge.id)).toContain(action.badge);
+      if ('shop' in action) expect(world.shops).toHaveProperty([action.shop]);
+      if ('coins' in action) expect(action.coins).toBeGreaterThan(0);
     }
+    for (const shop of Object.values(world.shops)) for (const entry of shop.stock) expect(world.items).toHaveProperty([entry.item]);
     for (const map of Object.values(world.maps)) {
       for (const enemy of map.encounters?.enemies ?? []) expect(world.enemies).toHaveProperty([enemy]);
     }

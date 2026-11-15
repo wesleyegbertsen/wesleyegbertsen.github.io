@@ -479,6 +479,17 @@ const awning = [
   '1111111111111111',
 ];
 
+/** The canopy of the cafe, to lay over its wall: broad stripes that end in scallops. */
+const canopy = [
+  '3333333333333333',
+  ...Array.from({ length: 10 }, () => '0000222200002222'),
+  '3000222330002223',
+  '.300223..300223.',
+  '..3333....3333..',
+  '................',
+  '................',
+];
+
 /** A window to lay over any wall. */
 const glass = [
   '................',
@@ -566,6 +577,8 @@ const TOWER = ['00333300', '00303300', '00333300', '00303300', '00333300', '0333
 const GEAR = ['03033030', '00333300', '33300333', '33300333', '00333300', '03033030'];
 const BOOK = ['03300330', '30033003', '30033003', '30033003', '33333333', '03300330'];
 const LETTER = ['33333333', '33000033', '30300303', '30033003', '30000003', '33333333'];
+// A steaming cup, for the cafe.
+const CUP = ['03030300', '00303000', '33333300', '32222333', '32222303', '03333330'];
 
 // --- rooms ---------------------------------------------------------------------------------------------------------
 
@@ -825,6 +838,25 @@ const globe = [
   '.......33.......',
   '.....333333.....',
   '....33333333....',
+  '................',
+  '................',
+];
+/** A shelf of cups on the wall behind the counter of the cafe. */
+const cupshelf = [
+  '................',
+  '................',
+  '..00..00..00....',
+  '..000.000.000...',
+  '..00..00..00....',
+  '.00000000000000.',
+  '.11111111111111.',
+  '................',
+  '..00..00..00....',
+  '..000.000.000...',
+  '..00..00..00....',
+  '.00000000000000.',
+  '.11111111111111.',
+  '................',
   '................',
   '................',
 ];
@@ -1127,6 +1159,7 @@ export const scenery = {
   tin,
   shingle,
   awning,
+  canopy: on(brick, canopy),
   glass,
   'roof-bell': on(tiles.roof, bell),
   column: on(stone, column),
@@ -1138,6 +1171,7 @@ export const scenery = {
   'plaque-workshop': on(planks, plaque(GEAR)),
   'plaque-library': on(stone, plaque(BOOK)),
   'plaque-contact': on(tiles.wall, plaque(LETTER)),
+  'plaque-cafe': on(brick, plaque(CUP)),
   wood,
   carpet,
   checker,
@@ -1157,6 +1191,7 @@ export const scenery = {
   cooler,
   globe,
   counter,
+  cupshelf: on(tiles.iwall, cupshelf),
   cliff,
   cavemouth: on(cliff, arch),
   cavefloor,

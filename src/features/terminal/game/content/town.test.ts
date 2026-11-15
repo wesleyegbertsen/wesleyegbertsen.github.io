@@ -64,9 +64,9 @@ describe('the town', () => {
 
   it('gives every building its own walls, roof, door and plaque', () => {
     const used = new Set(town.cells.flat().map((char) => town.tiles[char]!.sprite));
-    for (const sprite of ['roof', 'roof-bell', 'awning', 'slate', 'brick', 'tin', 'planks', 'shingle', 'column']) expect(used, sprite).toContain(sprite);
-    for (const name of ['academy', 'office', 'workshop', 'library', 'contact']) expect(used).toContain(`plaque-${name}`);
-    const doors = ['A', 'O', 'S', 'L', 'P'].map((char) => town.objects.find((object) => object.id === `town:${char}`)!.sprite);
+    for (const sprite of ['roof', 'roof-bell', 'awning', 'slate', 'brick', 'tin', 'planks', 'shingle', 'column', 'canopy']) expect(used, sprite).toContain(sprite);
+    for (const name of ['academy', 'office', 'workshop', 'library', 'contact', 'cafe']) expect(used).toContain(`plaque-${name}`);
+    const doors = ['A', 'O', 'S', 'L', 'P', 'X'].map((char) => town.objects.find((object) => object.id === `town:${char}`)!.sprite);
     expect(new Set(doors).size).toBe(4);
   });
 
@@ -75,7 +75,7 @@ describe('the town', () => {
     expect(animated.length).toBeGreaterThanOrEqual(5);
   });
 
-  const ROOMS = ['academy', 'office', 'workshop', 'library', 'contact'];
+  const ROOMS = ['academy', 'office', 'workshop', 'library', 'contact', 'cafe'];
 
   it('furnishes every room: no room is a bare box', () => {
     for (const map of Object.values(world.maps)) {
@@ -114,7 +114,8 @@ describe('the roads', () => {
     expect(road(start.x, start.y)).toBe(true);
     const roads = network();
     const doors = town.objects.filter((object) => object.trigger === 'step' && object.solid);
-    expect(doors).toHaveLength(5);
+    // The five of the main path and the cafe.
+    expect(doors.map((door) => door.id).sort()).toEqual(['town:A', 'town:L', 'town:O', 'town:P', 'town:S', 'town:X']);
     for (const door of doors) expect(roads, door.id).toContain(`${door.x},${door.y + 1}`);
     // And both ends of the main road, where it leaves town.
     for (const char of ['(', ')']) {

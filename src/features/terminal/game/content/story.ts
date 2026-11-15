@@ -5,8 +5,8 @@ import { contactLines } from '../../content.ts';
 import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Cue, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
-import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ENEMIES, FINAL_BOSSES, STAMP } from './battles.ts';
-import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
+import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ECONOMY, ENEMIES, FINAL_BOSSES, SHOPS, STAMP } from './battles.ts';
+import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, REGIONS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
  * Who and what is on the maps, and what they say. HOW TO EDIT
@@ -18,7 +18,11 @@ import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOOR
  * - Only printable ASCII has a glyph in the font; accents are folded (é becomes e) and anything else shows as `?`.
  * - The helpers below (sign, person, chest, door, boss...) cover the usual things. An object is a list of
  *   branches: the first whose `when` holds runs its actions in order (say, give, take, flag, badge, heal, battle,
- *   warp, ending). See engine/types.ts.
+ *   warp, coins, shop, ending). See engine/types.ts.
+ * - The CAFE in town is the place to rest: the barista restores energy and moves, and a defeat in town brings
+ *   the player back to her (`respawn` on the town). CAFE_TEXT is what is said there: a draft, rewrite it. The
+ *   shopkeeper opens the shop (`{ shop: 'cafe' }`); what it sells and the prices are SHOPS in battles.ts.
+ *   `{ coins: 20 }` hands over money. Nothing in the shop may be needed for the main path.
  * - The main path is the four badges and the contact office. Everything else (the townsfolk, the signposts, the
  *   gold stars, the errands, the roads east and west, Hobby Hills, the cave) is extra: a test fails when a door,
  *   a boss or the ending starts to depend on it.
@@ -224,6 +228,42 @@ const coffee = (): ObjectSpec => ({
   ],
 });
 
+/**
+ * What is said in and about the CAFE, in a friendly voice. A DRAFT: rewrite it freely. `who` is the first name
+ * from the profile.
+ */
+export const CAFE_TEXT = {
+  /** The sign beside the door, in town. */
+  sign: ['CAFE. Fresh coffee, a seat to rest in, and a small shop.', 'Lost a battle in town? This is where you wake up.'],
+  /** The barista, after she has restored energy and moves. */
+  barista: ['Welcome to the CAFE! Sit down for a moment. There: energy and moves are restored.', 'If a battle in town ever goes wrong, you wake up right here. I keep a seat free.'],
+  /** The same, for someone without a single COFFEE: she hands one over. */
+  refill: ['Welcome to the CAFE! Sit down for a moment. There: energy and moves are restored.', 'No COFFEE in your bag? Here, one to go. It is on the house.'],
+  /** The shopkeeper, before the shop opens. */
+  shop: [`Snacks and drinks for the road! We take ${ECONOMY.currency}: wild things drop a few, bosses drop a lot.`],
+  /** A regular at a table. */
+  regular: (who: string) => ['They know my order by heart here.', `${who} says the best ideas come after the second cup. I am on my fourth. Still waiting.`],
+};
+
+/** The barista of the cafe: restores energy and moves, like a coffee machine, and never leaves you dry either. */
+const barista = (): ObjectSpec => ({
+  sprite: 'barista',
+  solid: true,
+  trigger: 'interact',
+  branches: [
+    { when: { noItem: 'coffee' }, do: [{ heal: true }, { say: CAFE_TEXT.refill }, { give: 'coffee' }] },
+    { do: [{ heal: true }, { say: CAFE_TEXT.barista }] },
+  ],
+});
+
+/** Someone who keeps a shop (a name in SHOPS in battles.ts): a word of welcome, then the list to buy from. */
+const shopkeeper = (sprite: string, shop: keyof typeof SHOPS, lines: string[]): ObjectSpec => ({
+  sprite,
+  solid: true,
+  trigger: 'interact',
+  branches: [{ do: [{ say: lines }, { shop }] }],
+});
+
 /** A boss stands in the way until beaten, then it is gone. `win` runs after the victory. */
 const boss = (enemy: string, intro: string[], win: Action[]): ObjectSpec => ({
   sprite: 'boss',
@@ -392,6 +432,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
     rows: TOWN,
     ground: '.',
     encounters: wild('town'),
+    // A defeat in town: back to the cafe, in front of the barista.
+    respawn: { map: 'cafe', at: 'B', dy: 1, dir: 'up' },
     objects: {
       '@': marker('='),
       '(': wayOut({ map: 'west', at: ')', dx: -1, dir: 'left' }),
@@ -410,7 +452,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       l: sign('LIBRARY. Members only.'),
       P: door(into('contact'), { when: { badges: all }, deny: `The CONTACT OFFICE opens for holders of ${all} badges.` }),
       p: sign(`CONTACT OFFICE. Opens for ${all} badges.`),
-      k: coffee(),
+      X: door(into('cafe'), undefined, 'door-brick'),
+      b: sign(...CAFE_TEXT.sign),
       C: chest('chest:pizza', 'pizza', '"'),
 
       // Signposts.
@@ -418,6 +461,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         `CAREER TOWN. ${plural(jobs.length, 'employer')}, ${plural(data.education.length, 'school')}, ${plural(data.projects.length, 'side project')} and ${plural(data.skills.length, 'skill')} live here.`,
         'North: the plaza and the CONTACT OFFICE. Over the bridge, that is.',
         'The main road leaves town on both sides. East: HOBBY HILLS. West: the mountain and its CAVE.',
+        'Tired? The CAFE is up the road, by the duck pond.',
       ),
       '7': sign('STREAM OF COMMITS. It never stops. Mind the merge conflicts between the planks.', 'North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.'),
       '8': sign(
@@ -611,6 +655,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
               { take: 'letter' },
               { flag: 'errand:letter:done' },
               { give: 'energydrink' },
+              { coins: 20 },
             ],
           },
           { do: [{ say: [`Welcome. ${plural(data.skills.length, 'skill')} on the shelves, and not one of them overdue. Quiet, please.`] }] },
@@ -637,6 +682,19 @@ export function buildMaps(data: FsData): BuiltMap[] {
     },
   };
 
+  const cafe: MapSpec = {
+    id: 'cafe',
+    name: 'Cafe',
+    rows: CAFE,
+    ground: '_',
+    objects: {
+      B: barista(),
+      V: shopkeeper('maker', 'cafe', CAFE_TEXT.shop),
+      '1': person('dev', CAFE_TEXT.regular(who)),
+      m: exitTo('X'),
+    },
+  };
+
   // The collector counts what the maps above hold, so adding a star needs no other change.
   const total = countCollectibles([town, academy, office, workshop, library, contact], COLLECT);
   town.objects['?'] = {
@@ -647,7 +705,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       { when: { flag: 'errand:stars' }, do: [{ say: ['A fellow collector! Wear that TROPHY with pride.'] }] },
       {
         when: { count: { item: COLLECT, min: total } },
-        do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }],
+        do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }, { coins: 50 }],
       },
       { do: [{ say: [`I collect GOLD STARs. ${total} are hidden in and around town.`, 'Bring them all and my TROPHY is yours. START shows how many you have.'] }] },
     ],
@@ -818,6 +876,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     { ...workshop, legend: indoors('wood') },
     { ...library, legend: indoors('carpet') },
     { ...contact, legend: indoors('wood') },
+    { ...cafe, legend: indoors('wood') },
   ].map(named);
 }
 
@@ -826,6 +885,7 @@ export const intro = (data: FsData): string[] => [
   `Welcome to Career Town! Here, ${firstName(data)}'s career is a place to explore.`,
   `Every building is a chapter with a badge to win. Collect all ${BADGES.length} and the CONTACT OFFICE opens.`,
   'Walk up to people and press A to talk. START opens your bag, SELECT gives a hint.',
+  'Tired, or beaten? The CAFE in town restores you, and sells snacks for the COINS that enemies drop.',
   'There is more beyond the town: HOBBY HILLS to the east, a mountain with a CAVE to the west. Winning battles makes you stronger.',
 ];
 

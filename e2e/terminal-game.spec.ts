@@ -349,7 +349,7 @@ test.describe('the adventure in the terminal', () => {
     await expect(game(page)).toBeFocused();
     const pilot = new Pilot(page);
     await pilot.start();
-    await pilot.goTo('town:k');
+    await pilot.goTo('town:b');
     const place = { x: String(pilot.state.x), y: String(pilot.state.y) };
 
     const goTo = async (name: string) => {
@@ -373,7 +373,7 @@ test.describe('the adventure in the terminal', () => {
   test('a reload brings the shell back, and play starts at the title again', async ({ page }) => {
     const { pilot } = await play(page);
     await pilot.start();
-    await pilot.goTo('town:k');
+    await pilot.goTo('town:b');
 
     await page.reload();
     await expect(input(page)).toBeVisible();

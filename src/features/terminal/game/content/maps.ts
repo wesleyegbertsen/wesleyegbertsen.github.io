@@ -15,6 +15,9 @@ import type { TileDef } from '../engine/types.ts';
  *   project or skill group goes to 1, the next to 2. A digit that has nobody left to tell about is simply empty.
  *   In town the digits 1-6 are hidden gold stars and 0, 7, 8, 9 are signposts. In Hobby Hills the digits are the
  *   ten hobby stops.
+ * - The CAFE in town is where energy and moves are restored and where a defeat in town brings the player back
+ *   to; it has a shop. The town has no coffee machine of its own any more. The machines (k) inside the buildings,
+ *   on the two routes, in Hobby Hills and in the cave stay: they are the places to rest away from the cafe.
  * - Lamp posts (i, I) stand beside a road, at even distances: a test fails for a lamp that does not touch a road.
  * - `(` and `)` on the edge of an outdoor map are the ways out to the west and to the east.
  * - Tall grass (and the rubble in the cave) is where wild enemies live. Who lives there is in AREAS in battles.ts.
@@ -94,6 +97,9 @@ export const OUTDOORS: Record<string, TileDef> = {
   ']': { sprite: 'column', solid: true },
   '[': { sprite: 'glass', under: 'stone', solid: true },
   '%': { sprite: 'plaque-library', solid: true },
+  // The Cafe: brick under a flat roof (Z), a striped canopy over the windows (G) and the door
+  '/': { sprite: 'canopy', solid: true },
+  '`': { sprite: 'plaque-cafe', solid: true },
 };
 
 /** The legend of a room. Every room has its own floor; the furniture stands on it. */
@@ -125,6 +131,9 @@ export function indoors(floor: string): Record<string, TileDef> {
     x: on('crate'),
     z: on('barrel'),
     S: on('server', true),
+    // The cafe: the big machine behind the counter and the cups on the wall
+    e: on('coffee'),
+    u: { sprite: 'cupshelf', solid: true },
   };
 }
 
@@ -138,7 +147,8 @@ export const CAVE: Record<string, TileDef> = {
 
 /**
  * The town. A O S L P are the doors of the Academy, Office, workShop, Library and contact office (Post); the same
- * letters in lower case are their signs. k is the coffee machine, C a chest, F the fountain, e the well.
+ * letters in lower case are their signs. X is the door of the Cafe (south of the main road, by the pond) and b
+ * its sign. C is a chest, F the fountain, e the well.
  * People: B the postman, < the market vendor, ? the star collector, and the ones who stroll: H a kid, E an elder,
  * D a dog, m the gardener. ( and ) in the main road are the ways out of town: west to the mountain, east to
  * Hobby Hills. The duck pond has a sandy shore (+) where there is room beside the lamps and the sign, and reeds (*).
@@ -152,14 +162,14 @@ export const TOWN = [
   'T.H..=..fff#F##:####f...##:##""T',
   'T.,..=....8####:##!#f..,..=..u.T',
   '(==============================)',
-  'T..,i.....i..,.=i..k..i+u+++i..T',
-  'T.jjjjjj.x..M<.=.u....+~~~~~++.T',
-  'T4jjjjjj.zx....=,.E..+~~^~d~~+2T',
-  'T.v>KSv>s..i,..=.....9*~~~~^~n.T',
-  'T....===========7.....+~~~~~++.T',
+  'T..,i.....i..,.=i.....i+u+++i..T',
+  'T.jjjjjj.x..M<.=.ZZZZ.+~~~~~++.T',
+  'T4jjjjjj.zx....=,////+~~^~d~~+2T',
+  'T.v>KSv>s..i,..=bG`XG9*~~~~^~n.T',
+  'T....===============..+~~~~~++.T',
   'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
-  'Y..Y...u......i=...,....Y...,..T',
-  'T""""..e...Y...=.,....hhhhhhhh.Y',
+  'Y..Y...u......i=7..,....Y...,..T',
+  'T""""..e...Y...=.,.E..hhhhhhhh.Y',
   'T"""""....n....=..u...h{{{{{{h6T',
   'T""3""..,..D...=......;{{{{{{;.T',
   'Y"""""..r....Y.=.Y....l][%L[];.T',
@@ -329,6 +339,23 @@ export const LIBRARY = [
   'Xb_oh__b*X',
   'Xy_____BkX',
   'Xs_R_____X',
+  'XXXXmXXXXX',
+];
+
+/**
+ * The Cafe. B is the barista (restores energy and moves; a defeat in town wakes the player up in front of her),
+ * V the shopkeeper (opens the shop), both in the counter. 1 is a regular at a table. e is the big coffee machine
+ * and u the cups, behind the counter where nobody but the staff gets.
+ */
+export const CAFE = [
+  'XXQuuXOXWX',
+  'Xe__x__zyX',
+  'XnnBnnVnnX',
+  'X________X',
+  'X_oh__ho_X',
+  'X________X',
+  'Xs_1o___yX',
+  'X__===___X',
   'XXXXmXXXXX',
 ];
 

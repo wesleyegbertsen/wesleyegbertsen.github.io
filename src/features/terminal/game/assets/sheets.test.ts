@@ -81,7 +81,9 @@ describe('the sprite sheets', () => {
   it('draw everyone who can turn by hand: a back without a face and a side that is not the front', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters, facing }) => console.log(JSON.stringify({ facing, characters })))";
     const { facing, characters } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { facing: string[]; characters: Record<string, string[]> };
-    expect(facing).toHaveLength(9);
+    // The nine of the town and the barista of the cafe.
+    expect(facing).toHaveLength(10);
+    expect(facing).toContain('barista');
     for (const name of [...facing, 'dog', 'cat']) {
       const front = name === 'dog' ? characters['dog-down']! : characters[name]!;
       const back = characters[`${name}-up`]!;
