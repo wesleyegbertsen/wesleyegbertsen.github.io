@@ -3,6 +3,7 @@ import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
 import { JUMP_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
+import { money } from './engine/shop.ts';
 import { dimness } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
 import { curtainOf, type Curtain } from './engine/transition.ts';
@@ -33,8 +34,9 @@ const BOX_Y = 104;
 const NOTE_H = 16;
 /** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
 export const FRAME_TICKS = 30;
-/** How many items the bag shows at once; a longer list scrolls with the cursor. */
-const BAG_ROWS = 5;
+/** How many items the bag shows at once; a longer list scrolls with the cursor. Under them: the coins, and what was collected. */
+const BAG_ROWS = 4;
+const COINS_Y = 82;
 /** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
 const SHADES = ['', 'shade-1', 'shade-2'] as const;
 
@@ -265,7 +267,7 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
 /** The settings tab: the sound, how loud it is, and the look of the screen. */
 function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): string {
   const at = SETTINGS[Math.min(cursor, SETTINGS.length - 1)]!;
-  const row = (name: (typeof SETTINGS)[number]) => 46 + SETTINGS.indexOf(name) * 14;
+  const row = (name: (typeof SETTINGS)[number]) => 44 + SETTINGS.indexOf(name) * 12;
   drawText(ctx, sheets, '>', 10, row(at));
   drawText(ctx, sheets, 'SOUND', 18, row('sound'));
   drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
@@ -322,7 +324,8 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
     note = `${state.badges.length} of ${world.badges.length} badges.`;
   }
 
-  // The foot of the menu: what was found of the things to collect.
+  // The foot of the menu: the money, and what was found of the things to collect.
+  drawText(ctx, sheets, `${world.economy.currency} ${state.coins}`, 8, COINS_Y);
   (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
     const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
     drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), 92);
@@ -354,6 +357,33 @@ function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   drawText(ctx, sheets, '>', 10, 58 + Math.min(learn.cursor, rows.length) * LINE);
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, [`${world.moves[state.moves[0]!]!.name} always stays.`, 'A: swap it in.', 'B: keep your moves.'], 8, BOX_Y + 6);
+}
+
+/**
+ * A shop: its name and the player's coins at the top, then what it sells (how many of it are in the bag, and the
+ * price) and the way out. The foot says what the item under the cursor does, or what the last press led to.
+ */
+function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const open = state.shop!;
+  const shop = world.shops[open.id]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, shop.name, 14, 8);
+  const purse = money(state.coins, world);
+  drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  shop.stock.forEach((entry, i) => {
+    const price = String(entry.price);
+    drawText(ctx, sheets, world.items[entry.item]!.name, 18, 24 + i * LINE);
+    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 104, 24 + i * LINE);
+    drawText(ctx, sheets, price, rightAligned(price, SCREEN_W - 8), 24 + i * LINE);
+  });
+  drawText(ctx, sheets, 'LEAVE', 18, 24 + shop.stock.length * LINE);
+  const cursor = Math.min(open.cursor, shop.stock.length);
+  drawText(ctx, sheets, '>', 10, 24 + cursor * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  const entry = shop.stock[cursor];
+  const note = open.note || (entry ? world.items[entry.item]!.description : 'A: buy one. B: leave.');
+  drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
 }
 
 /** Where the two boxes of the battle screen stand, the pitch of their rows and the width of an energy bar. */
@@ -498,6 +528,7 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
   }
   if (state.battle) drawBattle(ctx, sheets, state, world);
   else if (state.learn) drawLearn(ctx, sheets, state, world);
+  else if (state.shop) drawShop(ctx, sheets, state, world);
   else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
   else {
     drawWorld(ctx, sheets, state, world);

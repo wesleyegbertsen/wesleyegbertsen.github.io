@@ -96,7 +96,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     const banner = bannerText(state);
     const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : 'boss') : '';
     const root = focusRef.current;
-    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -116,6 +116,10 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         menu: state.menu?.tab ?? '',
         row: state.menu?.tab === 'settings' ? (SETTINGS[state.menu.cursor] ?? '') : '',
         learn: state.learn?.move ?? '',
+        // The money, and the shop while one is open: its name in `world.shops` and the item under the cursor (`leave` on the last entry).
+        coins: String(state.coins),
+        shop: state.shop?.id ?? '',
+        shopRow: state.shop ? (world.shops[state.shop.id]?.stock[state.shop.cursor]?.item ?? 'leave') : '',
         level: String(state.level),
         xp: String(state.xp),
         badges: String(state.badges.length),

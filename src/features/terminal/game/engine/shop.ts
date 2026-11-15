@@ -73,7 +73,7 @@ export function stepShop(state: GameState, input: Input, ctx: Ctx): { state: Gam
   }
   const coins = state.coins - entry.price;
   const owned = (state.items[entry.item] ?? 0) + 1;
-  const note = `You buy a ${world.items[entry.item]!.name} for ${money(entry.price, world)}. You have ${owned} now, and ${money(coins, world)} left.`;
+  const note = `You buy one ${world.items[entry.item]!.name} for ${money(entry.price, world)}. ${money(coins, world)} left.`;
   ctx.cues.push('coin');
   ctx.events.push({ kind: 'item', text: note });
   return { state: { ...state, coins, items: { ...state.items, [entry.item]: owned }, shop: { ...open, note } }, left: false };

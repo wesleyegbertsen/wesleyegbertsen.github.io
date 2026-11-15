@@ -3,13 +3,13 @@ import { FakeAudio } from './audio/fakeAudio.ts';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { initialGame } from './engine/engine.ts';
-import { play, testWorld as world } from './engine/testWorld.ts';
-import type { GameState } from './engine/types.ts';
+import { play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
+import type { GameState, World } from './engine/types.ts';
 import { Game } from './Game.tsx';
 import { createSettingsStore } from './settingsStore.ts';
 
 /** The game on the small test world, with reduced motion: one press is one move. */
-function setup(state: GameState | null, touch = false, muted = false) {
+function setup(state: GameState | null, touch = false, muted = false, on: World = world) {
   const store: { current: GameState | null } = { current: state };
   const onLeave = vi.fn();
   const onSkip = vi.fn();
@@ -17,7 +17,7 @@ function setup(state: GameState | null, touch = false, muted = false) {
   const view = render(
     <Game
       focusRef={createRef<HTMLDivElement>()}
-      world={world}
+      world={on}
       storeRef={store}
       settingsStore={sound}
       reducedMotion
@@ -295,6 +295,32 @@ describe('Game', () => {
     await user.keyboard('x');
     expect(game).toHaveAttribute('data-learn', '');
     expect(screen.getByRole('status')).toHaveTextContent('You keep your moves.');
+  });
+
+  it('shows the coins and the open shop through data attributes, and tells the status region what was bought', async () => {
+    const before = playIn(shopWorld, initialGame(shopWorld, 7), 'a', 'a', 'down', 'left', 'a');
+    const { game, user } = setup(before, false, false, shopWorld);
+    expect(game).toHaveAttribute('data-coins', '45');
+    expect(game).toHaveAttribute('data-shop', '');
+    expect(game).toHaveAttribute('data-shop-row', '');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-shop', 'kiosk');
+    expect(game).toHaveAttribute('data-shop-row', 'coffee');
+    expect(screen.getByRole('status')).toHaveTextContent('KIOSK. You have 45 COINS. A buys one, B leaves. COFFEE, 10 COINS: Restores 20 energy. In your bag: 0.');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-coins', '35');
+    expect(screen.getByRole('status')).toHaveTextContent('You buy one COFFEE for 10 COINS. 35 COINS left.');
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(game).toHaveAttribute('data-shop-row', 'key');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-coins', '35');
+    expect(screen.getByRole('status')).toHaveTextContent('Not enough COINS: the KEY is 100, you have 35.');
+    await user.keyboard('{ArrowDown}');
+    expect(game).toHaveAttribute('data-shop-row', 'leave');
+    await user.keyboard('x');
+    expect(game).toHaveAttribute('data-shop', '');
+    expect(game).toHaveAttribute('data-dialogue', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent('Bye now.');
   });
 
   it('shows the level of the enemy in a battle', async () => {

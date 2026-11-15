@@ -143,7 +143,7 @@ describe('the shop', () => {
     expect(bought.state.coins).toBe(35);
     expect(bought.state.items.coffee).toBe(1);
     expect(bought.state.shop).toMatchObject({ id: 'kiosk', cursor: 0 });
-    expect(bought.events).toEqual([{ kind: 'item', text: 'You buy a COFFEE for 10 COINS. You have 1 now, and 35 COINS left.' }]);
+    expect(bought.events).toEqual([{ kind: 'item', text: 'You buy one COFFEE for 10 COINS. 35 COINS left.' }]);
     expect(bought.state.shop?.note).toBe(bought.events[0]!.text);
     expect(bought.cues).toEqual(['coin']);
 

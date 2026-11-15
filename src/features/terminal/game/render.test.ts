@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
-import { levelWorld, play, playIn, testWorld as world } from './engine/testWorld.ts';
+import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
@@ -508,35 +508,52 @@ describe('the Start menu', () => {
   it('scrolls a bag that is longer than the list, keeping the cursor in view', () => {
     const all = Object.fromEntries(letters.map((id) => [id, 1]));
     const at = (cursor: number) => drawn({ ...there(), items: all, menu: { tab: 'items' as const, cursor } }, undefined, shop).draws;
+    // Four rows: the line under them is the money's.
     expect(textAt(at(0), 42)).toBe('>Ax1');
-    expect(textAt(at(0), 82)).toBe('Ex1');
-    expect(textAt(at(3), 42)).toBe('Ax1');
-    expect(textAt(at(3), 72)).toBe('>Dx1');
-    expect(textAt(at(4), 42)).toBe('Bx1');
-    expect(textAt(at(4), 72)).toBe('>Ex1');
-    expect(textAt(at(6), 42)).toBe('Cx1');
-    expect(textAt(at(6), 82)).toBe('>Gx1');
+    expect(textAt(at(0), 72)).toBe('Dx1');
+    expect(textAt(at(2), 42)).toBe('Ax1');
+    expect(textAt(at(2), 62)).toBe('>Cx1');
+    expect(textAt(at(3), 42)).toBe('Bx1');
+    expect(textAt(at(3), 62)).toBe('>Dx1');
+    expect(textAt(at(6), 42)).toBe('Dx1');
+    expect(textAt(at(6), 72)).toBe('>Gx1');
+    for (const cursor of [0, 3, 6]) expect(textAt(at(cursor), 82)).toBe('COINS0');
+  });
+
+  it('shows the coins on every tab, above what was collected', () => {
+    const rich = { ...there(), coins: 1234 };
+    for (const tab of ['items', 'badges', 'settings'] as const) {
+      const { draws } = drawn({ ...rich, items: { a: 1, b: 1, c: 1, d: 1, e: 1 }, menu: { tab, cursor: 0 } }, on, shop);
+      expect(textAt(draws, 82), tab).toBe('COINS1234');
+      expect(textAt(draws, 92), tab).toBe('AS1/3BS1/10');
+      // Nothing else is drawn on those two lines, or between them and the list.
+      const rows = [...new Set(draws.filter((draw) => draw.sheet === 'font' && draw.y > 72 && draw.y < 100).map((draw) => draw.y))];
+      expect(rows.sort(), tab).toEqual([82, 92]);
+    }
+    // The name of the money is the world's.
+    const euros = { ...shop, economy: { ...shop.economy, currency: 'EUR' } };
+    expect(textAt(drawn({ ...rich, menu: { tab: 'items' as const, cursor: 0 } }, on, euros).draws, 82)).toBe('EUR1234');
   });
 
   it('shows the settings: the sound, the volume wheel and the look of the screen, with the cursor on one', () => {
     const settings = (cursor: number, hud: Hud = on) => drawn({ ...there(), menu: { tab: 'settings' as const, cursor } }, hud, shop);
     const first = settings(0);
-    expect(textAt(first.draws, 46)).toBe('>SOUNDON');
-    expect(textAt(first.draws, 60)).toBe('VOLUME50%');
-    expect(textAt(first.draws, 74)).toBe('SCREENLCD');
+    expect(textAt(first.draws, 44)).toBe('>SOUNDON');
+    expect(textAt(first.draws, 56)).toBe('VOLUME50%');
+    expect(textAt(first.draws, 68)).toBe('SCREENLCD');
     expect(textAt(first.draws, 110)).toBe('Aswitchesthesoundoff');
-    expect(textAt(settings(1).draws, 60)).toBe('>VOLUME50%');
+    expect(textAt(settings(1).draws, 56)).toBe('>VOLUME50%');
     expect(textAt(settings(1).draws, 110)).toBe('Leftandrightchange');
-    expect(textAt(settings(2).draws, 74)).toBe('>SCREENLCD');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 46)).toBe('>SOUNDOFF');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 74)).toBe('SCREENPLAIN');
-    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 60)).toBe('>VOLUME100%');
-    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 60)).toBe('>VOLUME0%');
+    expect(textAt(settings(2).draws, 68)).toBe('>SCREENLCD');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 44)).toBe('>SOUNDOFF');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 68)).toBe('SCREENPLAIN');
+    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 56)).toBe('>VOLUME100%');
+    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 56)).toBe('>VOLUME0%');
   });
 
   it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
     const steps = (hud: Hud) =>
-      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 59 && fill.y <= 67);
+      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 55 && fill.y <= 63);
     const half = steps({ muted: false, volume: 5 });
     expect(half).toHaveLength(VOLUME_STEPS);
     const filled = half.filter((fill) => fill.shade === PALETTE[3]);
@@ -550,6 +567,53 @@ describe('the Start menu', () => {
     const off = steps({ muted: true, volume: 5 });
     expect(off.filter((fill) => fill.shade === PALETTE[3])).toHaveLength(0);
     expect(off.filter((fill) => fill.h > 1)).toHaveLength(5);
+  });
+});
+
+describe('the shop on the screen', () => {
+  /** In the kiosk of shopWorld: COFFEE for 10, GREEN TEA for 25, a KEY for 100; 45 COINS. */
+  const shopping = () => playIn(shopWorld, initialGame(shopWorld, 7), 'a', 'a', 'down', 'left', 'a', 'a');
+  const screen = (state: GameState) => drawn(state, undefined, shopWorld).draws;
+
+  it('names the shop and the coins at the top, lists what it sells with what is in the bag and the price, and the way out', () => {
+    const open = shopping();
+    expect(open.shop).not.toBeNull();
+    const draws = screen(open);
+    expect(textAt(draws, 8)).toBe('KIOSK45COINS');
+    expect(textAt(draws, 24)).toBe('>COFFEEx010');
+    expect(textAt(draws, 34)).toBe('GREENTEAx025');
+    expect(textAt(draws, 44)).toBe('KEYx0100');
+    expect(textAt(draws, 54)).toBe('LEAVE');
+    // The prices end at the same place, the coins too.
+    const right = (y: number) => Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === y).map((draw) => draw.x + draw.w));
+    expect(new Set([8, 24, 34, 44].map(right))).toEqual(new Set([SCREEN_W - 8]));
+    // The foot says what the item under the cursor does.
+    expect(textAt(draws, 110)).toBe('Restores20energy.');
+  });
+
+  it('moves the cursor, counts what was bought and says what the last press led to', () => {
+    const bought = playIn(shopWorld, shopping(), 'a');
+    const draws = screen(bought);
+    expect(textAt(draws, 8)).toBe('KIOSK35COINS');
+    expect(textAt(draws, 24)).toBe('>COFFEEx110');
+    expect(textAt(draws, 110)).toBe('YoubuyoneCOFFEEfor');
+    expect(textAt(draws, 120)).toBe('10COINS.35COINSleft.');
+    const dear = screen(playIn(shopWorld, bought, 'down', 'down', 'a'));
+    expect(textAt(dear, 24)).toBe('COFFEEx110');
+    expect(textAt(dear, 44)).toBe('>KEYx0100');
+    expect(textAt(dear, 110)).toBe('NotenoughCOINS:the');
+    expect(textAt(dear, 120)).toBe('KEYis100,youhave35.');
+    const leave = screen(playIn(shopWorld, bought, 'down', 'down', 'down'));
+    expect(textAt(leave, 54)).toBe('>LEAVE');
+    expect(textAt(leave, 110)).toBe('A:buyone.B:leave.');
+  });
+
+  it('is drawn in place of the map, under the text box of the goodbye', () => {
+    const open = shopping();
+    expect(spriteDraws(screen(open), 'player-left-0')).toHaveLength(0);
+    const out = playIn(shopWorld, open, 'b');
+    expect(spriteDraws(screen(out), 'player-left-0')).toHaveLength(1);
+    expect(textAt(screen(out), 110)).toBe('Byenow.');
   });
 });
 
