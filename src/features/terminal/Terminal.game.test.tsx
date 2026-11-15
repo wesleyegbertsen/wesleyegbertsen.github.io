@@ -149,7 +149,7 @@ describe('the adventure in the terminal', () => {
 
   it('shows the keyboard list and no on-screen buttons on a fine pointer', async () => {
     await startGame({ coarse: false });
-    for (const name of ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'Start', 'Select']) {
+    for (const name of ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'Start', 'Select', 'Sound']) {
       expect(screen.queryByRole('button', { name })).toBeNull();
     }
     expect(screen.getByText('Arrows or WASD')).toBeInTheDocument();
@@ -194,8 +194,39 @@ describe('the adventure in the terminal', () => {
   it('never writes to localStorage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const { user } = await walkAbout();
-    await user.keyboard('{ArrowUp}{ArrowUp}p');
+    await user.keyboard('{ArrowUp}{ArrowUp}pxm');
     expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it('opens with the sound on and plays the title tune, then the tune of the town', async () => {
+    const { game, user } = await startGame();
+    expect(game).toHaveAttribute('data-sound', 'on');
+    expect(game).toHaveAttribute('data-music', 'title');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-music', 'town');
+  });
+
+  it('remembers that the sound is off after leaving the game and after a visit to another page', async () => {
+    const { game, user } = await walkAbout();
+    await user.keyboard('m');
+    expect(game).toHaveAttribute('data-sound', 'off');
+    await user.keyboard('{Escape}');
+    await user.type(screen.getByRole('textbox', { name: 'Command' }), 'play{Enter}');
+    expect(screen.getByRole('application')).toHaveAttribute('data-sound', 'off');
+
+    await user.click(screen.getByRole('button', { name: 'leave page' }));
+    await user.click(screen.getByRole('button', { name: 'return to page' }));
+    const back = screen.getByRole('application');
+    expect(back).toHaveAttribute('data-sound', 'off');
+    back.focus();
+    await user.keyboard('m');
+    expect(back).toHaveAttribute('data-sound', 'on');
+    expect(screen.getByRole('status')).toHaveTextContent('Sound on');
+  });
+
+  it('has the Sound button on a coarse pointer only', async () => {
+    await startGame({ coarse: true });
+    expect(screen.getByRole('button', { name: 'Sound' })).toBeInTheDocument();
   });
 
   it('play skip prints the career from the shell without starting the game', async () => {

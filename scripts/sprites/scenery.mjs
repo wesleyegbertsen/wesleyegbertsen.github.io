@@ -802,7 +802,7 @@ export const scenery = {
   carpet,
   checker,
   rug,
-  'window-in': on(tiles.iwall, windowIn),
+  'wallpane': on(tiles.iwall, windowIn),
   poster: on(tiles.iwall, poster),
   blackboard: on(tiles.iwall, blackboard),
   clock: on(tiles.iwall, clock),

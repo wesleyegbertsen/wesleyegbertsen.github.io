@@ -252,8 +252,14 @@
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  align-self: flex-end;
+  align-self: center;
   gap: 12px;
+}
+
+/* The Sound button, while the sound is off. */
+.small button[data-off='true'] {
+  background: #a3a5b0;
+  text-decoration: line-through;
 }
 
 .small button {

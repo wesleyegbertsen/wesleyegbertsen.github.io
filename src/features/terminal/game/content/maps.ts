@@ -80,7 +80,7 @@ export function indoors(floor: string): Record<string, TileDef> {
     '=': { sprite: 'rug', solid: false },
     // Walls and what hangs on them
     X: { sprite: 'iwall', solid: true },
-    W: { sprite: 'window-in', solid: true },
+    W: { sprite: 'wallpane', solid: true },
     P: { sprite: 'poster', solid: true },
     Q: { sprite: 'blackboard', solid: true },
     O: { sprite: 'clock', solid: true },

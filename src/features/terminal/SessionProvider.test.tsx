@@ -48,6 +48,23 @@ describe('SessionProvider', () => {
     expect(result.current.game.current).toBeNull();
   });
 
+  it('starts with the sound on, and keeps the choice for as long as the session lives', () => {
+    const { result, rerender } = renderHook(() => useTerminalSession(), { wrapper });
+    const store = result.current.sound;
+    expect(store.muted()).toBe(false);
+    const heard = vi.fn();
+    const stop = store.subscribe(heard);
+    store.setMuted(true);
+    store.setMuted(true);
+    expect(heard).toHaveBeenCalledTimes(1);
+    rerender();
+    expect(result.current.sound).toBe(store);
+    expect(result.current.sound.muted()).toBe(true);
+    stop();
+    store.setMuted(false);
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the game store across a remount, and writing to it does not re-render', () => {
     let renders = 0;
     const { result, rerender } = renderHook(

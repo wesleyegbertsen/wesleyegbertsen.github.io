@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
-import type { Dir, GameEvent, GameState, World } from './engine/types.ts';
+import type { Cue, Dir, GameEvent, GameState, World } from './engine/types.ts';
 import styles from './Game.module.css';
 import { SCREEN_H, SCREEN_W, drawGame } from './render.ts';
 import { layout } from './scale.ts';
 import { useGameLoop, type Button } from './useGameLoop.ts';
+import type { SoundStore } from './soundStore.ts';
+import { useGameSound } from './useGameSound.ts';
 import { useSheets } from './useSheets.ts';
 
 const DIRS: Record<string, Dir> = {
@@ -34,21 +36,24 @@ const BUTTONS: Record<string, Button> = {
   H: 'select',
 };
 
-/** The keyboard, as the list beside the screen shows it. */
-const KEYS = [
-  ['Walk', 'Arrows or WASD'],
-  ['A: talk, confirm', 'Z, Enter or Space'],
-  ['B: back', 'X or Backspace'],
-  ['Start: bag, badges', 'P'],
-  ['Select: hint', 'H'],
-  ['Leave', 'Esc or Q'],
-] as const;
+/** The keyboard, as the list beside the screen shows it. The sound line shows whether it is on. */
+const keys = (muted: boolean) =>
+  [
+    ['Walk', 'Arrows or WASD'],
+    ['A: talk, confirm', 'Z, Enter or Space'],
+    ['B: back', 'X or Backspace'],
+    ['Start: bag / Select: hint', 'P / H'],
+    [`Sound: ${muted ? 'off' : 'on'}`, 'M'],
+    ['Leave', 'Esc or Q'],
+  ] as const;
 
 type Props = {
   /** The focusable wrapper, so the terminal can put focus on it. */
   focusRef: RefObject<HTMLDivElement | null>;
   world: World;
   storeRef: RefObject<GameState | null>;
+  /** Whether the sound is off: kept by the session, so it outlasts the game. */
+  soundStore: SoundStore;
   reducedMotion: boolean;
   /** Show the on-screen buttons: touch devices only. */
   touch: boolean;
@@ -65,7 +70,7 @@ type Props = {
  * happens, and the buttons. The canvas is hidden from assistive technology on purpose; the live region carries
  * the story, and Skip to text and `play skip` print the career as plain text.
  */
-export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact, prompt, onLeave, onSkip }: Props) {
+export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, touch, contact, prompt, onLeave, onSkip }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const sheets = useSheets();
@@ -73,17 +78,25 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
   const [finished, setFinished] = useState(false);
   const [focused, setFocused] = useState(false);
   const [fit, setFit] = useState({ wide: false, scale: 1 });
+  const sound = useGameSound({ world, store: soundStore });
+  /** What the data attributes were last set from, so a frame that changes none of them writes nothing. */
+  const shown = useRef('');
+  const cueCount = useRef(0);
 
-  const paint = (state: GameState) => {
+  const paint = (state: GameState, muted = soundStore.muted()) => {
     const ctx = sheets && canvasRef.current?.getContext('2d');
-    if (ctx) drawGame(ctx, sheets, state, world);
+    if (ctx) drawGame(ctx, sheets, state, world, { muted });
   };
   const onFrame = (state: GameState) => {
     paint(state);
     setFinished(state.finished);
+    const music = sound.follow(state) ?? '';
     const root = focusRef.current;
-    if (root) {
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.menu?.tab, state.badges.length, state.hp, state.finished, music].join('|');
+    if (root && key !== shown.current) {
+      shown.current = key;
       Object.assign(root.dataset, {
+        music,
         scene: state.scene,
         map: state.map,
         x: String(state.x),
@@ -104,8 +117,22 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
     // a trailing no-break space makes it one.
     setStatus((old) => ({ text, again: old.text === text && !old.again }));
   };
+  const onCues = (cues: Cue[]) => {
+    sound.play(cues);
+    // For the browser tests: which sound was asked for last, and how many so far.
+    const root = focusRef.current;
+    cueCount.current += cues.length;
+    if (root) Object.assign(root.dataset, { cue: cues.at(-1), cues: String(cueCount.current) });
+  };
 
-  const loop = useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents });
+  const loop = useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents, onCues });
+
+  /** The mute switch: the M key and the Sound button. */
+  const toggleSound = () => {
+    const off = sound.toggle();
+    onEvents([{ kind: 'menu', text: off ? 'Sound off' : 'Sound on' }]);
+    if (storeRef.current) paint(storeRef.current, off);
+  };
 
   // The sheets arrive after the first frame, and a still game does not draw again by itself.
   useEffect(() => {
@@ -134,8 +161,15 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
       onLeave();
       return;
     }
+    // A browser may only start the sound from a key or a touch: ask again, it costs nothing once it runs.
+    sound.unlock();
     // A key pressed on one of the buttons inside belongs to that button.
     if (event.target !== event.currentTarget) return;
+    if (event.key === 'm' || event.key === 'M') {
+      event.preventDefault();
+      if (!event.repeat) toggleSound();
+      return;
+    }
     const dir = DIRS[event.key];
     const button = BUTTONS[event.key];
     if (!dir && !button) return;
@@ -183,10 +217,12 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, Escape or Q to leave."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave."
       tabIndex={0}
+      data-sound={sound.muted ? 'off' : 'on'}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
+      onPointerDown={sound.unlock}
       onFocus={(event) => setFocused(event.target === event.currentTarget)}
       onBlur={() => {
         setFocused(false);
@@ -236,6 +272,21 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
                   <button type="button" {...tap('start')}>
                     Start
                   </button>
+                  <button
+                    type="button"
+                    aria-pressed={!sound.muted}
+                    data-off={sound.muted}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      sound.unlock();
+                      toggleSound();
+                    }}
+                    onClick={(event) => {
+                      if (event.detail === 0) toggleSound();
+                    }}
+                  >
+                    Sound
+                  </button>
                 </div>
                 <div className={styles.ab}>
                   <button type="button" className={styles.b} {...tap('b')}>
@@ -248,8 +299,8 @@ export function Game({ focusRef, world, storeRef, reducedMotion, touch, contact,
               </div>
             ) : (
               <dl className={styles.keys}>
-                {KEYS.map(([what, key]) => (
-                  <div key={what}>
+                {keys(sound.muted).map(([what, key]) => (
+                  <div key={key}>
                     <dt>{what}</dt>
                     <dd>{key}</dd>
                   </div>

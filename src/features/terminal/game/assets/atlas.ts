@@ -80,7 +80,7 @@ export const tiles = {
   "carpet": [80, 128],
   "checker": [96, 128],
   "rug": [112, 128],
-  "window-in": [0, 144],
+  "wallpane": [0, 144],
   "poster": [16, 144],
   "blackboard": [32, 144],
   "clock": [48, 144],

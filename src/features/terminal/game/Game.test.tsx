@@ -1,21 +1,25 @@
 import { createRef } from 'react';
+import { FakeAudio } from './audio/fakeAudio.ts';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { initialGame } from './engine/engine.ts';
 import { play, testWorld as world } from './engine/testWorld.ts';
 import type { GameState } from './engine/types.ts';
 import { Game } from './Game.tsx';
+import { createSoundStore } from './soundStore.ts';
 
 /** The game on the small test world, with reduced motion: one press is one move. */
-function setup(state: GameState | null, touch = false) {
+function setup(state: GameState | null, touch = false, muted = false) {
   const store: { current: GameState | null } = { current: state };
   const onLeave = vi.fn();
   const onSkip = vi.fn();
-  render(
+  const sound = createSoundStore(muted);
+  const view = render(
     <Game
       focusRef={createRef<HTMLDivElement>()}
       world={world}
       storeRef={store}
+      soundStore={sound}
       reducedMotion
       touch={touch}
       contact={['Email: someone@example.com']}
@@ -26,10 +30,27 @@ function setup(state: GameState | null, touch = false) {
   );
   const game = screen.getByRole('application');
   game.focus();
-  return { store, game, onLeave, onSkip, user: userEvent.setup() };
+  return { store, sound, game, onLeave, onSkip, view, user: userEvent.setup() };
 }
 
 const started = () => play(initialGame(world, 7), 'a', 'a');
+
+/** Puts a recording AudioContext where the browser's would be, and returns the ones the game makes. */
+function stubAudio(): FakeAudio[] {
+  const made: FakeAudio[] = [];
+  class Stub extends FakeAudio {
+    constructor() {
+      super();
+      made.push(this);
+    }
+  }
+  vi.stubGlobal('AudioContext', Stub);
+  return made;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('Game', () => {
   it('shows where the game is through data attributes, for tests and nothing else', async () => {
@@ -139,6 +160,114 @@ describe('Game', () => {
     expect(game).toHaveAttribute('data-dialogue', 'true');
     fireEvent.pointerDown(screen.getByRole('button', { name: 'A' }));
     expect(game).toHaveAttribute('data-dialogue', 'false');
+  });
+
+  it('names the M key in its label and lists it with the state of the sound', async () => {
+    const { game, user } = setup(started());
+    expect(game.getAttribute('aria-label')).toMatch(/M to switch the sound off or on/);
+    expect(screen.getByText('Sound: on')).toBeInTheDocument();
+    expect(game).toHaveAttribute('data-sound', 'on');
+    await user.keyboard('m');
+    expect(screen.getByText('Sound: off')).toBeInTheDocument();
+    expect(screen.queryByText('Sound: on')).toBeNull();
+  });
+
+  it('switches the sound off and on with M, says so politely, and remembers it in the session store', async () => {
+    const { game, sound, user } = setup(started());
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    await user.keyboard('m');
+    expect(sound.muted()).toBe(true);
+    expect(game).toHaveAttribute('data-sound', 'off');
+    expect(status).toHaveTextContent('Sound off');
+    await user.keyboard('M');
+    expect(sound.muted()).toBe(false);
+    expect(game).toHaveAttribute('data-sound', 'on');
+    expect(status).toHaveTextContent('Sound on');
+    // The game itself did not move.
+    expect(game).toHaveAttribute('data-x', '2');
+    expect(game).toHaveAttribute('data-dialogue', 'false');
+  });
+
+  it('leaves M alone when it is pressed with Ctrl, held down, or on one of its buttons', async () => {
+    const { game, sound, user } = setup(started());
+    fireEvent.keyDown(game, { key: 'm', ctrlKey: true });
+    fireEvent.keyDown(game, { key: 'm', repeat: true });
+    expect(sound.muted()).toBe(false);
+    screen.getByRole('button', { name: 'Leave' }).focus();
+    await user.keyboard('m');
+    expect(sound.muted()).toBe(false);
+  });
+
+  it('opens with the sound off when the session says so', () => {
+    const { game } = setup(started(), false, true);
+    expect(game).toHaveAttribute('data-sound', 'off');
+    expect(screen.getByText('Sound: off')).toBeInTheDocument();
+  });
+
+  it('has a Sound button on touch devices only, pressed while the sound is on', async () => {
+    const desktop = setup(started());
+    expect(screen.queryByRole('button', { name: 'Sound' })).toBeNull();
+    desktop.view.unmount();
+
+    const { game, sound, user } = setup(started(), true);
+    const button = screen.getByRole('button', { name: 'Sound' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.pointerDown(button);
+    expect(sound.muted()).toBe(true);
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(game).toHaveAttribute('data-sound', 'off');
+    expect(screen.getByRole('status')).toHaveTextContent('Sound off');
+    // With a keyboard: a click without a pointer.
+    button.focus();
+    await user.keyboard('{Enter}');
+    expect(sound.muted()).toBe(false);
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('names the tune of the moment and the last sound, for the browser tests', async () => {
+    const { game, user } = setup(null);
+    expect(game).toHaveAttribute('data-music', '');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-cue', 'confirm');
+    expect(game).toHaveAttribute('data-cues', '1');
+    await user.keyboard('zaa');
+    expect(game).toHaveAttribute('data-cue', 'bump');
+  });
+
+  it('plays through an AudioContext: music on opening, an effect for a press, silence on M, closed on leaving', async () => {
+    const made = stubAudio();
+    const { user, view } = setup(started());
+    expect(made).toHaveLength(1);
+    const audio = made[0]!;
+    expect(audio.master.gain.value).toBe(0.25);
+    const before = audio.sources.length;
+    await user.keyboard('p');
+    expect(audio.sources.length).toBeGreaterThan(before);
+
+    await user.keyboard('m');
+    expect(audio.master.gain.value).toBe(0);
+    const silent = audio.sources.length;
+    await user.keyboard('xp');
+    expect(audio.sources.length).toBe(silent);
+    await user.keyboard('m');
+    expect(audio.master.gain.value).toBe(0.25);
+
+    view.unmount();
+    expect(audio.calls.close).toBe(1);
+    expect(made).toHaveLength(1);
+  });
+
+  it('asks the browser for sound again on a key and on a touch', async () => {
+    const made = stubAudio();
+    const { game, user } = setup(started());
+    const audio = made[0]!;
+    audio.state = 'suspended';
+    await user.keyboard('s');
+    expect(audio.calls.resume).toBe(1);
+    audio.state = 'suspended';
+    fireEvent.pointerDown(game);
+    expect(audio.calls.resume).toBe(2);
   });
 
   it('lets a keyboard press the on-screen buttons too', async () => {

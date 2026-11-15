@@ -91,6 +91,33 @@ describe('useGameLoop', () => {
     expect(store.current!.menu).not.toBeNull();
   });
 
+  it('reports what is worth a sound, as it happens and only then', () => {
+    const store: { current: GameState | null } = { current: play(initialGame(world, 7), 'a', 'a') };
+    const onCues = vi.fn();
+    const { result } = renderHook(() => useGameLoop({ world, storeRef: store, reducedMotion: false, onFrame: () => {}, onEvents: () => {}, onCues }));
+    tick(1000);
+    tick(1017);
+    expect(onCues).not.toHaveBeenCalled();
+    act(() => result.current.button('start'));
+    tick(1034);
+    expect(onCues).toHaveBeenCalledWith(['confirm']);
+    act(() => result.current.button('b'));
+    tick(1051);
+    expect(onCues).toHaveBeenLastCalledWith(['cancel']);
+    expect(onCues).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports the cues of a press with reduced motion too', () => {
+    const store: { current: GameState | null } = { current: play(initialGame(world, 7), 'a', 'a') };
+    const onCues = vi.fn();
+    const { result } = renderHook(() => useGameLoop({ world, storeRef: store, reducedMotion: true, onFrame: () => {}, onEvents: () => {}, onCues }));
+    act(() => result.current.dir('left', true));
+    act(() => result.current.dir('left', false));
+    expect(onCues).not.toHaveBeenCalled();
+    act(() => result.current.dir('left', true));
+    expect(onCues).toHaveBeenCalledWith(['bump']);
+  });
+
   it('keeps a button pressed in the middle of a step until the step is done', () => {
     const { result, store } = setup();
     act(() => {

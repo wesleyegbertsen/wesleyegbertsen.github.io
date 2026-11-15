@@ -9,7 +9,7 @@ const log = (page: Page) => page.getByRole('log', { name: 'Terminal output' });
 const status = (page: Page) => page.getByRole('status');
 const canvas = (page: Page) => game(page).locator('canvas');
 const glass = (page: Page) => page.getByRole('heading', { level: 1, name: 'Terminal' }).locator('..');
-const BUTTONS = ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'Start', 'Select'];
+const BUTTONS = ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'Start', 'Select', 'Sound'];
 
 async function run(page: Page, line: string) {
   await input(page).fill(line);
@@ -257,7 +257,7 @@ test.describe('the adventure in the terminal', () => {
   test('every on-screen button answers a touch within a 44px square', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'The buttons exist on touch devices only');
     await play(page);
-    for (const name of ['Up', 'Down', 'Left', 'Right', 'Select', 'Start', 'A', 'B']) {
+    for (const name of ['Up', 'Down', 'Left', 'Right', 'Select', 'Start', 'Sound', 'A', 'B']) {
       const button = page.getByRole('button', { name, exact: true });
       const hit = await button.evaluate((el) => {
         const r = el.getBoundingClientRect();

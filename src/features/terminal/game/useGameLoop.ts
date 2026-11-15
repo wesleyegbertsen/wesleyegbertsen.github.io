@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { initialGame, step } from './engine/engine.ts';
-import { NO_INPUT, type Dir, type GameEvent, type GameState, type Input, type World } from './engine/types.ts';
+import { NO_INPUT, type Cue, type Dir, type GameEvent, type GameState, type Input, type World } from './engine/types.ts';
 
 export type Button = 'a' | 'b' | 'start' | 'select';
 
@@ -8,6 +8,10 @@ export type Button = 'a' | 'b' | 'start' | 'select';
 export const STEP_MS = 1000 / 60;
 /** A stalled frame (a busy tab) counts for this much at most, so the game does not jump. */
 export const MAX_FRAME_MS = 100;
+
+/** What the engine told in one or more ticks: lines for the status region and cues for the sound. */
+type Told = { events: GameEvent[]; cues: Cue[] };
+const NOTHING: Told = { events: [], cues: [] };
 
 type Options = {
   world: World;
@@ -17,6 +21,8 @@ type Options = {
   /** Called when the state changed, not on every frame. */
   onFrame: (state: GameState) => void;
   onEvents: (events: GameEvent[]) => void;
+  /** What is worth a sound, as it happens. */
+  onCues?: (cues: Cue[]) => void;
 };
 
 /**
@@ -24,27 +30,28 @@ type Options = {
  * is held, pauses while the tab is hidden and stops on unmount. With reduced motion there is no loop at all:
  * each press advances the game by one whole move and redraws once.
  */
-export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents }: Options) {
+export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents, onCues }: Options) {
   /** The directions held down, the newest last. */
   const held = useRef<Dir[]>([]);
   /** What was pressed since the last tick. */
   const pending = useRef<Omit<Input, 'dir'>>({ ...NO_INPUT });
   const drawn = useRef<GameState | null>(null);
-  const callbacks = useRef({ onFrame, onEvents });
+  const callbacks = useRef({ onFrame, onEvents, onCues });
   useEffect(() => {
-    callbacks.current = { onFrame, onEvents };
+    callbacks.current = { onFrame, onEvents, onCues };
   });
 
   const current = useCallback(() => (storeRef.current ??= initialGame(world)), [storeRef, world]);
 
   const emit = useCallback(
-    (events: GameEvent[]) => {
+    ({ events, cues }: Told) => {
       const state = current();
       if (state !== drawn.current) {
         drawn.current = state;
         callbacks.current.onFrame(state);
       }
       if (events.length > 0) callbacks.current.onEvents(events);
+      if (cues.length > 0) callbacks.current.onCues?.(cues);
     },
     [current],
   );
@@ -54,13 +61,13 @@ export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents 
    * a step is kept until the step is done, so it is not lost.
    */
   const advance = useCallback(
-    (instant: boolean): GameEvent[] => {
+    (instant: boolean): Told => {
       const state = current();
       const input: Input = { ...pending.current, dir: held.current.at(-1) ?? null };
       pending.current = state.walk ? { ...pending.current, pressed: null } : { ...NO_INPUT };
       const result = step(state, input, world, { instant });
       storeRef.current = result.state;
-      return result.events;
+      return { events: result.events, cues: result.cues };
     },
     [current, storeRef, world],
   );
@@ -92,7 +99,7 @@ export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents 
   );
 
   useEffect(() => {
-    emit([]);
+    emit(NOTHING);
     if (reducedMotion) return;
 
     let raf = 0;
@@ -104,12 +111,14 @@ export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents 
       accumulated += Math.min(time - previous, MAX_FRAME_MS);
       previous = time;
 
-      const events: GameEvent[] = [];
+      const told: Told = { events: [], cues: [] };
       while (accumulated >= STEP_MS - 1e-6) {
-        events.push(...advance(false));
+        const { events, cues } = advance(false);
+        told.events.push(...events);
+        told.cues.push(...cues);
         accumulated -= STEP_MS;
       }
-      emit(events);
+      emit(told);
       raf = requestAnimationFrame(frame);
     };
 

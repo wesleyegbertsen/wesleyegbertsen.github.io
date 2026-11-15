@@ -30,6 +30,9 @@ export const gameOf = (page: Page) => page.getByRole('application');
  * Plays the game on the page and in a copy of the engine at the same time, so a test can ask for "walk to the
  * Academy's door" instead of a list of keys. Needs reduced motion on the page: one key is then one whole move.
  * Battles are random on the page, so they are played until they are over on both sides.
+ *
+ * The townsfolk stroll, on the page and in the copy alike (their walk follows the game clock, not the dice), and
+ * may step into the way: the route is planned again after every key.
  */
 export class Pilot {
   state: GameState = initialGame(world, 1);
@@ -61,9 +64,12 @@ export class Pilot {
 
   /** Walks to an object (`<map>:<character>`, see content/maps.ts) and faces it, or steps on it if it is a door. */
   async goTo(objectId: string) {
-    const route = routeTo(world, this.state, objectId);
-    if (!route) throw new Error(`No way to ${objectId} from ${this.state.map} ${this.state.x},${this.state.y}`);
-    for (const dir of route) await this.press(dir);
+    for (let i = 0; ; i++) {
+      const route = routeTo(world, this.state, objectId);
+      if (!route || i > 400) throw new Error(`No way to ${objectId} from ${this.state.map} ${this.state.x},${this.state.y}`);
+      await this.press(route[0]!);
+      if (route.length === 1) break;
+    }
     const game = gameOf(this.page);
     await expect(game).toHaveAttribute('data-map', this.state.map);
     await expect(game).toHaveAttribute('data-x', String(this.state.x));

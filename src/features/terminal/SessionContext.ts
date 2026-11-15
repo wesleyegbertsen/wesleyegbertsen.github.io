@@ -1,5 +1,6 @@
 import { createContext, useContext, type Dispatch, type SetStateAction } from 'react';
 import type { GameState } from './game/engine/types.ts';
+import type { SoundStore } from './game/soundStore.ts';
 import type { ShellState } from './shell.ts';
 
 /** One line of the scrollback: what was typed, what a command printed, or a line of matrix rain. */
@@ -22,6 +23,11 @@ export type TerminalSession = {
    * should re-render for that. It outlasts a visit to another page and is lost on reload.
    */
   game: { current: GameState | null };
+  /**
+   * Whether the game's sound is off. Beside the progress and kept the same way: it outlasts leaving the game and
+   * a visit to another page, and a reload starts with the sound on again. Never written to storage.
+   */
+  sound: SoundStore;
   /** A fresh id for an entry, unique for the whole session. */
   nextId: () => number;
 };
