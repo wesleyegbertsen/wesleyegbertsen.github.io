@@ -1,3 +1,4 @@
+import type { Effect, Tone } from '../audio/player.ts';
 import type { Track, Wave } from '../audio/score.ts';
 import type { Cue, World } from '../engine/types.ts';
 
@@ -244,9 +245,6 @@ export const MUSIC: NonNullable<World['music']> = {
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------
-
-export type Tone = { wave: Wave; at?: number; from: number; to?: number; duration: number; volume: number };
-export type Effect = { tones: Tone[]; gap?: number };
 
 const beep = (from: number, duration: number, volume = 0.3, at = 0, to?: number, wave: Wave = 'pulse'): Tone => ({ wave, at, from, to, duration, volume });
 const hiss = (from: number, duration: number, volume = 0.3, at = 0, to?: number): Tone => ({ wave: 'noise', at, from, to, duration, volume });
