@@ -51,6 +51,23 @@ const hedge = [
 /** The shore of a pond: sand with a few pebbles. */
 const shore = ['00000000', '00100020', '00000000', '02000100', '00000000', '00010000', '10000002', '00000000'];
 
+/**
+ * A ledge in the grass, seen from above: the ground is higher on the right, and the step down is on the left.
+ * A lit rim, a dark face that bulges in lumps, and a shadow at its foot. `ledge-right` is its mirror.
+ */
+const lump = [
+  '1111113320011111',
+  '1111332220011111',
+  '1113222220001111',
+  '1113222220001211',
+  '1113222220002111',
+  '1113222220001111',
+  '1111332220011111',
+  '1111113320011111',
+];
+const ledgeLeft = [...lump, ...lump];
+const flip = (rows) => rows.map((row) => [...row].reverse().join(''));
+
 const bridge = Array.from({ length: 16 }, (_, y) => (y % 4 === 3 ? '3233333333333323' : '3200000000000023'));
 
 const pine = [
@@ -1083,6 +1100,8 @@ export const scenery = {
   notice: on(cavewall, paper),
   scratches: on(cavewall, scratches),
   shore,
+  'ledge-left': ledgeLeft,
+  'ledge-right': flip(ledgeLeft),
   'shade-1': shade1,
   'shade-2': shade2,
   telescope,

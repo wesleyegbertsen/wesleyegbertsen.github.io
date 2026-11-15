@@ -79,18 +79,28 @@ export class Pilot {
 
   /**
    * In the tall grass the dice of the page and of the copy differ: a wild enemy may jump out on one side only.
-   * Whoever got one fights it (A, every time), so both sides stand on the same cell again afterwards.
+   * Whoever got one runs from it. RUN always works against a wild enemy and costs nothing, so both sides stand on
+   * the same cell afterwards with the same energy, XP and level: the routes out of town cannot be walked without
+   * the grass, and a walk along them must not change what a test goes on to check. (Fighting would: XP, levels,
+   * and now and then a lost battle that sends the page back to a coffee machine.)
+   *
+   * The keys work in every part of a battle: down, down, A reads on while the text is up, and picks RUN (the
+   * third entry) once the menu is.
    */
   private async shakeOff() {
     const { map, x, y } = this.state;
     const here = world.maps[map]!;
     if (!here.tiles[here.cells[y]![x]!]?.grass) return;
     const game = gameOf(this.page);
-    const busy = async () => (await game.getAttribute('data-battle')) !== '' || (await game.getAttribute('data-learn')) !== '';
-    if (await busy()) {
-      for (let i = 0; i < 200 && ((await busy()) || (await game.getAttribute('data-dialogue')) === 'true'); i++) await this.page.keyboard.press('z');
+    for (let i = 0; i < 40 && (await game.getAttribute('data-battle')) !== ''; i++) {
+      for (const key of ['ArrowDown', 'ArrowDown', 'z']) await this.page.keyboard.press(key);
     }
-    if (this.state.battle) for (let i = 0; i < 200 && (this.state.battle || this.state.dialogue || this.state.learn); i++) this.sim({ a: true });
+    await expect(game).toHaveAttribute('data-battle', '');
+    for (let i = 0; i < 40 && this.state.battle; i++) {
+      this.sim({ dir: 'down', pressed: 'down' });
+      this.sim({ dir: 'down', pressed: 'down' });
+      this.sim({ a: true });
+    }
   }
 
   /**

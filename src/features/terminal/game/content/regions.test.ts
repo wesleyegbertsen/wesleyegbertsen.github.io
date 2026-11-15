@@ -9,11 +9,11 @@ import { playthrough, routeTo } from '../engine/bot.ts';
 import { initialGame, step } from '../engine/engine.ts';
 import { maxHpOf } from '../engine/level.ts';
 import { fold } from '../engine/text.ts';
-import { NO_INPUT, type Action, type GameMap, type GameState, type Input } from '../engine/types.ts';
-import { DELTA, resolveSpot } from '../engine/world.ts';
+import { NO_INPUT, type Action, type Dir, type GameMap, type GameState, type Input } from '../engine/types.ts';
+import { DELTA, landing, resolveSpot } from '../engine/world.ts';
 import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
-import { HOBBIES } from './story.ts';
+import { HOBBIES, ROUTE_BACK } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -78,6 +78,42 @@ function dryReach(map: GameMap, from: { x: number; y: number }): Set<string> {
     }
   }
   return seen;
+}
+
+type Cell = { x: number; y: number };
+const DIRS = Object.keys(DELTA) as Dir[];
+const keyOf = (cell: Cell) => `${cell.x},${cell.y}`;
+/** Whether the player can stand on a cell: ground that is not solid, with nothing solid on it. */
+const standable = (map: GameMap, x: number, y: number) => {
+  const tile = tileOf(map, x, y);
+  return !!tile && !tile.solid && !map.objects.some((object) => object.x === x && object.y === y && object.solid);
+};
+/**
+ * Where one press takes the player from a cell, as the engine moves: a step, or a hop over a ledge that is jumped
+ * that way (`ledges` off: as if the ledges were plain walls).
+ */
+function moves(map: GameMap, cell: Cell, ledges = true): Cell[] {
+  return DIRS.flatMap((dir) => {
+    const to = landing(map, cell.x, cell.y, dir);
+    return to && (ledges || !to.jump) && standable(map, to.x, to.y) ? [{ x: to.x, y: to.y }] : [];
+  });
+}
+/** The fewest cells of tall grass that must be stepped on to get from a cell to each cell that can be reached. */
+function grassTo(map: GameMap, from: Cell, ledges = true): Map<string, number> {
+  const best = new Map([[keyOf(from), 0]]);
+  const queue = [{ ...from, cost: 0 }];
+  while (queue.length > 0) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const cell = queue.shift()!;
+    if (cell.cost > best.get(keyOf(cell))!) continue;
+    for (const to of moves(map, cell, ledges)) {
+      const cost = cell.cost + (tileOf(map, to.x, to.y)!.grass ? 1 : 0);
+      if ((best.get(keyOf(to)) ?? Infinity) <= cost) continue;
+      best.set(keyOf(to), cost);
+      queue.push({ ...to, cost });
+    }
+  }
+  return best;
 }
 
 describe('the lamp posts', () => {
@@ -196,17 +232,98 @@ describe('the roads out of town', () => {
     expect(state).toMatchObject({ map: 'town', x: 1 });
   });
 
-  it('can be walked from end to end without a step in the tall grass, and have tall grass beside the road', () => {
-    for (const map of [east!, west!]) {
-      const ends = map.objects.filter((object) => object.trigger === 'step');
-      expect(ends).toHaveLength(2);
-      const reach = dryReach(map, { x: ends[0]!.x, y: ends[0]!.y });
-      // The far end, or (for the cave mouth, which is solid) the cell in front of it.
-      const far = ends[1]!;
-      expect([...reach].some((key) => key === `${far.x},${far.y}` || key === `${far.x + 1},${far.y}` || key === `${far.x - 1},${far.y}`), map.id).toBe(true);
+  // The two roads are routes. `town` is where the road comes in from town, `far` where it leads: the cell the
+  // player stands on at that end (for the cave mouth, which is a door in the rock, the cell in front of it).
+  // `back` is the way home, and the only way the ledges are hopped.
+  const ROUTES = [
+    { map: east!, town: resolveSpot(world, { map: 'east', at: '(' }), far: resolveSpot(world, { map: 'east', at: ')' }), back: 'left' },
+    { map: west!, town: resolveSpot(world, { map: 'west', at: ')' }), far: resolveSpot(world, { map: 'west', at: 'D', dx: 1 }), back: 'right' },
+  ] as const;
+  const ledgesOf = (map: GameMap) => cellsOf(map, (x, y) => !!tileOf(map, x, y)!.ledge);
+
+  it('cannot be walked out without the tall grass: two bands of it lie across the way, five cells each at the least', () => {
+    for (const { map, town, far } of ROUTES) {
+      const out = grassTo(map, town).get(keyOf(far));
+      expect(out, map.id).toBeGreaterThanOrEqual(10);
+      // Fair, not a slog: no more than a handful of steps in it per band.
+      expect(out, map.id).toBeLessThanOrEqual(14);
       expect(cellsOf(map, (x, y) => !!tileOf(map, x, y)!.grass).length, map.id).toBeGreaterThanOrEqual(30);
-      // A coffee machine on the road, for after a rough battle.
-      expect(map.objects.some((object) => object.sprite === 'coffee' && reach.has(`${object.x},${object.y + 1}`)), map.id).toBe(true);
+    }
+  });
+
+  it('can be walked back dry, by hopping down the ledges, which only go that way', () => {
+    for (const { map, town, far, back } of ROUTES) {
+      expect(grassTo(map, far).get(keyOf(town)), map.id).toBe(0);
+      // Without the hops the way back is the way out: through the grass.
+      expect(grassTo(map, far, false).get(keyOf(town)), map.id).toBeGreaterThanOrEqual(10);
+      const ledges = ledgesOf(map);
+      // Two lines of them across the road, some distance apart.
+      const lines = [...new Set(ledges.map((cell) => cell.x))].sort((a, b) => a - b);
+      expect(lines, map.id).toHaveLength(2);
+      expect(lines[1]! - lines[0]!, map.id).toBeGreaterThanOrEqual(6);
+      for (const line of lines) expect(tileOf(map, line, town.y)!.ledge, `${map.id} ${line}`).toBe(back);
+      for (const cell of ledges) {
+        const tile = tileOf(map, cell.x, cell.y)!;
+        expect(tile.ledge, `${map.id} ${keyOf(cell)}`).toBe(back);
+        // A wall for everyone and everything that does not hop it.
+        expect(tile.solid).toBe(true);
+        // Room to take off and to land: plain ground, nothing on it.
+        const { dx } = DELTA[back];
+        expect(standable(map, cell.x - dx, cell.y), `${map.id} ${keyOf(cell)} take-off`).toBe(true);
+        expect(standable(map, cell.x + dx, cell.y), `${map.id} ${keyOf(cell)} landing`).toBe(true);
+        expect(tileOf(map, cell.x + dx, cell.y)!.grass, `${map.id} ${keyOf(cell)} landing`).toBeFalsy();
+      }
+    }
+    // Only the routes have ledges.
+    for (const map of Object.values(world.maps)) if (map !== east && map !== west) expect(ledgesOf(map), map.id).toEqual([]);
+  });
+
+  it('never trap the player: from every cell that can be stood on, both ends can be reached', () => {
+    for (const { map, town, far } of ROUTES) {
+      const fromTown = grassTo(map, town);
+      const cells = cellsOf(map, (x, y) => standable(map, x, y));
+      expect(cells.length, map.id).toBeGreaterThan(100);
+      for (const cell of cells) {
+        // No pocket that cannot be walked into, and none that cannot be walked out of.
+        expect(fromTown.has(keyOf(cell)), `${map.id} ${keyOf(cell)} from town`).toBe(true);
+        const reach = grassTo(map, cell);
+        expect(reach.has(keyOf(town)), `${map.id} ${keyOf(cell)} to the town end`).toBe(true);
+        expect(reach.has(keyOf(far)), `${map.id} ${keyOf(cell)} to the far end`).toBe(true);
+      }
+    }
+  });
+
+  it('have a coffee machine that is reached dry from both ends, for after a rough battle', () => {
+    for (const { map, town, far } of ROUTES) {
+      const machines = map.objects.filter((object) => object.sprite === 'coffee');
+      expect(machines, map.id).toHaveLength(1);
+      const beside = (reach: Map<string, number>) => Object.values(DELTA).some(({ dx, dy }) => reach.get(`${machines[0]!.x + dx},${machines[0]!.y + dy}`) === 0);
+      expect(beside(grassTo(map, town)), `${map.id} from town`).toBe(true);
+      expect(beside(grassTo(map, far)), `${map.id} from the far end`).toBe(true);
+    }
+  });
+
+  it('are walked back in the engine with one key held: two hops, no step in the grass, no battle', () => {
+    for (const { map, town, far, back } of ROUTES) {
+      let state: GameState = { ...started(), map: map.id, x: far.x, y: far.y, dir: back, area: map.name };
+      const cues: string[] = [];
+      for (let i = 0; i < 40 && state.map === map.id; i++) {
+        const next = step(state, { ...NO_INPUT, dir: back, pressed: back }, world, { instant: true });
+        cues.push(...next.cues);
+        state = next.state;
+        expect(state.battle, `${map.id} ${state.x},${state.y}`).toBeNull();
+        if (state.map === map.id) expect(tileOf(map, state.x, state.y)!.grass, `${map.id} ${state.x},${state.y}`).toBeFalsy();
+      }
+      expect(state.map, map.id).toBe('town');
+      expect(cues.filter((cue) => cue === 'jump'), map.id).toHaveLength(2);
+      expect(cues).not.toContain('bump');
+      // Walking out along the road, the first ledge is a wall.
+      let out: GameState = { ...started(), map: map.id, x: town.x, y: town.y, area: map.name };
+      const ahead = back === 'left' ? 'right' : 'left';
+      for (let i = 0; i < 40; i++) out = press(out, { dir: ahead, pressed: ahead });
+      expect(out.map, map.id).toBe(map.id);
+      expect(tileOf(map, out.x + DELTA[ahead].dx, out.y)!.ledge, map.id).toBe(back);
+      expect(Math.abs(out.x - far.x), map.id).toBeGreaterThan(5);
     }
   });
 
@@ -234,7 +351,13 @@ describe('the roads out of town', () => {
     expect(indoors.cues).toContain('door');
   });
 
-  it('say on their signposts how strong the wild things are', () => {
+  it('say on their signposts how strong the wild things are, that the way out crosses the grass and the way back does not', () => {
+    for (const map of [east!, west!]) {
+      expect(said(map), map.id).toContain('The way there crosses tall grass.');
+      expect(said(map), map.id).toContain(ROUTE_BACK);
+      expect(said(map), map.id).not.toMatch(/road itself is safe/i);
+    }
+    expect(ROUTE_BACK).toMatch(/ledges/);
     expect(said(east!)).toContain(`Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}`);
     expect(said(west!)).toContain(`Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}`);
     expect(said(west!)).toContain(`Lv ${CAVE_LEVEL} and up`);

@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
-import { WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
+import { JUMP_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { dimness } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
@@ -150,10 +150,20 @@ export function camera(centre: number, size: number, view: number): number {
   return Math.max(0, Math.min(size - view, Math.round(centre - view / 2)));
 }
 
+/** How high a hop over a ledge is at the top of its arc, in pixels. */
+export const HOP_PIXELS = 7;
+
+/** How far off the ground the player is during a hop, by how far along it is (0 to 1): up, over and down again. */
+export function hopHeight(progress: number): number {
+  return Math.max(0, Math.round(Math.sin(Math.PI * Math.max(0, Math.min(1, progress))) * HOP_PIXELS));
+}
+
 function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   const map = world.maps[state.map]!;
-  const progress = state.walk ? state.walk.t / WALK_TICKS : 1;
+  const progress = state.walk ? state.walk.t / (state.walk.jump ? JUMP_TICKS : WALK_TICKS) : 1;
   const from = state.walk ?? { fromX: state.x, fromY: state.y };
+  // A hop over a ledge: the player leaves the ground in an arc, and a shadow stays on it.
+  const hop = state.walk?.jump ? hopHeight(progress) : 0;
   const px = Math.round((from.fromX + (state.x - from.fromX) * progress) * TILE);
   const py = Math.round((from.fromY + (state.y - from.fromY) * progress) * TILE);
   const camX = camera(px + TILE / 2, map.width * TILE, SCREEN_W);
@@ -185,8 +195,9 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   }
   // The player steps with one foot, then the other, and the arms swing against them: the cell tells which.
   const foot = (state.x + state.y) % 2 === 1 ? 2 : 1;
-  const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? foot : 0;
-  drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY);
+  const frame = state.walk && (state.walk.jump ? hop > 0 : state.walk.t >= WALK_TICKS / 2) ? foot : 0;
+  if (hop > 0) rect(ctx, px - camX + 4, py - camY + 13, 8, 2, DARK);
+  drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY - hop);
 
   // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
   // the player, so nothing flickers.

@@ -1,7 +1,7 @@
 import { initialGame, step } from './engine.ts';
 import { NO_INPUT, type Dir, type GameEvent, type GameObject, type GameState, type Input, type World } from './types.ts';
 import { placeOf } from './wander.ts';
-import { DELTA, branchFor, objectAt, passable, resolveSpot, tileAt } from './world.ts';
+import { DELTA, branchFor, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /**
  * A player that knows nothing about the story: it talks to everything it can reach, walks through every door that
@@ -15,17 +15,12 @@ const DIRS: Dir[] = ['up', 'down', 'left', 'right'];
 
 type Cell = { x: number; y: number };
 
-function free(world: World, state: GameState, mapId: string, x: number, y: number): boolean {
-  const map = world.maps[mapId]!;
-  return !tileAt(map, x, y).solid && !objectAt(map, x, y, state);
-}
-
 /** What a step into tall grass counts for when a walk is planned: a long way round is better than a wild enemy. */
 const GRASS_COST = 40;
 
 /**
  * The best walk from `from` to each cell it can reach on a map, never stepping on objects: the one through the
- * least tall grass, and the shortest of those.
+ * least tall grass, and the shortest of those. A ledge is one press that goes two cells, and only one way.
  */
 function walks(world: World, state: GameState, mapId: string, from: Cell, grassOk: boolean): Map<string, Dir[]> {
   const map = world.maps[mapId]!;
@@ -39,9 +34,9 @@ function walks(world: World, state: GameState, mapId: string, from: Cell, grassO
     const here = found.get(`${cell.x},${cell.y}`)!;
     if (cell.cost > here.cost) continue;
     for (const dir of DIRS) {
-      const x = cell.x + DELTA[dir].dx;
-      const y = cell.y + DELTA[dir].dy;
-      if (!free(world, state, mapId, x, y)) continue;
+      const to = landing(map, cell.x, cell.y, dir);
+      if (!to || objectAt(map, to.x, to.y, state)) continue;
+      const { x, y } = to;
       const grass = !!tileAt(map, x, y).grass;
       if (!grassOk && grass) continue;
       const cost = here.cost + 1 + (grass ? GRASS_COST : 0);
@@ -114,7 +109,9 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
   const walk = (route: Dir[]) => {
     for (const [i, dir] of route.entries()) {
       const last = i === route.length - 1;
-      const want = { map: state.map, x: state.x + DELTA[dir].dx, y: state.y + DELTA[dir].dy };
+      // Where the press should end: the next cell, or the one behind a ledge.
+      const to = landing(world.maps[state.map]!, state.x, state.y, dir) ?? state;
+      const want = { map: state.map, x: to.x, y: to.y };
       press({ dir, pressed: dir });
       if (last) break;
       if (busy() || state.map !== want.map || state.x !== want.x || state.y !== want.y) return false;

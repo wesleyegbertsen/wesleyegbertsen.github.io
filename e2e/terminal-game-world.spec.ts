@@ -303,6 +303,111 @@ test.describe('beyond the town', () => {
     await expect(status(page)).toContainText('Come back at Lv 3');
   });
 
+  test('a ledge across the road is a wall on the way out and a hop on the way back, which stays out of the grass', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:)');
+    // Straight on along the road: the first line of ledges stops the player, eight cells in.
+    for (let i = 0; i < 12; i++) await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-map', 'east');
+    await expect(game(page)).toHaveAttribute('data-x', '8');
+    await expect(game(page)).toHaveAttribute('data-cue', 'bump');
+    expect(pilot.state.x).toBe(8);
+    // Round the ledges through the grass (the Pilot runs from what jumps out), to the far end and back onto the road.
+    await pilot.goTo('east:)');
+    await pilot.goTo('hills:(');
+    await expect(game(page)).toHaveAttribute('data-map', 'east');
+    await expect(game(page)).toHaveAttribute('data-x', '24');
+
+    // Back: one key, all the way. Each ledge is one press that goes two cells, with its own sound.
+    const seen: number[] = [];
+    const cues: string[] = [];
+    let heard = Number(await game(page).getAttribute('data-cues'));
+    for (let i = 0; i < 30 && (await game(page).getAttribute('data-map')) === 'east'; i++) {
+      await pilot.press('left');
+      if ((await game(page).getAttribute('data-map')) !== 'east') break;
+      seen.push(Number(await game(page).getAttribute('data-x')));
+      // The sound of this press, if it made one: the count of sounds so far tells.
+      const count = Number(await game(page).getAttribute('data-cues'));
+      cues.push(count > heard ? ((await game(page).getAttribute('data-cue')) ?? '') : '');
+      heard = count;
+      await expect(game(page)).toHaveAttribute('data-battle', '');
+      await expect(game(page)).toHaveAttribute('data-y', '5');
+    }
+    await expect(game(page)).toHaveAttribute('data-map', 'town');
+    // The cells of the ledges (19 and 9) are never stood on: 20 is followed by 18, 10 by 8.
+    expect(seen).not.toContain(19);
+    expect(seen).not.toContain(9);
+    expect(seen[seen.indexOf(20) + 1]).toBe(18);
+    expect(seen[seen.indexOf(10) + 1]).toBe(8);
+    expect(cues[seen.indexOf(18)]).toBe('jump');
+    expect(cues[seen.indexOf(8)]).toBe('jump');
+    expect(cues.filter((cue) => cue === 'jump')).toHaveLength(2);
+    expect(cues).not.toContain('bump');
+    expect(pilot.state.map).toBe('town');
+    expect(errors).toEqual([]);
+  });
+
+  test('a hop over a ledge is an arc through the air when motion is allowed', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:(');
+    // On the West Road the coffee machine stands in the first line of ledges. Out to the chest in the far band of
+    // grass and back to the machine: the nearest side of it is then the far one, left of the ledges.
+    await pilot.goTo('west:C');
+    await pilot.goTo('west:k');
+    await expect(game(page)).toHaveAttribute('data-x', '15');
+    await expect(game(page)).toHaveAttribute('data-y', '4');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-y', '5');
+
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    // Every frame the browser draws: where the game says the player is, whether a hop is under way, and how much
+    // of the shadow under the hop shows. The view follows the player here, who is always drawn at 72, 64; the
+    // shadow is 8 by 2 pixels of the dark shade at the feet, and the feet themselves cover it on the ground.
+    await page.evaluate(() => {
+      const scope = window as unknown as { frames: unknown[]; recording: boolean };
+      scope.frames = [];
+      scope.recording = true;
+      const root = document.querySelector<HTMLElement>('[role="application"]')!;
+      const screen = root.querySelector('canvas')!;
+      const look = () => {
+        if (!scope.recording) return;
+        const { data } = screen.getContext('2d')!.getImageData(76, 77, 8, 2);
+        let shadow = 0;
+        for (let i = 0; i < data.length; i += 4) if (data[i] === 52 && data[i + 1] === 104 && data[i + 2] === 86) shadow++;
+        scope.frames.push({ at: performance.now(), x: Number(root.dataset.x), jump: root.dataset.jump, cue: root.dataset.cue, shadow });
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    // Right, and hold it: over the ledge and on along the road.
+    await page.keyboard.down('ArrowRight');
+    await page.waitForFunction(() => Number(document.querySelector<HTMLElement>('[role="application"]')!.dataset.x) >= 19);
+    await page.keyboard.up('ArrowRight');
+    const frames = (await page.evaluate(() => {
+      const scope = window as unknown as { frames: unknown[]; recording: boolean };
+      scope.recording = false;
+      return scope.frames;
+    })) as { at: number; x: number; jump: string; cue: string; shadow: number }[];
+    const hop = frames.filter((frame) => frame.jump === 'true');
+    // Sixteen ticks at sixty a second, about a quarter of a second. The game counts the player as landed from the
+    // start, two cells on: never a stop on the ledge's own cell. After it, plain steps again.
+    expect(hop.length).toBeGreaterThanOrEqual(5);
+    const lasted = hop.at(-1)!.at - hop[0]!.at;
+    expect(lasted).toBeGreaterThan(120);
+    expect(lasted).toBeLessThan(700);
+    for (const frame of hop) expect(frame.x).toBe(17);
+    // In the air the whole shadow shows; on the ground it never does.
+    expect(hop.some((frame) => frame.shadow === 16)).toBe(true);
+    expect(Math.max(...frames.filter((frame) => frame.jump !== 'true').map((frame) => frame.shadow))).toBeLessThan(16);
+    expect(hop.some((frame) => frame.cue === 'jump')).toBe(true);
+    const cells = frames.map((frame) => frame.x);
+    expect(cells).not.toContain(16);
+    expect(cells).toContain(18);
+    expect(frames.filter((frame) => frame.x >= 18).every((frame) => frame.jump === 'false')).toBe(true);
+  });
+
   test('the cave is dark: light around the player, black further off, and the tune changes', async ({ page }) => {
     const { pilot, errors } = await play(page);
     await pilot.start();

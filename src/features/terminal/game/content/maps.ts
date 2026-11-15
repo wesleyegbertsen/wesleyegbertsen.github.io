@@ -17,8 +17,13 @@ import type { TileDef } from '../engine/types.ts';
  *   ten hobby stops.
  * - Lamp posts (i, I) stand beside a road, at even distances: a test fails for a lamp that does not touch a road.
  * - `(` and `)` on the edge of an outdoor map are the ways out to the west and to the east.
- * - Tall grass (and the rubble in the cave) is where wild enemies live. Keep a way around it on the routes: the
- *   road. Who lives there is in AREAS in battles.ts.
+ * - Tall grass (and the rubble in the cave) is where wild enemies live. Who lives there is in AREAS in battles.ts.
+ * - The two roads out of town are routes: the way OUT crosses bands of tall grass, the way BACK hops down ledges
+ *   and stays dry. A ledge (`$` is hopped going left, `}` going right) is a wall from every other side, and the
+ *   cells in front of and behind it must be free. Each line of ledges blocks the road for whoever walks out, so
+ *   beside it there must be a band of tall grass to walk round it; close every other gap with trees, bushes or
+ *   rocks. Tests fail when the way out can be walked dry, when the way back cannot, or when a cell of a route has
+ *   no way to both ends.
  * - The screen shows 10 x 9 cells, so a room of that size needs no scrolling.
  * - A typo (an unknown character, a ragged row) fails `npm test` with a message naming the map and the place.
  * - The name of a map (in story.ts, `name`) is shown on a label at the top of the screen when the player walks
@@ -59,6 +64,9 @@ export const OUTDOORS: Record<string, TileDef> = {
   g: { sprite: 'flag', under: 'grass', solid: true, animated: true },
   '!': { sprite: 'flag', under: 'cobble', solid: true, animated: true }, // on the plaza
   '+': { sprite: 'shore', solid: false }, // the sandy rim of a pond: you can walk on it, the water is what stops you
+  // Ledges: a step in the ground that is hopped over one way only, two cells in one move.
+  $: { sprite: 'ledge-left', solid: true, ledge: 'left' }, // hopped going left (west): the way back on the East Road
+  '}': { sprite: 'ledge-right', solid: true, ledge: 'right' }, // hopped going right (east): the way back on the West Road
   // The Academy and the contact office: light walls, tiled roofs
   R: { sprite: 'roof', solid: true },
   V: { sprite: 'roof-bell', solid: true },
@@ -160,19 +168,21 @@ export const TOWN = [
 
 /**
  * The road east, to Hobby Hills. ( leads back to town, ) on to the hills. s is a signpost, k a coffee machine,
- * C a chest in the tall grass. The road itself is safe.
+ * C a chest in the tall grass. Walking out, each line of ledges ($) blocks the road: go round it through the band
+ * of tall grass (south of the first, north of the second). Walking back, hop down the ledges. The coffee machine
+ * stands in the first line, so it can be used from both sides.
  */
 export const EAST = [
   'TYTTYTTTYTTYTTTTYTTYTTTYTT',
-  'T""""..T...,..""""""...u.T',
-  'T""""".r....."""""""C""..T',
-  'T."""..........""""""....T',
-  'T....s.i.......k.......i.T',
-  '(========================)',
-  'T..i.......i.......i.....T',
-  'T...."""""......,..""""..T',
-  'T..""""""""..Y...."""""".T',
-  'T...""""""..........""""nT',
+  'T."""".YTT.,...""""C""".YT',
+  'T.""""".rT...."""""""""..T',
+  'T.,""...uT..,.....uuu..,.T',
+  'T....s.i.k...i.....$.i...T',
+  '(========$=========$=====)',
+  'T..i.....$..i...i..$...i.T',
+  'T..,....uru......,.T....nT',
+  'T....""""""""".Y...YT.,..T',
+  'T.,..""""""""".....T.....T',
   'TYTTTYTTYTTTTYTTTYTTYTTTYT',
 ];
 
@@ -207,19 +217,21 @@ export const HILLS = [
 
 /**
  * The road west, to the mountain (c is rock). D is the mouth of the cave, ) leads back to town. s is a signpost,
- * k a coffee machine, C a chest in the tall grass.
+ * k a coffee machine, C a chest in the tall grass. Walking out, each line of ledges (}) blocks the road: go round
+ * it through the band of tall grass (north of the first, south of the second). Walking back from the cave, hop
+ * down the ledges. The coffee machine stands in the first line, so it can be used from both sides.
  */
 export const WEST = [
   'ccccccTYTTYTTTYTTYTTTTYTTT',
-  'cccccc..""""""...,..""""CT',
-  'ccccc...""""""...."""""".T',
-  'cccc......""""...........T',
-  'cccc.i.......i..k..s.i...T',
-  'cccD=====================)',
-  'cccc...i.......i.......i.T',
-  'cccc.."""""".......""""..T',
-  'ccccc.""""""""..Y.."""""rT',
-  'cccccc.."""""........"""TT',
+  'ccccccccc.,.."""T""".."""T',
+  'ccccccccc....""""""".."".T',
+  'ccccc..,r...,..uuu...,...T',
+  'cccc.i..}....i..k..s.i...T',
+  'cccD====}=======}========)',
+  'cccc..i.}.....i.}......i.T',
+  'ccccc..uru..,...T..,.....T',
+  'ccccc"""""""...YT.."""".rT',
+  'cccccc""C"""....T.""""".TT',
   'ccccccTYTTTYTTYTTTTYTTTYTT',
 ];
 

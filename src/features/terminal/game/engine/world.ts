@@ -72,6 +72,21 @@ export function tileAt(map: GameMap, x: number, y: number): TileDef {
   return (char !== undefined && map.tiles[char]) || VOID;
 }
 
+/**
+ * Where a step from a cell ends, as far as the ground decides: on the next cell, or, when that is a ledge that
+ * is jumped this way, on the cell behind it (`jump`). Null when the ground stops the step: a wall, a ledge from
+ * any other side, or a ledge with no room to land behind it. Things and people on the way are the caller's to check.
+ */
+export function landing(map: GameMap, x: number, y: number, dir: Dir): { x: number; y: number; jump: boolean } | null {
+  const { dx, dy } = DELTA[dir];
+  const next = tileAt(map, x + dx, y + dy);
+  if (next.ledge) {
+    if (next.ledge !== dir || tileAt(map, x + 2 * dx, y + 2 * dy).solid) return null;
+    return { x: x + 2 * dx, y: y + 2 * dy, jump: true };
+  }
+  return next.solid ? null : { x: x + dx, y: y + dy, jump: false };
+}
+
 /** The object on a cell, unless it is hidden by now. People who stroll are found where they are, not where the map put them. */
 export function objectAt(map: GameMap, x: number, y: number, state: GameState): GameObject | undefined {
   return map.objects.find((o) => {

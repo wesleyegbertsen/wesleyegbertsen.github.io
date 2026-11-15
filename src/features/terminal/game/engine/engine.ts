@@ -4,10 +4,12 @@ import { random } from './rng.ts';
 import { pageLength, paginate } from './text.ts';
 import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { stroll } from './wander.ts';
-import { DELTA, areaAt, branchFor, gone, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
+import { DELTA, areaAt, branchFor, gone, holds, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /** How many ticks one step from cell to cell takes (at 60 ticks a second). */
 export const WALK_TICKS = 10;
+/** How many ticks a hop over a ledge takes: two cells in one go, a little quicker than walking them. */
+export const JUMP_TICKS = 16;
 /** How long the note in the corner stays after a find, in ticks of the game clock. */
 export const NOTICE_TICKS = 150;
 /** The typewriter ticks once per this many characters. */
@@ -263,7 +265,10 @@ function arrive(state: GameState, ctx: Ctx): GameState {
   return state;
 }
 
-/** Turn to `dir` and take a step if the way is free. Walking into a locked door makes it say why. */
+/**
+ * Turn to `dir` and take a step if the way is free. Walking into a locked door makes it say why. A ledge that is
+ * jumped this way is hopped over: one move, two cells.
+ */
 function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
   const { world } = ctx;
   const map = world.maps[state.map]!;
@@ -278,11 +283,16 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
     }
     return runScript({ ...turned, script: [...(branchFor(object, turned)?.do ?? [])] }, ctx);
   }
-  if (tileAt(map, x, y).solid) {
+  // The ground decides where the step ends: the next cell, or the cell behind a ledge that is jumped this way.
+  const to = landing(map, state.x, state.y, dir);
+  const taken = to?.jump ? objectAt(map, to.x, to.y, turned) : undefined;
+  if (!to || (taken && !passable(taken, turned))) {
     ctx.cues.push('bump');
     return turned;
   }
-  const walking = { ...turned, x, y, walk: { fromX: state.x, fromY: state.y, t: 0 } };
+  if (to.jump) ctx.cues.push('jump');
+  const walk = { fromX: state.x, fromY: state.y, t: 0, ...(to.jump ? { jump: true as const } : {}) };
+  const walking = { ...turned, x: to.x, y: to.y, walk };
   return ctx.instant ? arrive({ ...walking, walk: null }, ctx) : walking;
 }
 
@@ -333,8 +343,9 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
   const { world } = ctx;
   if (state.walk) {
     // With reduced motion a step that was under way (the setting changed mid-step) is finished at once.
-    const t = ctx.instant ? WALK_TICKS : state.walk.t + 1;
-    if (t < WALK_TICKS) return { ...state, walk: { ...state.walk, t } };
+    const ticks = state.walk.jump ? JUMP_TICKS : WALK_TICKS;
+    const t = ctx.instant ? ticks : state.walk.t + 1;
+    if (t < ticks) return { ...state, walk: { ...state.walk, t } };
     const arrived = arrive({ ...state, walk: null }, ctx);
     // Still holding the direction: keep walking without a pause between the cells.
     return idle(arrived) && input.dir ? tryMove(arrived, input.dir, ctx) : arrived;

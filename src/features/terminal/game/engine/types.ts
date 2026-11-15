@@ -82,6 +82,12 @@ export type TileDef = {
   road?: boolean;
   /** Animated: the sheet also has `<sprite>-b`, and the two take turns. */
   animated?: boolean;
+  /**
+   * A ledge: a step in the ground that is jumped in this direction only. Walking onto it that way hops over it
+   * and lands on the cell behind it; from every other side it is a wall. A ledge is `solid`, so nobody strolls
+   * onto it.
+   */
+  ledge?: Dir;
 };
 
 /** A named part of a map: a rectangle of cells. Walking into it shows its name, like walking onto another map does. */
@@ -224,8 +230,11 @@ export type GameState = {
   x: number;
   y: number;
   dir: Dir;
-  /** While walking: where the step started and how many ticks of it have passed. x and y are already the target. */
-  walk: { fromX: number; fromY: number; t: number } | null;
+  /**
+   * While walking: where the step started and how many ticks of it have passed. x and y are already the target.
+   * `jump`: this step is a hop over a ledge, two cells long, and takes JUMP_TICKS instead of WALK_TICKS.
+   */
+  walk: { fromX: number; fromY: number; t: number; jump?: true } | null;
   hp: number;
   maxHp: number;
   /** 1 to `world.levels.max`, and the XP gathered so far. */
@@ -301,6 +310,8 @@ export type Cue =
   | 'star'
   | 'badge'
   | 'bump'
+  /** A hop over a ledge. */
+  | 'jump'
   | 'heal'
   | 'hit'
   | 'hurt'

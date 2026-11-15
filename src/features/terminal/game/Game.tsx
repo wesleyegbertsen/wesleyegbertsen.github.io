@@ -96,13 +96,15 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
     const banner = bannerText(state);
     const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : 'boss') : '';
     const root = focusRef.current;
-    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition].join('|');
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
         music,
         banner,
         transition,
+        // A hop over a ledge is under way. Only seen when motion is allowed: with reduced motion it is over at once.
+        jump: String(!!state.walk?.jump),
         scene: state.scene,
         map: state.map,
         x: String(state.x),

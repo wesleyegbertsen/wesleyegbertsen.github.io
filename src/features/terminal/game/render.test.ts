@@ -1,12 +1,12 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
-import { WALK_TICKS, initialGame } from './engine/engine.ts';
+import { JUMP_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
-import { FRAME_TICKS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, type Hud, type Painter, type Sheets } from './render.ts';
+import { FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
 import { fitScale, layout } from './scale.ts';
 
 type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: number; y: number; w: number; h: number };
@@ -109,6 +109,30 @@ describe('drawGame', () => {
     const walking = { ...started(), x: 3, dir: 'right' as const, walk: { fromX: 2, fromY: 2, t: WALK_TICKS / 2 } };
     // Cell 3,2: the second stride (the strides take turns per cell).
     expect(spriteDraws(drawn(walking).draws, 'player-right-2')).toEqual([expect.objectContaining({ x: 24 + 2.5 * TILE })]);
+  });
+
+  it('lifts the player off the ground in an arc during a hop over a ledge, with a shadow under it', () => {
+    expect([hopHeight(0), hopHeight(0.5), hopHeight(1)]).toEqual([0, HOP_PIXELS, 0]);
+    expect(hopHeight(0.25)).toBeGreaterThan(0);
+    expect(hopHeight(0.25)).toBeLessThan(HOP_PIXELS);
+    expect(hopHeight(0.75)).toBe(hopHeight(0.25));
+    const hopping = (t: number) => ({ ...started(), x: 4, dir: 'right' as const, walk: { fromX: 2, fromY: 2, t, jump: true as const } });
+    // Standing in the test world the player is drawn at 24 + x cells, 24 + y cells.
+    const ground = 24 + 2 * TILE;
+    // Half way: over the ledge, one cell along, at the top of the arc, on a stride, the shadow on the ground.
+    const mid = drawn(hopping(JUMP_TICKS / 2));
+    expect(spriteDraws(mid.draws, 'player-right-1')).toEqual([expect.objectContaining({ x: 24 + 3 * TILE, y: ground - HOP_PIXELS })]);
+    expect(mid.fills).toContainEqual({ shade: PALETTE[2], x: 24 + 3 * TILE + 4, y: ground + 13, w: 8, h: 2 });
+    // A quarter of the way: half a cell along (the two cells take JUMP_TICKS), and lower.
+    const early = spriteDraws(drawn(hopping(JUMP_TICKS / 4)).draws, 'player-right-1');
+    expect(early).toEqual([expect.objectContaining({ x: 24 + 2.5 * TILE, y: ground - hopHeight(0.25) })]);
+    // Taking off, the feet are still on the ground: standing, no shadow.
+    const start = drawn(hopping(0));
+    expect(spriteDraws(start.draws, 'player-right-0')).toEqual([expect.objectContaining({ x: 24 + 2 * TILE, y: ground })]);
+    expect(start.fills.filter((fill) => fill.w === 8 && fill.h === 2)).toEqual([]);
+    // A plain step never leaves the ground.
+    const walking = { ...started(), x: 3, dir: 'right' as const, walk: { fromX: 2, fromY: 2, t: WALK_TICKS / 2 } };
+    expect(spriteDraws(drawn(walking).draws, 'player-right-2')).toEqual([expect.objectContaining({ y: ground })]);
   });
 
   it('types the dialogue: only the characters shown so far', () => {

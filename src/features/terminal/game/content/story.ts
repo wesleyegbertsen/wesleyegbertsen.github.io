@@ -24,6 +24,8 @@ import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOOR
  *   a boss or the ending starts to depend on it.
  * - The `name` of a map is what the label at the top of the screen says when the player walks in, and what the
  *   status region announces. Keep it under 25 characters. Named parts of a map are REGIONS in maps.ts.
+ * - The roads east and west are routes: the way out crosses tall grass, the way back hops down ledges (see
+ *   maps.ts). Their signposts say so (ROUTE_BACK), and name the levels of the wild things from AREAS.
  * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
  *   A new hobby needs a line there, a digit on the HILLS map and a picture (scripts/sprites/scenery.mjs).
  * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
@@ -143,6 +145,12 @@ export const HOBBIES: { at: string; id: string; sprite: string; animated?: boole
   { at: '9', id: 'homeserver', sprite: 'server', animated: true, lines: ['A home server hums in the grass. Its lights blink.', 'Home server: my own little cloud. When it breaks, I am the helpdesk.'] },
   { at: '0', id: 'science', sprite: 'flask', lines: ['A flask bubbles away. Better not drink it.', 'Science: my favourite rabbit hole. Space, physics, how things work.'] },
 ];
+
+/**
+ * The last page of the signposts on the two roads out of town. The roads are routes now: nobody gets out without
+ * a walk through the tall grass, and the ledges make the way back a dry one.
+ */
+export const ROUTE_BACK = 'The ledges across the road can only be hopped down on the way back: that way you stay out of the grass.';
 
 /** The mat at the bottom of a room: step on it to go back to town, in front of that building's door. */
 const exitTo = (townDoor: string): ObjectSpec => ({
@@ -611,7 +619,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       ')': wayOut({ map: 'hills', at: '(', dx: 1, dir: 'right' }),
       s: sign(
         'EAST ROAD. HOBBY HILLS lies ahead.',
-        `The wild things in the tall grass here are Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}. The road itself is safe.`,
+        `The way there crosses tall grass. The wild things in it are Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}.`,
+        ROUTE_BACK,
       ),
       k: coffee(),
       C: chest('chest:east', 'energydrink', '"'),
@@ -672,7 +681,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       ),
       s: sign(
         `WEST ROAD. Ahead: the mountain and its CAVE. Lv ${CAVE_LEVEL} and up.`,
-        `The wild things in the tall grass here are Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}. In the CAVE: Lv ${AREAS.cave!.levels[0]} to ${AREAS.cave!.levels[1]}, and it is dark.`,
+        `The way there crosses tall grass. The wild things in it are Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}. In the CAVE: Lv ${AREAS.cave!.levels[0]} to ${AREAS.cave!.levels[1]}, and it is dark.`,
+        ROUTE_BACK,
       ),
       k: coffee(),
       C: chest('chest:west', 'energydrink', '"'),
