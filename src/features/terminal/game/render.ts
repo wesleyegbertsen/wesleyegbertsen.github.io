@@ -34,9 +34,20 @@ const BOX_Y = 104;
 const NOTE_H = 16;
 /** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
 export const FRAME_TICKS = 30;
-/** How many items the bag shows at once; a longer list scrolls with the cursor. Under them: the coins, and what was collected. */
-const BAG_ROWS = 4;
-const COINS_Y = 82;
+/**
+ * The Start menu, top to bottom: the tabs (6), the level and the XP (18), the energy and the coins (28), a rule
+ * (38), the list of the open tab from 42 (five rows of the bag ten pixels apart, or the three settings fourteen
+ * apart), what was collected (94), a rule (105) and three lines of note from 110.
+ */
+/** How many items the bag shows at once; a longer list scrolls with the cursor. */
+const BAG_ROWS = 5;
+/** The line of the things to collect, under the list. */
+const COLLECT_Y = 94;
+/** The settings: where the first row is, and how far apart they are. */
+const SETTINGS_Y = 46;
+const SETTINGS_LINE = 14;
+/** The most coins the menu has room to show beside the energy: four digits. The purse itself has no limit. */
+const COINS_SHOWN = 9999;
 /** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
 const SHADES = ['', 'shade-1', 'shade-2'] as const;
 
@@ -268,7 +279,7 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
 /** The settings tab: the sound, how loud it is, and the look of the screen. */
 function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): string {
   const at = SETTINGS[Math.min(cursor, SETTINGS.length - 1)]!;
-  const row = (name: (typeof SETTINGS)[number]) => 44 + SETTINGS.indexOf(name) * 12;
+  const row = (name: (typeof SETTINGS)[number]) => SETTINGS_Y + SETTINGS.indexOf(name) * SETTINGS_LINE;
   drawText(ctx, sheets, '>', 10, row(at));
   drawText(ctx, sheets, 'SOUND', 18, row('sound'));
   drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
@@ -281,7 +292,7 @@ function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): 
   }
   if (at === 'sound') return 'A switches the sound off or on. So does the M key.';
   if (at === 'volume') return 'Left and right change the volume.';
-  return 'A switches the LCD look of the screen: a pixel grid, as on the real thing.';
+  return 'A switches the LCD look: a pixel grid, as on the real thing.';
 }
 
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
@@ -292,15 +303,17 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
   rect(ctx, tabs[menu.tab][1], 15, tabs[menu.tab][0].length * FONT.cellW - 1, 1, DARKEST);
   drawText(ctx, sheets, '<>', 140, 6);
 
-  // Who you are by now: the level, the XP towards the next one, and the energy.
+  // Who you are by now, in two rows that end at the same places: the level, a bar and the XP towards the next
+  // one; the energy, a bar and the money. Both bars end at 90, and the numbers on the right end at the margin.
   const progress = xpProgress(state, world);
   const xp = progress ? `XP ${progress.into}/${progress.span}` : 'XP MAX';
   drawText(ctx, sheets, `LV ${state.level}`, 14, 18);
   xpBar(ctx, 50, 20, 40, state, world);
   drawText(ctx, sheets, xp, rightAligned(xp, SCREEN_W - 8), 18);
-  drawText(ctx, sheets, 'ENERGY', 14, 28);
-  hpBar(ctx, 56, 29, 50, state.hp, state.maxHp);
-  drawText(ctx, sheets, `${state.hp}/${state.maxHp}`, 110, 28);
+  const purse = `${world.economy.currency} ${Math.min(state.coins, COINS_SHOWN)}`;
+  drawText(ctx, sheets, `HP ${state.hp}/${state.maxHp}`, 14, 28);
+  hpBar(ctx, 66, 29, 24, state.hp, state.maxHp);
+  drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 28);
   rect(ctx, 8, 38, SCREEN_W - 16, 1, DARK);
 
   let note: string;
@@ -325,11 +338,10 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
     note = `${state.badges.length} of ${world.badges.length} badges.`;
   }
 
-  // The foot of the menu: the money, and what was found of the things to collect.
-  drawText(ctx, sheets, `${world.economy.currency} ${state.coins}`, 8, COINS_Y);
+  // The foot of the list: what was found of the things to collect.
   (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
     const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
-    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), 92);
+    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), COLLECT_Y);
   });
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
@@ -375,13 +387,13 @@ function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
   drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 8);
   rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
   const cursor = Math.min(open.cursor, shop.stock.length);
-  // A row: the name (13 letters at most) from 18, the count in the bag from 98, the picker from 114, the price up to 152.
+  // A row: the name (12 letters at most) from 18, the count in the bag from 94, the picker from 111, the price up to 152.
   shop.stock.forEach((entry, i) => {
     const picked = i === cursor ? open.amount : 1;
     const price = String(entry.price * picked);
     drawText(ctx, sheets, world.items[entry.item]!.name, 18, 24 + i * LINE);
-    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 98, 24 + i * LINE);
-    if (i === cursor) drawText(ctx, sheets, `<${picked}>`, 114, 24 + i * LINE);
+    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 94, 24 + i * LINE);
+    if (i === cursor) drawText(ctx, sheets, `<${picked}>`, 111, 24 + i * LINE);
     drawText(ctx, sheets, price, rightAligned(price, SCREEN_W - 8), 24 + i * LINE);
   });
   drawText(ctx, sheets, 'LEAVE', 18, 24 + shop.stock.length * LINE);
@@ -503,15 +515,16 @@ function drawTitle(ctx: Painter, sheets: Sheets, world: World) {
   drawScenery(ctx, sheets, ['player-down-0', 'cat']);
 }
 
-function drawEnding(ctx: Painter, sheets: Sheets, world: World) {
+/** The ending: its lines, and under them the purse as a score, where there is money and room (five lines at most). */
+function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
   const [head = '', ...rest] = world.ending.map(fold);
   drawText(ctx, sheets, head, centred(head, 2), 14, false, 2);
   rect(ctx, 8, 36, SCREEN_W - 16, 2, DARK);
-  rest
-    .flatMap((line) => wrap(line, COLS))
-    .slice(0, 6)
-    .forEach((line, i) => drawText(ctx, sheets, line, centred(line), 46 + i * LINE));
+  const lines = rest.flatMap((line) => wrap(line, COLS)).slice(0, 6);
+  lines.forEach((line, i) => drawText(ctx, sheets, line, centred(line), 46 + i * LINE));
+  const purse = `Your purse: ${money(state.coins, world)}.`;
+  if (Object.keys(world.shops).length > 0 && lines.length < 5) drawText(ctx, sheets, purse, centred(purse), 52 + lines.length * LINE);
   drawScenery(ctx, sheets, ['player-right-0', 'wesley', 'cat']);
 }
 
@@ -523,7 +536,7 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
     if (hud) drawSpeaker(ctx, hud.muted);
     return;
   }
-  if (state.scene === 'ending') return drawEnding(ctx, sheets, world);
+  if (state.scene === 'ending') return drawEnding(ctx, sheets, state, world);
   const curtain = state.battle && curtainOf(state.battle);
   if (curtain) {
     // The way into a battle: still the map, with the transition closing over everything on it.

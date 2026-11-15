@@ -317,7 +317,7 @@ describe('the shop in the cafe', () => {
     for (const { item, price } of shop.stock) {
       const def = ITEMS[item]!;
       // The name, the count in the bag and the price share a row of the list.
-      expect(def.name.length, item).toBeLessThanOrEqual(13);
+      expect(def.name.length, item).toBeLessThanOrEqual(12);
       fits(def.description);
       fits(`You buy one ${def.name} for ${money(price, world)}. ${money(9999, world)} left.`);
       fits(`You buy ${ECONOMY.bagLimit} ${def.name} for ${money(price * ECONOMY.bagLimit, world)}. ${money(9999, world)} left.`);

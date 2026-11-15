@@ -148,8 +148,9 @@ describe('drawGame', () => {
     const bag = play({ ...started(), items: { coffee: 2 }, hp: 10 }, 'start');
     const { draws, fills } = drawn(bag);
     expect(textAt(draws, 42)).toBe('>COFFEEx2');
-    expect(textAt(draws, 28)).toBe('ENERGY10/20');
-    expect(fills).toContainEqual({ shade: PALETTE[2], x: 57, y: 30, w: 24, h: 4 });
+    // The energy with its numbers, a short bar (22 wide inside, half full), and the coins at the end of the row.
+    expect(textAt(draws, 28)).toBe('HP10/20COINS0');
+    expect(fills).toContainEqual({ shade: PALETTE[2], x: 67, y: 30, w: 11, h: 4 });
     expect(textAt(draws, 110)).toBe('Restores20energy.');
 
     const badges = drawn(play({ ...bag, badges: ['one'] }, 'right')).draws;
@@ -186,6 +187,25 @@ describe('drawGame', () => {
     const { draws } = drawn(ended);
     expect(draws.filter((draw) => draw.sheet === 'font' && draw.w === 12)).toHaveLength('THEEND'.length);
     expect(spriteDraws(draws, 'wesley')).toHaveLength(1);
+    // No money in this world: nothing is said about a purse.
+    expect(draws.filter((draw) => draw.sheet === 'font' && draw.y > 40 && draw.y < 112)).toHaveLength(0);
+  });
+
+  it('shows the purse on the ending in a world with a shop: what was earned is the score', () => {
+    const lines: World = { ...shopWorld, ending: ['THE END', 'Thanks for visiting this town of tests.', 'The details are on this page.'] };
+    const ended = { ...initialGame(lines), scene: 'ending' as const, finished: true, coins: 1469 };
+    const { draws } = drawn(ended, undefined, lines);
+    expect([46, 56, 66, 76].map((y) => textAt(draws, y))).toEqual(['Thanksforvisitingthis', 'townoftests.', 'Thedetailsareonthis', 'page.']);
+    // Under the lines, a line apart, and above the grass.
+    expect(textAt(draws, 92)).toBe('Yourpurse:1469COINS.');
+    const row = draws.filter((draw) => draw.sheet === 'font' && draw.y === 92);
+    expect(Math.min(...row.map((draw) => draw.x)) + Math.max(...row.map((draw) => draw.x + draw.w))).toBe(SCREEN_W);
+    expect(textAt(drawn({ ...ended, coins: 1 }, undefined, lines).draws, 92)).toBe('Yourpurse:1COIN.');
+    // Left out when the lines of the ending need the room.
+    const long: World = { ...lines, ending: ['THE END', ...Array.from({ length: 6 }, (_, i) => `Line ${i + 1}.`)] };
+    const full = drawn(ended, undefined, long).draws;
+    expect(textAt(full, 96)).toBe('Line6.');
+    expect(full.filter((draw) => draw.sheet === 'font' && draw.y > 40 && draw.y < 112).map((draw) => draw.y).every((y) => (y - 46) % 10 === 0)).toBe(true);
   });
 });
 
@@ -519,61 +539,122 @@ describe('the Start menu', () => {
 
   it('counts the things to collect at its foot, on the bag and the badges', () => {
     const bag = { ...there(), items: { a: 2, b: 7 }, menu: { tab: 'items' as const, cursor: 0 } };
-    expect(textAt(drawn(bag, on, shop).draws, 92)).toBe('AS2/3BS7/10');
-    expect(textAt(drawn({ ...bag, items: {} }, undefined, shop).draws, 92)).toBe('AS0/3BS0/10');
-    // The volume is not on these tabs any more.
-    expect(drawn(bag, on, shop).draws.some((draw) => draw.sheet === 'font' && draw.y === 94)).toBe(false);
+    expect(textAt(drawn(bag, on, shop).draws, 94)).toBe('AS2/3BS7/10');
+    expect(textAt(drawn({ ...bag, items: {} }, undefined, shop).draws, 94)).toBe('AS0/3BS0/10');
+    expect(textAt(drawn({ ...bag, menu: { tab: 'badges' as const, cursor: 0 } }, on, shop).draws, 94)).toBe('AS2/3BS7/10');
   });
 
   it('scrolls a bag that is longer than the list, keeping the cursor in view', () => {
     const all = Object.fromEntries(letters.map((id) => [id, 1]));
     const at = (cursor: number) => drawn({ ...there(), items: all, menu: { tab: 'items' as const, cursor } }, undefined, shop).draws;
-    // Four rows: the line under them is the money's.
+    // Five rows, ten pixels apart; the foot under them is what was collected.
     expect(textAt(at(0), 42)).toBe('>Ax1');
-    expect(textAt(at(0), 72)).toBe('Dx1');
-    expect(textAt(at(2), 42)).toBe('Ax1');
-    expect(textAt(at(2), 62)).toBe('>Cx1');
-    expect(textAt(at(3), 42)).toBe('Bx1');
-    expect(textAt(at(3), 62)).toBe('>Dx1');
-    expect(textAt(at(6), 42)).toBe('Dx1');
-    expect(textAt(at(6), 72)).toBe('>Gx1');
-    for (const cursor of [0, 3, 6]) expect(textAt(at(cursor), 82)).toBe('COINS0');
+    expect(textAt(at(0), 82)).toBe('Ex1');
+    expect(textAt(at(3), 42)).toBe('Ax1');
+    expect(textAt(at(3), 72)).toBe('>Dx1');
+    expect(textAt(at(4), 42)).toBe('Bx1');
+    expect(textAt(at(4), 72)).toBe('>Ex1');
+    expect(textAt(at(4), 82)).toBe('Fx1');
+    expect(textAt(at(6), 42)).toBe('Cx1');
+    expect(textAt(at(6), 82)).toBe('>Gx1');
+    for (const cursor of [0, 3, 6]) {
+      const rows = [...new Set(at(cursor).filter((draw) => draw.sheet === 'font' && draw.y >= 42 && draw.y < 104).map((draw) => draw.y))];
+      expect(rows.sort((a, b) => a - b)).toEqual([42, 52, 62, 72, 82, 94]);
+    }
   });
 
-  it('shows the coins on every tab, above what was collected', () => {
+  it('shows the coins on every tab, at the end of the row of the energy, and what was collected at the foot', () => {
     const rich = { ...there(), coins: 1234 };
     for (const tab of ['items', 'badges', 'settings'] as const) {
       const { draws } = drawn({ ...rich, items: { a: 1, b: 1, c: 1, d: 1, e: 1 }, menu: { tab, cursor: 0 } }, on, shop);
-      expect(textAt(draws, 82), tab).toBe('COINS1234');
-      expect(textAt(draws, 92), tab).toBe('AS1/3BS1/10');
-      // Nothing else is drawn on those two lines, or between them and the list.
-      const rows = [...new Set(draws.filter((draw) => draw.sheet === 'font' && draw.y > 72 && draw.y < 100).map((draw) => draw.y))];
-      expect(rows.sort(), tab).toEqual([82, 92]);
+      expect(textAt(draws, 28), tab).toBe('HP20/20COINS1234');
+      expect(Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 28).map((draw) => draw.x + draw.w)), tab).toBe(SCREEN_W - 8);
+      expect(textAt(draws, 94), tab).toBe('AS1/3BS1/10');
+      // Nothing else is drawn between the list and the note at the bottom.
+      const rows = [...new Set(draws.filter((draw) => draw.sheet === 'font' && draw.y > 82 && draw.y < 104).map((draw) => draw.y))];
+      expect(rows, tab).toEqual([94]);
     }
     // The name of the money is the world's.
     const euros = { ...shop, economy: { ...shop.economy, currency: 'EUR' } };
-    expect(textAt(drawn({ ...rich, menu: { tab: 'items' as const, cursor: 0 } }, on, euros).draws, 82)).toBe('EUR1234');
+    expect(textAt(drawn({ ...rich, menu: { tab: 'items' as const, cursor: 0 } }, on, euros).draws, 28)).toBe('HP20/20EUR1234');
+    // More than fits beside the bar is shown as the most that does.
+    expect(textAt(drawn({ ...rich, coins: 123456, menu: { tab: 'items' as const, cursor: 0 } }, on, shop).draws, 28)).toBe('HP20/20COINS9999');
+  });
+
+  it('has room for a full bag, every badge, both counters and the longest numbers: nothing overlaps or touches the border', () => {
+    const badges = ['DEGREE BADGE', 'CAREER BADGE', 'MAKER BADGE', 'SKILL BADGE'].map((name, i) => ({ id: `b${i}`, name }));
+    const names = ['STROOPWAFEL', 'COFFEE', 'ENERGY DRINK', 'GREEN TEA', 'BUG SPRAY', 'PIZZA', 'UPTIME MEDAL'];
+    const full: World = {
+      ...shop,
+      badges,
+      items: Object.fromEntries(letters.map((id, i) => [id, { name: names[i]!, description: 'No wild enemies for 60 steps in tall grass.' }])),
+      collect: [{ item: 'a', total: 11, label: 'STARS', mark: '*' }, { item: 'b', total: 10, label: 'STAMPS', mark: '#' }],
+    };
+    const state: GameState = { ...initialGame(full), scene: 'world', level: 10, xp: 999, hp: 87, maxHp: 87, coins: 9999, badges: badges.map((badge) => badge.id), items: { ...Object.fromEntries(letters.map((id) => [id, 9])), a: 11, b: 10 } };
+    const loud: Hud = { muted: true, volume: 10, lcd: false };
+    for (const tab of ['items', 'badges', 'settings'] as const) {
+      for (const cursor of tab === 'items' ? [0, 6] : [0, 2]) {
+        const { draws, fills } = drawn({ ...state, menu: { tab, cursor } }, loud, full);
+        const glyphs = draws.filter((draw) => draw.sheet === 'font');
+        const label = `${tab} ${cursor}`;
+        // Inside the border, with air: the frame is three pixels thick.
+        for (const glyph of glyphs) {
+          expect(glyph.x, label).toBeGreaterThanOrEqual(8);
+          expect(glyph.x + glyph.w, label).toBeLessThanOrEqual(SCREEN_W - 8);
+          expect(glyph.y, label).toBeGreaterThanOrEqual(6);
+          expect(glyph.y + glyph.h, label).toBeLessThanOrEqual(SCREEN_H - 6);
+        }
+        // Rows of text are at least a line apart, and no two glyphs of a row share a pixel.
+        const rows = [...new Set(glyphs.map((glyph) => glyph.y))].sort((a, b) => a - b);
+        for (let i = 1; i < rows.length; i++) expect(rows[i]! - rows[i - 1]!, `${label} ${rows[i]}`).toBeGreaterThanOrEqual(10);
+        for (const y of rows) {
+          const row = glyphs.filter((glyph) => glyph.y === y).sort((a, b) => a.x - b.x);
+          for (let i = 1; i < row.length; i++) expect(row[i]!.x, `${label} ${y}`).toBeGreaterThanOrEqual(row[i - 1]!.x + row[i - 1]!.w);
+        }
+        // The bars of the XP and the energy, and the volume wheel, keep two pixels off the text beside them.
+        const bars = fills.filter((fill) => fill.shade === PALETTE[3] && fill.y > 16 && fill.y < 104 && fill.h >= 2 && fill.h <= 8 && fill.w >= 3 && fill.w <= 60);
+        expect(bars.length, label).toBeGreaterThanOrEqual(tab === 'settings' ? 2 : 2);
+        for (const bar of bars) {
+          for (const glyph of glyphs.filter((glyph) => glyph.y < bar.y + bar.h && glyph.y + glyph.h > bar.y)) {
+            expect(glyph.x + glyph.w <= bar.x - 2 || glyph.x >= bar.x + bar.w + 2, `${label} bar at ${bar.x},${bar.y}`).toBe(true);
+          }
+        }
+        expect(textAt(draws, 18), label).toBe('LV10XPMAX');
+        expect(textAt(draws, 28), label).toBe('HP87/87COINS9999');
+        expect(textAt(draws, 94), label).toBe('STARS11/11STAMPS10/10');
+      }
+    }
+    // The bag shows five of its seven kinds, the badge case all four.
+    const bag = drawn({ ...state, menu: { tab: 'items', cursor: 0 } }, loud, full).draws;
+    expect([42, 52, 62, 72, 82].map((y) => textAt(bag, y))).toEqual(['>STROOPWAFELx11', 'COFFEEx10', 'ENERGYDRINKx9', 'GREENTEAx9', 'BUGSPRAYx9']);
+    const case4 = drawn({ ...state, menu: { tab: 'badges', cursor: 0 } }, loud, full).draws;
+    expect([42, 52, 62, 72].map((y) => textAt(case4, y))).toEqual(['>*DEGREEBADGE', '*CAREERBADGE', '*MAKERBADGE', '*SKILLBADGE']);
   });
 
   it('shows the settings: the sound, the volume wheel and the look of the screen, with the cursor on one', () => {
     const settings = (cursor: number, hud: Hud = on) => drawn({ ...there(), menu: { tab: 'settings' as const, cursor } }, hud, shop);
     const first = settings(0);
-    expect(textAt(first.draws, 44)).toBe('>SOUNDON');
-    expect(textAt(first.draws, 56)).toBe('VOLUME50%');
-    expect(textAt(first.draws, 68)).toBe('SCREENLCD');
+    // Three rows with room between them: fourteen pixels apart.
+    expect(textAt(first.draws, 46)).toBe('>SOUNDON');
+    expect(textAt(first.draws, 60)).toBe('VOLUME50%');
+    expect(textAt(first.draws, 74)).toBe('SCREENLCD');
     expect(textAt(first.draws, 110)).toBe('Aswitchesthesoundoff');
-    expect(textAt(settings(1).draws, 56)).toBe('>VOLUME50%');
+    expect(textAt(settings(1).draws, 60)).toBe('>VOLUME50%');
     expect(textAt(settings(1).draws, 110)).toBe('Leftandrightchange');
-    expect(textAt(settings(2).draws, 68)).toBe('>SCREENLCD');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 44)).toBe('>SOUNDOFF');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 68)).toBe('SCREENPLAIN');
-    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 56)).toBe('>VOLUME100%');
-    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 56)).toBe('>VOLUME0%');
+    expect(textAt(settings(2).draws, 74)).toBe('>SCREENLCD');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 46)).toBe('>SOUNDOFF');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 74)).toBe('SCREENPLAIN');
+    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 60)).toBe('>VOLUME100%');
+    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 60)).toBe('>VOLUME0%');
+    // What each row is for fits the three lines of the note: the last word is on the screen.
+    expect([120, 130].map((y) => textAt(settings(0).draws, y))).toEqual(['oron.SodoestheM', 'key.']);
+    expect(textAt(settings(1).draws, 120)).toBe('thevolume.');
+    expect([110, 120, 130].map((y) => textAt(settings(2).draws, y))).toEqual(['AswitchestheLCDlook:', 'apixelgrid,asonthe', 'realthing.']);
   });
 
   it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
     const steps = (hud: Hud) =>
-      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 55 && fill.y <= 63);
+      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 59 && fill.y <= 67);
     const half = steps({ muted: false, volume: 5 });
     expect(half).toHaveLength(VOLUME_STEPS);
     const filled = half.filter((fill) => fill.shade === PALETTE[3]);
@@ -634,16 +715,17 @@ describe('the shop on the screen', () => {
     expect(textAt(three, 24)).toBe('>COFFEEx0<3>30');
     expect(textAt(three, 34)).toBe('GREENTEAx025');
     expect(textAt(three, 110)).toBe('3COFFEEfor30COINS.');
-    // The widest row there can be: a name of 13 letters, 9 in the bag, 9 picked, a total of three digits.
-    const wide: World = { ...shopWorld, items: { ...shopWorld.items, coffee: { ...shopWorld.items.coffee!, name: 'ENERGY DRINKS' } }, economy: { ...shopWorld.economy, bagLimit: 18 }, shops: { kiosk: { ...shopWorld.shops.kiosk!, stock: [{ item: 'coffee', price: 60 }] } } };
+    // The widest row there can be: a name of 12 letters, 9 in the bag, 9 picked, a total of three digits.
+    const wide: World = { ...shopWorld, items: { ...shopWorld.items, coffee: { ...shopWorld.items.coffee!, name: 'ENERGY DRINK' } }, economy: { ...shopWorld.economy, bagLimit: 18 }, shops: { kiosk: { ...shopWorld.shops.kiosk!, stock: [{ item: 'coffee', price: 60 }] } } };
     let state: GameState = { ...shopping(), coins: 9999, items: { coffee: 9 } };
     for (let i = 0; i < 8; i++) state = playIn(wide, state, 'right');
     const row = drawn(state, undefined, wide).draws.filter((draw) => draw.sheet === 'font' && draw.y === 24).sort((a, b) => a.x - b.x);
-    expect(textAt(row, 24)).toBe('>ENERGYDRINKSx9<9>540');
-    // The cursor, the two words of the name, the count, the picker and the price: each starts at least two pixels after the one before it ends.
+    expect(textAt(row, 24)).toBe('>ENERGYDRINKx9<9>540');
+    // The cursor, the two words of the name, the count, the picker and the price: each starts at least four pixels after the one before it ends (the cursor: two).
     const starts = row.filter((draw, i) => i > 0 && draw.x - (row[i - 1]!.x + row[i - 1]!.w) > 0).map((draw) => draw.x - (row[row.indexOf(draw) - 1]!.x + row[row.indexOf(draw) - 1]!.w));
     expect(starts).toHaveLength(5);
-    for (const gap of starts) expect(gap).toBeGreaterThanOrEqual(2);
+    expect(starts[0]).toBe(2);
+    for (const gap of starts.slice(1)) expect(gap).toBeGreaterThanOrEqual(4);
     expect(Math.max(...row.map((draw) => draw.x + draw.w))).toBe(SCREEN_W - 8);
   });
 
