@@ -247,6 +247,9 @@ test.describe('levels', () => {
     await expect(game(page)).toHaveAttribute('data-battle', '');
     expect(heard).toContain(`You gain ${level * 3} XP.`);
     await expect(game(page)).toHaveAttribute('data-xp', String(level * 3));
+    // It drops coins by its level too: two per level, on top of the fifteen of the start.
+    expect(heard).toContain(`You pick up ${level * 2} COINS.`);
+    await expect(game(page)).toHaveAttribute('data-coins', String(15 + level * 2));
   });
 
   test('a boss is worth a level or two, which shows in the energy', async ({ page }) => {
@@ -262,6 +265,119 @@ test.describe('levels', () => {
     await expect(game(page)).toHaveAttribute('data-xp', '30');
     await expect(game(page)).toHaveAttribute('data-level', '3');
     await expect(game(page)).toHaveAttribute('data-hp', '41');
+    // And a boss drops far more than a wild enemy: ten coins per level.
+    await expect(game(page)).toHaveAttribute('data-coins', '45');
+  });
+});
+
+test.describe('the cafe', () => {
+  test('is a building in town with a tune of its own, where the barista restores energy and moves', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    await expect(game(page)).toHaveAttribute('data-coins', '15');
+    await pilot.goTo('town:X');
+    await expect(game(page)).toHaveAttribute('data-map', 'cafe');
+    await expect(game(page)).toHaveAttribute('data-banner', 'Cafe');
+    await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+    await expect(status(page)).toHaveText('Cafe');
+    await pilot.goTo('cafe:B');
+    await pilot.press('a');
+    await expect(status(page)).toHaveText(/^Welcome to the CAFE!/);
+    await expect(game(page)).toHaveAttribute('data-cue', 'heal');
+    await pilot.read();
+    await expect(game(page)).toHaveAttribute('data-hp', '30');
+    // Back out onto the road in front of its door.
+    await pilot.goTo('cafe:m');
+    await expect(game(page)).toHaveAttribute('data-map', 'town');
+    await expect(game(page)).toHaveAttribute('data-music', 'town');
+    expect(errors).toEqual([]);
+  });
+
+  test('has a shop: A buys one, too few coins buy nothing, B leaves, and the money is in memory only', async ({ page }) => {
+    const { pilot } = await play(page);
+    const storage = await page.evaluate(() => Object.keys(localStorage).sort());
+    await pilot.start();
+    await pilot.goTo('town:X');
+    await pilot.goTo('cafe:V');
+    await pilot.press('a');
+    await expect(status(page)).toHaveText(/We take COINS/);
+    await expect(game(page)).toHaveAttribute('data-shop', '');
+    await pilot.read();
+    await expect(game(page)).toHaveAttribute('data-shop', 'cafe');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'stroopwafel');
+    await expect(status(page)).toHaveText('CAFE SHOP. You have 15 COINS. A buys one, B leaves. STROOPWAFEL, 5 COINS: Restores 10 energy. In your bag: 0.');
+    // The list is on the screen in place of the map: mostly the lightest shade, and no player walks about.
+    const place = { x: await game(page).getAttribute('data-x'), y: await game(page).getAttribute('data-y') };
+    await pilot.press('left');
+    await expect(game(page)).toHaveAttribute('data-x', place.x!);
+
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'coffee');
+    await expect(status(page)).toHaveText('COFFEE, 10 COINS: Restores 20 energy. In your bag: 2.');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-coins', '5');
+    await expect(game(page)).toHaveAttribute('data-cue', 'coin');
+    await expect(status(page)).toHaveText('You buy one COFFEE for 10 COINS. 5 COINS left.');
+    expect(pilot.state.items.coffee).toBe(3);
+
+    // The energy drink is 25: nothing is bought, and it says why.
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'energydrink');
+    await pilot.press('a');
+    await expect(status(page)).toHaveText('Not enough COINS: the ENERGY DRINK is 25, you have 5.');
+    await expect(game(page)).toHaveAttribute('data-coins', '5');
+    await expect(game(page)).toHaveAttribute('data-shop', 'cafe');
+
+    await pilot.press('b');
+    await expect(game(page)).toHaveAttribute('data-shop', '');
+    await expect(game(page)).toHaveAttribute('data-shop-row', '');
+    await expect(status(page)).toHaveText('Thanks! Come back any time.');
+    await pilot.read();
+
+    // Nothing was written anywhere: the coins live in the session. Leaving and playing again keeps them; a reload does not.
+    expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual(storage);
+    expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
+    await page.keyboard.press('Escape');
+    await input(page).fill('play');
+    await page.keyboard.press('Enter');
+    await expect(game(page)).toHaveAttribute('data-coins', '5');
+    await page.reload();
+    await input(page).fill('play');
+    await page.keyboard.press('Enter');
+    await expect(game(page)).toBeFocused();
+    await page.keyboard.press('z');
+    await expect(game(page)).toHaveAttribute('data-coins', '15');
+  });
+
+  test('the shop is bought from with the buttons on a touch device', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'The buttons exist on touch devices only');
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:X');
+    await pilot.goTo('cafe:V');
+    // From here on a finger does it: A to talk and to read on, the D-pad down the list, A to buy, B to leave.
+    await touch(page, 'A');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    for (let i = 0; i < 12 && (await game(page).getAttribute('data-dialogue')) === 'true'; i++) await touch(page, 'A');
+    await expect(game(page)).toHaveAttribute('data-shop', 'cafe');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'stroopwafel');
+    await touch(page, 'A');
+    await expect(game(page)).toHaveAttribute('data-coins', '10');
+    await expect(status(page)).toHaveText('You buy one STROOPWAFEL for 5 COINS. 10 COINS left.');
+    await touch(page, 'Down');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'coffee');
+    await touch(page, 'A');
+    await expect(game(page)).toHaveAttribute('data-coins', '0');
+    await touch(page, 'A');
+    await expect(status(page)).toHaveText('Not enough COINS: the COFFEE is 10, you have 0.');
+    await expect(game(page)).toHaveAttribute('data-coins', '0');
+    await touch(page, 'Up');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'stroopwafel');
+    await touch(page, 'B');
+    await expect(game(page)).toHaveAttribute('data-shop', '');
+    await expect(status(page)).toHaveText('Thanks! Come back any time.');
+    // The list fitted the screen of the phone: the whole Game Boy is still in view.
+    await expect(game(page).locator('canvas')).toBeInViewport({ ratio: 1 });
   });
 });
 
