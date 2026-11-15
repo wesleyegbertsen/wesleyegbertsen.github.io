@@ -630,7 +630,36 @@ test.describe('the deep cave', () => {
     return { x: x * 16 - left, y: y * 16 - top };
   };
 
-  test('a hidden ladder leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5', async ({ page }) => {
+  /**
+   * Starts writing down, frame by frame in the page, what the game shows while motion is on: how many frames a
+   * step was under way, how many a text was half typed, and every cell the player was on, in order.
+   */
+  const watch = (page: Page) =>
+    page.evaluate(() => {
+      const seen = { walking: 0, typing: 0, cells: [] as string[], on: true };
+      (window as unknown as { __seen: typeof seen }).__seen = seen;
+      const el = document.querySelector<HTMLElement>('[role="application"]')!;
+      let last = `${el.dataset.x},${el.dataset.y}`;
+      const look = () => {
+        if (!seen.on) return;
+        if (el.dataset.walking === 'true') seen.walking++;
+        if (el.dataset.dialogue === 'true' && el.dataset.typed === 'false') seen.typing++;
+        const cell = `${el.dataset.x},${el.dataset.y}`;
+        if (cell !== last) seen.cells.push(cell);
+        last = cell;
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+  /** Stops it and hands over what was seen. */
+  const watched = (page: Page) =>
+    page.evaluate(() => {
+      const { __seen: seen } = window as unknown as { __seen: { walking: number; typing: number; cells: string[]; on: boolean } };
+      seen.on = false;
+      return seen;
+    });
+
+  test('a hidden ladder leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5; the puzzles are played with motion', async ({ page }) => {
     test.slow();
     const { pilot, errors } = await play(page);
     await pilot.start();
@@ -688,27 +717,55 @@ test.describe('the deep cave', () => {
     await expect(status(page)).toHaveText('You pull the lever. The boulders roll back to where they started.');
     await pilot.read();
 
+    // From here on WITH motion, as most people play: a step takes ten ticks, a push goes at walking pace, a slide
+    // goes cell by cell and text types itself. The Pilot waits for every key to land before the next.
+    await pilot.motion(true);
+    await watch(page);
+
     // The gate is shut until both plates are down. The Pilot finds the pushes by searching its copy of the game.
-    await pilot.solve((state) => !!state.flags['deep:plates'] && !state.dialogue);
+    const pushes = await pilot.solve((state) => !!state.flags['deep:plates'] && !state.dialogue);
     await expect(game(page)).toHaveAttribute('data-pushed', '15,4 16,2');
     // The last page of what is said then (the first one says that both plates are down).
     await expect(status(page)).toContainText('will not move again.');
     await expect(game(page)).toHaveAttribute('data-dialogue', 'false');
+    // It really moved: steps were seen under way, about ten ticks each, and the text was seen half typed.
+    const hall = await watched(page);
+    const steps = pushes.filter((key) => key !== 'a').length;
+    expect(hall.walking).toBeGreaterThan(steps * 4);
+    expect(hall.typing).toBeGreaterThan(10);
 
-    // Through the open gate and on to the slick rock: one press is one slide.
+    // Through the open gate and on to the slick rock. Once with reduced motion: one press is the whole slide.
+    await pilot.motion(false);
     await pilot.goTo('deep:i');
     await expect(game(page)).toHaveAttribute('data-banner', 'Slick Rock');
     await pilot.press('down');
     await expect(game(page)).toHaveAttribute('data-y', '14');
     await expect(game(page)).toHaveAttribute('data-x', '19');
+    await expect(game(page)).toHaveAttribute('data-cue', 'bump');
     await expect(status(page)).toHaveText('You slide down 5 steps and stop against a rock.');
-    const slides = await pilot.solve((state) => state.x === 12 && state.y === 13);
-    expect(slides.length).toBeGreaterThanOrEqual(4);
-    await expect(game(page)).toHaveAttribute('data-x', '12');
+    // On into the rock: nothing moves, and the status says why.
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-y', '14');
+    await expect(status(page)).toHaveText('You cannot slide down: a rock is in the way.');
 
-    // The riddle: add, commit, push.
+    // The rest of it with motion: every slide passes over the cells between, one by one, and says where it ended.
+    await pilot.motion(true);
+    await watch(page);
+    await pilot.press('left');
+    const first = await watched(page);
+    await expect(status(page)).toHaveText(/^You slide left \d steps and stop against a (rock|fire bowl)\.$/);
+    const landed = Number(await game(page).getAttribute('data-x'));
+    expect(landed).toBeLessThan(18);
+    expect(first.cells).toEqual(Array.from({ length: 19 - landed }, (_, i) => `${18 - i},14`));
+    const slides = await pilot.solve((state) => state.x === 12 && state.y === 13);
+    expect(slides.length).toBeGreaterThanOrEqual(3);
+    await expect(game(page)).toHaveAttribute('data-x', '12');
+    await expect(status(page)).toHaveText(/^You slide left \d steps? and stop on firm ground\.$/);
+
+    // The riddle: add, commit, push. Three terminals whose text types itself.
     await pilot.solve((state) => !!state.flags['deep:shipped'] && !state.dialogue);
     await expect(status(page)).toContainText('rolls open.');
+    await pilot.motion(false);
 
     // The way to the boss is open and short, and the door still asks for level 5.
     await expect(game(page)).toHaveAttribute('data-level', '3');

@@ -8,6 +8,7 @@ import { routeTo } from '../src/features/terminal/game/engine/bot.ts';
 import { initialGame, step } from '../src/features/terminal/game/engine/engine.ts';
 import { solve } from '../src/features/terminal/game/engine/solve.ts';
 import { NO_INPUT, type GameState, type Input } from '../src/features/terminal/game/engine/types.ts';
+import { placeOf } from '../src/features/terminal/game/engine/wander.ts';
 
 // The same world as the site's, minus the projects (their module imports images, which Node cannot load here).
 // The maps are the same either way, so routes found in this copy are valid on the page.
@@ -29,8 +30,9 @@ export const gameOf = (page: Page) => page.getByRole('application');
 
 /**
  * Plays the game on the page and in a copy of the engine at the same time, so a test can ask for "walk to the
- * Academy's door" instead of a list of keys. Needs reduced motion on the page: one key is then one whole move.
- * Battles are random on the page, so they are played until they are over on both sides.
+ * Academy's door" instead of a list of keys. Start with reduced motion on the page: one key is then one whole
+ * move. `motion(true)` switches motion on later (for the puzzles of the deep cave); the Pilot then waits for
+ * every key to land. Battles are random on the page, so they are played until they are over on both sides.
  *
  * The townsfolk stroll, on the page and in the copy alike (their walk follows the game clock, not the dice), and
  * may step into the way: the route is planned again after every key.
@@ -44,9 +46,93 @@ export class Pilot {
     this.state = step(this.state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   }
 
+  /** The page plays with motion (see `motion`): every press is waited for until it has landed. */
+  private moving = false;
+
   async press(key: Press) {
-    await this.page.keyboard.press(KEYS[key]);
-    this.sim(key === 'up' || key === 'down' || key === 'left' || key === 'right' ? { dir: key, pressed: key } : { [key]: true });
+    const input = key === 'up' || key === 'down' || key === 'left' || key === 'right' ? { dir: key, pressed: key } : { [key]: true };
+    if (!this.moving) {
+      await this.page.keyboard.press(KEYS[key]);
+      this.sim(input);
+      return;
+    }
+    // With motion a text box of the copy is not turned key for key: `land` presses A as often as the page needs.
+    if (!(key === 'a' && this.state.dialogue)) await this.page.keyboard.press(KEYS[key]);
+    this.sim(input);
+    await this.land();
+  }
+
+  /**
+   * Switches motion on or off on the page in the middle of a game (the game follows the media query live). With
+   * motion on, one key is no longer one whole move there: a step takes ten ticks, a slide many, a push goes at
+   * walking pace and text types itself, while the copy still makes whole moves. So after every key the Pilot
+   * waits until the page has landed where the copy is (`land`). Only for places without wild enemies, and call it
+   * while nothing is under way.
+   */
+  async motion(on: boolean) {
+    await this.page.emulateMedia({ reducedMotion: on ? 'no-preference' : 'reduce' });
+    await expect(gameOf(this.page)).toHaveAttribute('data-motion', on ? 'full' : 'reduced');
+    this.moving = on;
+  }
+
+  /**
+   * Waits until the page is where the copy is: the same cell, the same way round, the boulders in the same
+   * places and no step, slide or push under way any more (`data-walking`; a direction pressed during one is
+   * lost). Then the text box: a page types itself, and A first finishes the page and then turns it, so A is
+   * pressed, one change of `data-page` or `data-typed` at a time, until the page shows the page the copy is on,
+   * or no text box when the copy has none.
+   */
+  private async land() {
+    const game = gameOf(this.page);
+    const { map, x, y, dir } = this.state;
+    const pushed = world.maps[map]!.objects.filter((object) => object.push).map((object) => placeOf(object, this.state)).map((at) => `${at.x},${at.y}`).join(' ');
+    const want = { map, x: String(x), y: String(y), dir, pushed, walking: 'false' };
+    await game.evaluate(
+      (el, wanted) =>
+        new Promise<void>((resolve, reject) => {
+          const started = performance.now();
+          const look = () => {
+            const data = (el as HTMLElement).dataset;
+            if (Object.entries(wanted).every(([name, value]) => data[name] === value)) return resolve();
+            if (performance.now() - started > 15000) return reject(new Error(`The game did not land: wanted ${JSON.stringify(wanted)}, got ${JSON.stringify({ ...data })}`));
+            requestAnimationFrame(look);
+          };
+          look();
+        }),
+      want,
+    );
+    const page = this.state.dialogue ? String(this.state.dialogue.page) : null;
+    const text = () => game.evaluate((el) => ({ open: (el as HTMLElement).dataset.dialogue === 'true', page: (el as HTMLElement).dataset.page ?? '', typed: (el as HTMLElement).dataset.typed === 'true' }));
+    /** Waits, frame by frame in the page, until the text box is no longer as it was. */
+    const changed = (was: Awaited<ReturnType<typeof text>>) =>
+      game.evaluate(
+        (el, before) =>
+          new Promise<void>((resolve, reject) => {
+            const started = performance.now();
+            const look = () => {
+              const data = (el as HTMLElement).dataset;
+              if (`${data.dialogue}|${data.page}|${data.typed}` !== before) return resolve();
+              if (performance.now() - started > 10000) return reject(new Error(`The text box did not change: ${before}`));
+              requestAnimationFrame(look);
+            };
+            look();
+          }),
+        `${was.open}|${was.page}|${was.typed}`,
+      );
+    for (let i = 0; i < 200; i++) {
+      const now = await text();
+      if (page === null ? !now.open : now.open && now.page === page) return;
+      if (!now.open) {
+        // The copy has a text box and the page not yet: the key that opens it has been pressed, it comes by itself.
+        await expect(game).toHaveAttribute('data-dialogue', 'true');
+        continue;
+      }
+      // A is only pressed on a page that is typed out, once, and then the change is waited for: a press on a guess
+      // could land after the box has closed, and A would then talk to whatever the player faces.
+      if (now.typed) await this.page.keyboard.press('z');
+      await changed(now);
+    }
+    throw new Error('The text box on the page never caught up with the copy');
   }
 
   /** From the title screen to standing in town, the intro read. */
@@ -57,6 +143,11 @@ export class Pilot {
 
   /** Presses A until the text box is closed, on both sides. */
   async read() {
+    if (this.moving) {
+      for (let i = 0; i < 40 && this.state.dialogue; i++) this.sim({ a: true });
+      await this.land();
+      return;
+    }
     const game = gameOf(this.page);
     for (let i = 0; i < 40 && (await game.getAttribute('data-dialogue')) === 'true'; i++) await this.page.keyboard.press('z');
     await expect(game).toHaveAttribute('data-dialogue', 'false');

@@ -66,6 +66,28 @@ describe('Game', () => {
     expect(game).toHaveAttribute('data-map', 'main');
   });
 
+  it('says whether a step is under way and how far the text box is, for whoever drives the game with motion', async () => {
+    // A step that was begun with motion: the cell is already the one it ends on.
+    const stepping = setup({ ...started(), y: 3, walk: { fromX: 2, fromY: 2, t: 0 } });
+    expect(stepping.game).toHaveAttribute('data-walking', 'true');
+    expect(stepping.game).toHaveAttribute('data-page', '');
+    expect(stepping.game).toHaveAttribute('data-typed', 'true');
+    stepping.view.unmount();
+    // A text of two pages, the first half typed.
+    const { game, user } = setup({ ...started(), dialogue: { pages: [['Hello there.'], ['Bye.']], page: 0, shown: 3 } });
+    expect(game).toHaveAttribute('data-walking', 'false');
+    expect(game).toHaveAttribute('data-page', '0');
+    expect(game).toHaveAttribute('data-typed', 'false');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-page', '0');
+    expect(game).toHaveAttribute('data-typed', 'true');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-page', '1');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-dialogue', 'false');
+    expect(game).toHaveAttribute('data-page', '');
+  });
+
   it('maps the keyboard: WASD and arrows walk, X goes back, P opens the bag, H gives a hint', async () => {
     const { game, user } = setup(started());
     await user.keyboard('s');

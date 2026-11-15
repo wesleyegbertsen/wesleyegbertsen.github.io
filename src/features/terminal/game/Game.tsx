@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
 import { bannerText } from './engine/banner.ts';
+import { pageLength } from './engine/text.ts';
 import { SETTINGS, type Cue, type Dir, type GameEvent, type GameState, type World } from './engine/types.ts';
 import { placeOf } from './engine/wander.ts';
 import styles from './Game.module.css';
@@ -98,8 +99,11 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : state.battle.quick ? 'quick' : 'boss') : '';
     // Where the things that can be pushed on this map are now (boulders), as "x,y x,y", in the order of the map.
     const pushed = (world.maps[state.map]?.objects ?? []).filter((object) => object.push).map((object) => placeOf(object, state)).map((at) => `${at.x},${at.y}`).join(' ');
+    // Whether the page of the open text box is typed out to the end (with motion it types itself).
+    const page = state.dialogue?.pages[state.dialogue.page];
+    const typed = !page || state.dialogue!.shown >= pageLength(page);
     const root = focusRef.current;
-    const key = [pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [!!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -109,6 +113,13 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         pushed,
         // A hop over a ledge is under way. Only seen when motion is allowed: with reduced motion it is over at once.
         jump: String(!!state.walk?.jump),
+        // A step, a slide or a push is under way: `x` and `y` are already where it ends, this says it has not ended
+        // yet. With motion a direction pressed meanwhile is lost, so whoever drives the game waits for `false`.
+        walking: String(!!state.walk),
+        // The page of the open text box (0 for the first; empty without one) and whether it is typed out. With
+        // motion A first finishes the page and only then turns it.
+        page: state.dialogue ? String(state.dialogue.page) : '',
+        typed: String(typed),
         scene: state.scene,
         map: state.map,
         x: String(state.x),
@@ -257,6 +268,8 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}
       data-lcd={lcd ? 'on' : 'off'}
+      // Which way the game runs right now: it follows the reduced-motion setting live, also in the middle of a game.
+      data-motion={reducedMotion ? 'reduced' : 'full'}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
       onPointerDown={sound.unlock}
