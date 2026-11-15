@@ -218,8 +218,8 @@ describe('the puzzles of the deep cave', () => {
     expect(tileAt(deep, from.x, from.y).slide ?? false).toBe(false);
     const textOf = (id: string) => deep.objects.find((object) => object.id === id)!.branches[0]!.do.flatMap((action) => ('say' in action ? action.say : [])).join(' ');
     expect(textOf('deep:i')).toBe(DEEP_TEXT.slick.join(' '));
-    expect(textOf('deep:i')).toMatch(/cannot steer/);
-    expect(textOf('deep:i')).toMatch(/a rock, a fire bowl or the wall/);
+    // A riddle more than a manual: what stops a slide, in the words of the place.
+    expect(textOf('deep:i')).toMatch(/stone, fire or a wall/);
     // Short enough to read in passing: the long description is on a note of its own, on the other side of the way in.
     expect(DEEP_TEXT.slick.length).toBeLessThanOrEqual(3);
     const words = deep.objects.find((object) => object.id === 'deep:v')!;

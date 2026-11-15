@@ -16,6 +16,9 @@ import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY,
  *   here: change the data module and the people in the game say the new thing.
  * - Everything else (greetings, jokes, signs, boss lines) is plain text in this file. Change it freely. A text is
  *   wrapped and split into pages by the game; each string in a `say` list starts on a new page.
+ * - The voice: short, in the world, never a tutorial. Signs give a name and maybe a line of flavour; people talk
+ *   like people. Nobody says which key to press, which way to walk or where something is: a hint is a riddle or a
+ *   remark. The career facts are told as conversation. A test (story.test.ts) keeps out the words of a tutorial.
  * - Only printable ASCII has a glyph in the font; accents are folded (é becomes e) and anything else shows as `?`.
  * - The helpers below (sign, person, chest, door, boss...) cover the usual things. An object is a list of
  *   branches: the first whose `when` holds runs its actions in order (say, give, take, flag, badge, heal, battle,
@@ -31,10 +34,10 @@ import { ACADEMY, CAFE, CAVE, CAVE_MAP, CONTACT, DEEP_MAP, EAST, HILLS, LIBRARY,
  * - The `name` of a map is what the label at the top of the screen says when the player walks in, and what the
  *   status region announces. Keep it under 25 characters. Named parts of a map are REGIONS in maps.ts.
  * - The roads east and west are routes: the way out crosses tall grass, the way back hops down ledges (see
- *   maps.ts). Their signposts say so (ROUTE_BACK), and name the levels of the wild things from AREAS.
+ *   maps.ts). Their signposts only name the road.
  * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
- *   A new hobby needs a line there, a digit on the HILLS map, a picture (scripts/sprites/scenery.mjs) and a name
- *   in STOP_NAMES for the signposts. HILLS_FOLK is what the people of the hills say: a draft too.
+ *   A new hobby needs a line there, a digit on the HILLS map and a picture (scripts/sprites/scenery.mjs). The hills
+ *   have one sign, at the entrance, with their name. HILLS_FOLK is what the people of the hills say: a draft too.
  * - The cave has a second floor, the deep cave, with three puzzles (see DEEP_MAP in maps.ts for the map and the
  *   rules). DEEP_TEXT is what is said down there: a draft, rewrite it. PUZZLES lists the puzzles for the test
  *   that solves each of them by playing: when you move a puzzle, keep its entry pointing at the right place.
@@ -161,29 +164,6 @@ export const HOBBIES: { at: string; id: string; sprite: string; animated?: boole
 ];
 
 /**
- * What the signposts in Hobby Hills call each stop, by its `id` in HOBBIES. A new hobby needs a name here, and a
- * mention on one of the two signposts (`p` and `o` in the hills below): a test fails for a stop no signpost names.
- */
-export const STOP_NAMES: Record<string, string> = {
-  astronomy: 'TELESCOPE',
-  gaming: 'ARCADE',
-  japan: 'GATE',
-  cats: 'CAT',
-  retro: 'OLD CONSOLE',
-  animals: 'RABBIT',
-  soldering: 'SOLDERING BENCH',
-  language: 'KANJI BOARD',
-  homeserver: 'HOME SERVER',
-  science: 'FLASK',
-};
-
-/** "the TELESCOPE, the ARCADE and the GATE": the stops with these ids, as a signpost lists them. */
-const stops = (...ids: string[]): string => {
-  const names = ids.map((id) => `the ${STOP_NAMES[id]}`);
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : (names[0] ?? '');
-};
-
-/**
  * The people of Hobby Hills, and the notes on the doors of the houses nobody is home in. They talk about the
  * hobbies, in a friendly voice. A DRAFT: rewrite them freely. `who` is the first name from the profile.
  */
@@ -198,6 +178,8 @@ export const HILLS_FOLK = {
   angler: () => ['I come here to fish. I have never caught a thing.', 'That is the nice part of a hobby: it does not have to ship.'],
   /** Strolls south of the pond. */
   dog: () => ['Woof! (It has a stick. It would like you to know about the stick.)'],
+  /** The keeper of the stamp rally, by the pond: before, and with a full card. */
+  rally: (who: string, stops: number) => [`A stamp card. ${stops} things in these hills mean something to ${who}; each one leaves a stamp.`, 'A full card is worth something. Ask me then.'],
   /** Strolls too. */
   cat: () => ['Mrrp. (A second cat. In these hills there is always a second cat.)'],
   /** The doors of the two cottages and of the shed. */
@@ -205,12 +187,6 @@ export const HILLS_FOLK = {
   neighbour: () => ['Locked. Through the glass you can see a shelf of games, sorted by year.'],
   shed: () => ['A shed. Inside, something beeps. A note: "Do not unplug. It finally works."'],
 };
-
-/**
- * The last page of the signposts on the two roads out of town. The roads are routes now: nobody gets out without
- * a walk through the tall grass, and the ledges make the way back a dry one.
- */
-export const ROUTE_BACK = 'The ledges across the road can only be hopped down on the way back: that way you stay out of the grass.';
 
 /** The mat at the bottom of a room: step on it to go back to town, in front of that building's door. */
 const exitTo = (townDoor: string): ObjectSpec => ({
@@ -229,13 +205,13 @@ const into = (map: string): Spot => ({ map, at: 'm', dy: -1, dir: 'up' });
  */
 export const CAFE_TEXT = {
   /** The sign beside the door, in town. */
-  sign: ['CAFE. Fresh coffee, a seat to rest in, and a small shop.', 'Lost a battle in town? This is where you wake up.'],
+  sign: ['CAFE. Coffee, a chair, a quiet corner.'],
   /** The barista, after she has restored energy and moves. */
-  barista: ['Welcome to the CAFE! Sit down for a moment. There: energy and moves are restored.', 'If a battle in town ever goes wrong, you wake up right here. I keep a seat free.'],
+  barista: ['There. Sit for a while.', 'Rough day out there? I always keep a chair free.'],
   /** The same, for someone without a single COFFEE: she hands one over. */
-  refill: ['Welcome to the CAFE! Sit down for a moment. There: energy and moves are restored.', 'No COFFEE in your bag? Here, one to go. It is on the house.'],
+  refill: ['There. Sit for a while.', 'And a COFFEE for the road. On the house.'],
   /** The shopkeeper, before the shop opens. */
-  shop: [`Snacks and drinks for the road! We take ${ECONOMY.currency}: wild things drop a few, bosses drop a lot.`],
+  shop: [`Something for the road? We take ${ECONOMY.currency}.`],
   /** A regular at a table. */
   regular: (who: string) => ['They know my order by heart here.', `${who} says the best ideas come after the second cup. I am on my fourth. Still waiting.`],
 };
@@ -348,49 +324,42 @@ export const DEEP_TEXT = {
   bricked: [
     'A doorway, bricked up. The mortar is still fresh.',
     'Chalked on a brick: "INCIDENT ROOM moved. People kept walking in."',
-    'A cold draught comes through the bricks. Something is behind them, but this is not the way in.',
+    'A cold draught comes through the bricks.',
   ],
   /**
    * The hint for whoever is stuck, said by the one who is lost (after their own lines). It says what to look for
    * and the kind of place, never where: a test fails when it names a direction or the room.
    */
-  hint: [
-    'One thing I did learn down here: not every wall is as solid as it looks.',
-    'Where the cave comes to a dead end, as far from the daylight as you can get, look closely at the rock. A crack gives it away. Lean on it.',
-  ],
+  hint: ['Funny thing about dead ends down here. Some of them whistle.', 'A crack is just a door that has not made up its mind.'],
   /** Looking at the cracked wall (A): what is seen first, and then what is said as it opens, once and for good. */
   crack: ['This rock has a crack in it. A draught whistles through.'],
   crackOpen: ['You lean on it. It gives way! A passage leads on into the dark.'],
   /** The note in the hall of the boulders, and what its gate and its lever say. */
   boulders: [
-    'A note: "Two plates in the floor, two boulders. Walk into a boulder to push it."',
-    '"Hold both plates down and the gate opens. Stuck? The lever by the way in puts the boulders back."',
+    'A note: "Two plates, two stones, one gate."',
+    '"The lever forgives every mistake."',
     // For whoever cannot see the hall: where things are, in words.
     '"The plates: one near the top right corner, one at the lower right. The boulders: one at the top left, one in the middle. A fire bowl and a rock stand in the way."',
   ],
-  platesDown: ['Both plates are down. To the east, a gate rattles open. The boulders settle and will not move again.'],
-  gate: ['An iron gate. It will not move. Something in this hall holds it shut.'],
+  platesDown: ['Both plates are down. Somewhere close, a gate rattles open. The boulders settle and will not move again.'],
+  gate: ['An iron gate. Something in this hall holds it shut.'],
   lever: ['You pull the lever. The boulders roll back to where they started.'],
   leverDone: ['The lever is stuck. The boulders are where they belong.'],
   /** The note at the slick rock, on the right of the way in: what a slide is. */
-  slick: [
-    'A note: "Slick rock ahead: the pale, shiny floor. One step onto it and you slide. You cannot steer and you cannot stop."',
-    '"You go on until a rock, a fire bowl or the wall stops you, or until the ground is firm again. Then you pick the next direction."',
-    '"The way on is at the far left. Plan the slide before you take it."',
-  ],
+  slick: ['A note, the ink run: "The pale rock never lets go. Only stone, fire or a wall will catch you."', '"Look before you slide."'],
   /**
    * The second note there, on the left: the floor itself in words. Only the first line is written here; the rest
    * is read off the map (slickInWords above), so it follows the map by itself.
    */
-  slickWords: ['A second note, in big letters, for whoever cannot see the floor:', ...slickInWords(DEEP_MAP, CAVE)],
+  slickWords: ['A second note, in big letters, the floor itself in words:', ...slickInWords(DEEP_MAP, CAVE)],
   /** The riddle of the pipeline: the note, the three terminals and the gate. */
   riddle: ['A sticky note: "The gate ships with the code. First stage your work. Then seal it with a message. Then send it off."', '"One wrong step and you start over."'],
   add: ['$ git add .', 'Staged. A green light comes on: 1 of 3.'],
   commit: ['$ git commit -m "open the gate"', 'Sealed with a message. A second light comes on: 2 of 3.'],
-  push: ['$ git push', 'Sent off. All three lights are green. To the west, a gate rolls open.'],
+  push: ['$ git push', 'Sent off. All three lights are green. A gate rolls open.'],
   wrong: (command: string) => [`$ git ${command}`, 'Not in that order. Every light goes out: start over.'],
   shipped: ['Everything is up to date.'],
-  pipelineGate: ['A steel gate with three dark lights above it. The terminals in this room must have something to do with it.'],
+  pipelineGate: ['A steel gate with three dark lights above it.'],
 };
 
 /**
@@ -541,7 +510,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     under: '#',
     branches: [
       { when: { flag: 'errand:letter:done' }, do: [{ say: ['The letter arrived? Wonderful. Neither snow nor merge conflicts stop the post.'] }] },
-      { when: { flag: 'errand:letter' }, do: [{ say: ['That LETTER is for the head librarian. The LIBRARY is at the bottom right of town.'] }] },
+      { when: { flag: 'errand:letter' }, do: [{ say: ['That LETTER is for the head librarian. She likes it quiet.'] }] },
       {
         do: [
           { say: ['Post for the CONTACT OFFICE! Mostly job offers, these days.', 'Say, my round is long. Would you take this to the head librarian?'] },
@@ -566,16 +535,16 @@ export function buildMaps(data: FsData): BuiltMap[] {
       a: sign('ACADEMY. Where it all started.'),
       O: door(
         into('office'),
-        { when: { item: 'diploma' }, deny: 'THE OFFICE only hires graduates. Come back with a DIPLOMA from the ACADEMY.' },
+        { when: { item: 'diploma' }, deny: 'A brass plate by the door: "Graduates only."' },
         'door-brick',
       ),
-      o: sign('THE OFFICE. Graduates only.', current ? `Vacancies: none. ${who} works at ${current.company} now, as ${current.title}.` : 'Vacancies: ask inside.'),
+      o: sign('THE OFFICE. Vacancies: none.', current ? `A name on the bell: ${who}, ${current.title}, ${current.company}.` : 'The bell has no name on it yet.'),
       S: door(into('workshop'), undefined, 'door-wood'),
-      s: sign('WORKSHOP. Side projects are built here.'),
-      L: door(into('library'), { when: { item: 'librarycard' }, deny: 'Members only. The WORKSHOP hands out LIBRARY CARDs.' }, 'door-stone'),
-      l: sign('LIBRARY. Members only.'),
-      P: door(into('contact'), { when: { badges: all }, deny: `The CONTACT OFFICE opens for holders of ${all} badges.` }),
-      p: sign(`CONTACT OFFICE. Opens for ${all} badges.`),
+      s: sign('WORKSHOP. Mind the sawdust.'),
+      L: door(into('library'), { when: { item: 'librarycard' }, deny: 'Locked. A card reader by the door blinks red.' }, 'door-stone'),
+      l: sign('LIBRARY. Members only. Quiet, please.'),
+      P: door(into('contact'), { when: { badges: all }, deny: `Locked. ${all} round dents in the door, each the size of a badge.` }),
+      p: sign('CONTACT OFFICE.', 'Open to those who have seen it all.'),
       X: door(into('cafe'), undefined, 'door-brick'),
       b: sign(...CAFE_TEXT.sign),
       C: chest('chest:pizza', 'pizza', '"'),
@@ -583,11 +552,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       // Signposts.
       '0': sign(
         `CAREER TOWN. ${plural(jobs.length, 'employer')}, ${plural(data.education.length, 'school')}, ${plural(data.projects.length, 'side project')} and ${plural(data.skills.length, 'skill')} live here.`,
-        'North: the plaza and the CONTACT OFFICE. Over the bridge, that is.',
-        'The main road leaves town on both sides. East: HOBBY HILLS. West: the mountain and its CAVE.',
-        'Tired? The CAFE is up the road, by the duck pond.',
       ),
-      '7': sign('STREAM OF COMMITS. It never stops. Mind the merge conflicts between the planks.', 'North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.'),
+      '7': sign('STREAM OF COMMITS. It never stops. Mind the merge conflicts between the planks.'),
       '8': sign(
         oldest ? `TOWN PLAZA. ${who} has been building software since ${yearOf(oldest.start)}. The fountain is older.` : 'TOWN PLAZA. The fountain is older than the town.',
       ),
@@ -601,7 +567,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         'maker',
         [
           `Fresh skills! Today: ${skillNames.slice(0, 3).join(', ') || 'none, sold out'}.`,
-          'Not for sale, mind you. You earn them. The LIBRARY has the full list.',
+          'Not for sale, mind you. Those are earned, one shelf at a time.',
         ],
       ),
       H: stroll(person('kid', [`When I grow up I want to be a ${data.profile.role}, just like ${who}!`]), 2, 90),
@@ -622,7 +588,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       m: stroll(
         person('gardener', [
           data.projects[0] ? `I named this flower bed ${data.projects[0].name}. A side project needs daily care too.` : 'I talk to my plants. They are great listeners.',
-          'Rumour has it gold stars are hidden all over town. Look behind things.',
+          'Something glints in this town now and then. Not everything that shines is on the path.',
         ]),
         2,
         120,
@@ -649,11 +615,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       E: boss(
         'exam',
         ['Heard about every school? Then prove it.', 'Nobody leaves the ACADEMY without the FINAL EXAM!'],
-        [
-          { badge: 'education' },
-          { give: 'diploma' },
-          { say: ['THE OFFICE across town only hires graduates. Show them your DIPLOMA.'] },
-        ],
+        [{ badge: 'education' }, { give: 'diploma' }, { say: ['Signed and stamped. Somewhere in town, a door just got friendlier.'] }],
       ),
       '*': star('academy'),
       m: exitTo('A'),
@@ -686,7 +648,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     solid: true,
     trigger: 'interact',
     branches: [
-      { when: { flag: 'keycard' }, do: [{ say: [...(first ?? []), 'Thanks for the coffee! The server room is up there.'] }] },
+      { when: { flag: 'keycard' }, do: [{ say: [...(first ?? []), 'Thanks for the coffee. The servers hum louder today.'] }] },
       {
         when: { item: 'coffee' },
         do: [
@@ -696,7 +658,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
           { give: 'keycard' },
         ],
       },
-      { do: [{ say: [...(first ?? []), 'I would lend you my KEY CARD, but not before coffee. The machine is in the corner.'] }] },
+      { do: [{ say: [...(first ?? []), 'I would lend you my KEY CARD, but not before coffee. Nobody gets anything from me before coffee.'] }] },
     ],
   };
   const office: MapSpec = {
@@ -713,13 +675,13 @@ export function buildMaps(data: FsData): BuiltMap[] {
         trigger: 'step',
         branches: [
           { when: { item: 'keycard' }, do: [], pass: true },
-          { do: [{ say: ['The server room is locked. A colleague with a KEY CARD could help.'] }] },
+          { do: [{ say: ['Locked. A card reader blinks red.'] }] },
         ],
       },
       B: boss(
         'legacy',
         ['Deep in the server room, something old stirs...', 'It is LEGACY CODE! Nobody dares to touch it.'],
-        [{ badge: 'experience' }, { say: ['Years of experience, earned. The other buildings have badges too.'] }],
+        [{ badge: 'experience' }, { say: ['Years of experience, earned. The old code even has tests now.'] }],
       ),
       J: stuck,
       '*': star('office'),
@@ -739,11 +701,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       B: boss(
         'scope',
         ['Psst. Could the project ALSO do this? And this? And...', 'It is SCOPE CREEP!'],
-        [
-          { badge: 'projects' },
-          { give: 'librarycard' },
-          { say: ['The LIBRARY is at the bottom right of town. Your card opens it.'] },
-        ],
+        [{ badge: 'projects' }, { give: 'librarycard' }, { say: ['Under the cut features, a LIBRARY CARD. Someone was going to read up on all this.'] }],
       ),
       '*': star('workshop'),
       m: exitTo('S'),
@@ -760,7 +718,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
       B: boss(
         'deadline',
         ['Tick. Tock. This badge is due... NOW!', 'It is the DEADLINE!'],
-        [{ badge: 'skills' }, { say: [`Skills, proven. With ${all} badges the CONTACT OFFICE at the top of town opens.`] }],
+        [{ badge: 'skills' }, { say: ['Skills, proven. Somewhere in town, a door with round dents is listening.'] }],
       ),
       // The other end of the postman's errand.
       R: {
@@ -827,7 +785,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         when: { count: { item: COLLECT, min: total } },
         do: [{ say: [`All ${total} GOLD STARs! You looked under every rock. My TROPHY is yours.`] }, { flag: 'errand:stars' }, { give: 'trophy' }, { coins: REWARDS.stars }],
       },
-      { do: [{ say: [`I collect GOLD STARs. ${total} are hidden in and around town.`, 'Bring them all and my TROPHY is yours. START shows how many you have.'] }] },
+      { do: [{ say: [`I collect GOLD STARs. ${total} of them are out there, in and around town.`, 'My TROPHY goes to whoever finds them all.'] }] },
     ],
   };
 
@@ -842,11 +800,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
     objects: {
       '(': wayOut({ map: 'town', at: ')', dx: -1, dir: 'left' }),
       ')': wayOut({ map: 'hills', at: '(', dx: 1, dir: 'right' }),
-      s: sign(
-        'EAST ROAD. HOBBY HILLS lies ahead.',
-        `The way there crosses tall grass. The wild things in it are Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}.`,
-        ROUTE_BACK,
-      ),
+      s: sign('EAST ROAD.', 'The grass here is tall, and it rustles.'),
       C: chest('chest:east', 'energydrink', '"'),
     },
   };
@@ -861,22 +815,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       '(': wayOut({ map: 'east', at: ')', dx: -1, dir: 'left' }),
       // The cat and the rabbit sit in the grass; the other stops stand on a few cobbles.
       ...Object.fromEntries(HOBBIES.map((stop) => [stop.at, hobby(stop.id, stop.sprite, stop.lines, stop.animated, ['cats', 'animals'].includes(stop.id) ? undefined : '#')])),
-      s: sign(
-        `HOBBY HILLS. What ${who} does when the laptop is closed.`,
-        `${stamps} stops, ${stamps} stamps. Look at each one, then see the rally keeper by the pond.`,
-        'The ring road passes every stop: walk it once round. The paths lead in to the pond.',
-      ),
-      // Where the stops are, from two corners of the ring road.
-      p: sign(
-        'RING ROAD, north side.',
-        `East along the road: ${stops('astronomy', 'gaming', 'japan')}.`,
-        `Inside the ring: ${stops('cats', 'animals')} on this side of the pond, ${stops('retro')} across it.`,
-      ),
-      o: sign(
-        'RING ROAD, south side.',
-        `West along the road: ${stops('science', 'homeserver')}.`,
-        `Inside the ring: ${stops('language')} right here, ${stops('soldering')} by the shed in the west.`,
-      ),
+      // The one sign of the hills: their name, and nothing about where things are.
+      s: sign('HOBBY HILLS.'),
       '?': {
         sprite: 'maker',
         solid: true,
@@ -893,7 +833,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
               { coins: REWARDS.rally },
             ],
           },
-          { do: [{ say: [`Welcome to the HOBBY HILLS stamp rally! ${stamps} stops, one stamp each.`, 'Fill your card and come back to me. START shows how many you have.'] }] },
+          { do: [{ say: HILLS_FOLK.rally(who, stamps) }] },
         ],
       },
       // The people of the hills. The ones with stroll() walk about, off the roads and away from each other.
@@ -923,15 +863,11 @@ export function buildMaps(data: FsData): BuiltMap[] {
       // You walk into the mountain going left, and come out in the cave at its east side, still going left.
       D: door(
         { map: 'cave', at: 'm', dx: -1, dir: 'left' },
-        { when: { level: CAVE_LEVEL }, deny: `The CAVE is no place for a beginner. Come back at Lv ${CAVE_LEVEL}: wild battles and bosses make you stronger.` },
+        { when: { level: CAVE_LEVEL }, deny: `Cold air breathes out of the mountain. Scratched by the entrance: "Lv ${CAVE_LEVEL} and up."` },
         'cavemouth',
         'cave',
       ),
-      s: sign(
-        `WEST ROAD. Ahead: the mountain and its CAVE. Lv ${CAVE_LEVEL} and up.`,
-        `The way there crosses tall grass. The wild things in it are Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}. In the CAVE: Lv ${AREAS.cave!.levels[0]} to ${AREAS.cave!.levels[1]}, and it is dark.`,
-        ROUTE_BACK,
-      ),
+      s: sign('WEST ROAD.', 'The mountain ahead keeps its own counsel.'),
       C: chest('chest:west', 'energydrink', '"'),
     },
   };
@@ -1017,7 +953,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         trigger: 'step',
         branches: [
           { when: { level: DEEP_CAVE_LEVEL }, do: [], pass: true },
-          { do: [{ say: [`A heavy door. A red light blinks: "INCIDENT ROOM. Lv ${DEEP_CAVE_LEVEL} and up." The wild things on the floor above are good practice.`] }] },
+          { do: [{ say: [`A heavy door. A red light blinks: "INCIDENT ROOM. Lv ${DEEP_CAVE_LEVEL} and up."`] }] },
         ],
       },
       B: boss(
@@ -1030,7 +966,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
         spriteWhen: { flag: 'chest:prize', sprite: 'chest-open' },
         solid: true,
         trigger: 'interact',
-        branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. The ladder beside it leads out of the mountain.'] }] }],
+        branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. Daylight falls down the ladder beside it.'] }] }],
       },
       L: { sprite: 'ladder', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' }, cue: 'cave' }] }] },
     },
@@ -1057,20 +993,17 @@ export function buildMaps(data: FsData): BuiltMap[] {
 
 /** The first lines of the game. */
 export const intro = (data: FsData): string[] => [
-  `Welcome to Career Town! Here, ${firstName(data)}'s career is a place to explore.`,
-  `Every building is a chapter with a badge to win. Collect all ${BADGES.length} and the CONTACT OFFICE opens.`,
-  'Walk up to people and press A to talk. START opens your bag, SELECT gives a hint.',
-  'Tired, or beaten? The CAFE in town restores you, and sells snacks for the COINS that enemies drop.',
-  'There is more beyond the town: HOBBY HILLS to the east, a mountain with a CAVE to the west. Winning battles makes you stronger.',
+  `Career Town. Every building here keeps a chapter of ${firstName(data)}'s career, and a badge for whoever earns it.`,
+  'The roads lead out of town, too. Nobody here minds a curious visitor.',
 ];
 
-/** What Select says: the first one whose condition holds. */
+/** What Select says: the first one whose condition holds. A thought, not a direction. */
 export const HINTS: { when?: Cond; text: string }[] = [
-  { when: { badges: BADGES.length }, text: 'All badges! The CONTACT OFFICE at the top of town is open.' },
-  { when: { notFlag: 'beat:exam' }, text: 'Start at the ACADEMY, top left. Talk to everyone, then face the examiner.' },
-  { when: { notFlag: 'beat:legacy' }, text: 'Your DIPLOMA opens THE OFFICE, top right. Someone there wants coffee.' },
-  { when: { notFlag: 'beat:scope' }, text: 'The WORKSHOP on the left side of town has a badge too.' },
-  { text: 'Your LIBRARY CARD opens the LIBRARY, bottom right.' },
+  { when: { badges: BADGES.length }, text: 'Every badge is yours. Somewhere a door with round dents has been waiting for exactly that.' },
+  { when: { notFlag: 'beat:exam' }, text: 'Every career starts in a classroom.' },
+  { when: { notFlag: 'beat:legacy' }, text: 'A diploma opens doors. Behind one of them, someone has not had their coffee yet.' },
+  { when: { notFlag: 'beat:scope' }, text: 'Some things are built with your hands, after hours.' },
+  { text: 'A card, a quiet room, a lot of shelves. Shh.' },
 ];
 
 /** The lines of the ending screen. */

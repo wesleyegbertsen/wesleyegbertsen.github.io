@@ -153,8 +153,7 @@ describe('the barista', () => {
     // A rest: its jingle (`rest`), played through before she speaks when motion is allowed.
     expect(result.cues).toContain('rest');
     expect(thing(cafe, 'B').branches.every((branch) => branch.do.some((action) => 'heal' in action && action.rest === REST_TICKS))).toBe(true);
-    expect(result.events.at(-1)?.text).toMatch(/^Welcome to the CAFE!/);
-    expect(result.state.dialogue?.pages.flat().join(' ')).toContain('energy and moves are restored');
+    expect(result.events.at(-1)?.text).toBe(CAFE_TEXT.barista[0]);
     // She turns to the player: a picture of her own for every side.
     expect(result.state.face).toMatchObject({ id: 'cafe:B', dir: 'down' });
   });
@@ -466,6 +465,6 @@ describe('a bot that never buys', () => {
     const texts = run.events.map((event) => event.text);
     expect(texts.some((text) => text.startsWith(`${SHOPS.cafe!.name}. You have`))).toBe(true);
     expect(texts).toContain(SHOPS.cafe!.bye![0]);
-    expect(texts.some((text) => text.startsWith('Welcome to the CAFE!'))).toBe(true);
+    expect(texts).toContain(CAFE_TEXT.barista[0]);
   });
 });

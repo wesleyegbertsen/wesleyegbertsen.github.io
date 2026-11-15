@@ -91,9 +91,13 @@ describe('the adventure in the terminal', () => {
     expect(status).toHaveTextContent('');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-scene', 'world');
-    expect(status).toHaveTextContent(`Welcome to Career Town! Here, ${profile.name.split(' ')[0]}'s career is a place to explore.`);
+    // The intro, page by page: the first names the town, the next go on with it.
+    expect(status).toHaveTextContent(/^Career Town\./);
+    const first = status.textContent;
     await user.keyboard('z');
-    expect(status).toHaveTextContent(/Every building is a chapter/);
+    expect(status.textContent).not.toBe(first);
+    expect(status).not.toHaveTextContent(/^$/);
+    expect(`${first} ${status.textContent}`).toContain(profile.name.split(' ')[0]!);
   });
 
   it('walks with the arrow keys without letting them scroll the page, while Tab is left alone', async () => {

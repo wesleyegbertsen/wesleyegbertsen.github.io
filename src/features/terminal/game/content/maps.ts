@@ -231,8 +231,8 @@ export const EAST = [
  * Scenery: two cottages (doors a and b, on the ring road) and a shed (door S) nobody is home in, each under a roof
  * of two rows; a sand garden with a rock by the kanji board (y is a rock in the sand), flower beds, fences, benches.
  * People: ? keeps the stamp rally, P plays the arcade, B looks after the gate; H a kid, D a dog and m a second cat
- * stroll (keep their ranges apart, and never the only way to a stop). s is the signpost at the entrance, p and o the
- * ones that say where the stops are. ( leads back to the road.
+ * stroll (keep their ranges apart, and never the only way to a stop). s is the one sign, at the entrance: it only
+ * names the place. ( leads back to the road.
  */
 export const HILLS = [
   'TYTTYTTTYTTYTTTTYTTYTTTYTTYTTT',
@@ -240,7 +240,7 @@ export const HILLS = [
   'T.#1#.u.RRR.P#2#..RRRB;#3#;..T',
   'T.i##..,Wawn.###i.wbW,.###.i.T',
   'T.==========================.T',
-  'T,=p,..T..,..n=..,....#5#.Y=,T',
+  'T,=.,..T..,..n=..,....#5#.Y=,T',
   'T.=..4,..+++++++++++..###..=.T',
   'T.=,....u+*~~^~~~~*+.,..H..=,T',
   'T,=.fff..+~~~~~~d~~+..,,..u=.T',
@@ -251,7 +251,7 @@ export const HILLS = [
   'T.=...jjj.,..?=.;;..,..,...=,T',
   'T,=#7#vS>..D..=...m...#8#,.=.T',
   'T.=###.=.,.,..=.,.,.T.###n.=.T',
-  'T.=.,..=.;;,..=.;;.,...=..o=,T',
+  'T.=.,..=.;;,..=.;;.,...=...=,T',
   'T.==========================.T',
   'T,i..#..,i..,..#i..,...i..,..T',
   'T.,.#9#...Y..,#0#..u..,.,.,.,T',

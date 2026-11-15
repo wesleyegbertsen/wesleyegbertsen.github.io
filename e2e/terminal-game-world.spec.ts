@@ -470,12 +470,10 @@ test.describe('beyond the town', () => {
     await expect(status(page)).not.toHaveText(/HOBBY STAMP/);
     expect(pilot.state.items.stamp).toBe(1);
 
-    // A signpost at the corner of the ring road says where the stops are.
-    await pilot.goTo('hills:p');
+    // The one sign of the hills, at the entrance, only names the place.
+    await pilot.goTo('hills:s');
     await pilot.press('a');
-    await expect(status(page)).toHaveText('RING ROAD, north side.');
-    await pilot.press('a');
-    await expect(status(page)).toHaveText('East along the road: the TELESCOPE, the ARCADE and the GATE.');
+    await expect(status(page)).toHaveText('HOBBY HILLS.');
     await pilot.read();
     // Someone fishes at the end of the jetty in the pond: out onto the planks, over the water, to talk.
     await pilot.goTo('hills:E');

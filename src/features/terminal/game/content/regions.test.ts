@@ -19,7 +19,7 @@ import { DELTA, landing, resolveSpot } from '../engine/world.ts';
 import { coinsFor } from '../engine/shop.ts';
 import { AREAS, BOSS_MIN_LEVEL, CAVE_LEVEL, DEEP_CAVE_LEVEL, FINAL_BOSSES, FINAL_LEVEL, REWARDS, STAMP } from './battles.ts';
 import { TRACKS } from './music.ts';
-import { DEEP_FLAGS, DEEP_TEXT, FINALE, HILLS_FOLK, HOBBIES, ROUTE_BACK, STOP_NAMES } from './story.ts';
+import { DEEP_FLAGS, DEEP_TEXT, FINALE, HILLS_FOLK, HOBBIES } from './story.ts';
 import { buildWorld } from './world.ts';
 
 /**
@@ -238,7 +238,8 @@ describe('the corner by the Contact Office', () => {
     const text = said(town!);
     expect(text).not.toMatch(/CONSCIOUSNESS/i);
     expect(text).toContain('STREAM OF COMMITS.');
-    expect(text).toContain('North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.');
+    // A name and a joke, no directions.
+    expect(text).not.toMatch(/North:|South:/);
   });
 });
 
@@ -375,16 +376,15 @@ describe('the roads out of town', () => {
     expect(indoors.cues).toContain('door');
   });
 
-  it('say on their signposts how strong the wild things are, that the way out crosses the grass and the way back does not', () => {
+  it('have one signpost each that names the road and leaves the rest to the player', () => {
     for (const map of [east!, west!]) {
-      expect(said(map), map.id).toContain('The way there crosses tall grass.');
-      expect(said(map), map.id).toContain(ROUTE_BACK);
-      expect(said(map), map.id).not.toMatch(/road itself is safe/i);
+      const signs = map.objects.filter((object) => object.sprite === 'sign');
+      expect(signs, map.id).toHaveLength(1);
+      const text = signs[0]!.branches.flatMap((branch) => branch.do).flatMap((action) => ('say' in action ? action.say : [])).join(' ');
+      expect(text, map.id).toMatch(/^(EAST|WEST) ROAD\./);
+      // No levels, no ledges, no directions: the player finds out.
+      expect(text, map.id).not.toMatch(/Lv \d|ledge|hop|way back|ahead:/i);
     }
-    expect(ROUTE_BACK).toMatch(/ledges/);
-    expect(said(east!)).toContain(`Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}`);
-    expect(said(west!)).toContain(`Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}`);
-    expect(said(west!)).toContain(`Lv ${CAVE_LEVEL} and up`);
   });
 
   it('have a chest in the tall grass each', () => {
@@ -415,7 +415,7 @@ describe('Hobby Hills', () => {
   it('has no wild enemies, a signpost with the name from the data, and can be walked without leaving the paths much', () => {
     expect(hills!.encounters).toBeUndefined();
     expect(cellsOf(hills!, (x, y) => !!tileOf(hills!, x, y)!.grass)).toEqual([]);
-    expect(said(hills!)).toContain(`What ${profile.name.split(' ')[0]} does when the laptop is closed.`);
+    expect(said(hills!)).toContain(profile.name.split(' ')[0]!);
     const entrance = resolveSpot(world, { map: 'hills', at: '(', dx: 1 });
     const reach = dryReach(hills!, entrance);
     for (const stop of HOBBIES) {
@@ -534,17 +534,13 @@ describe('Hobby Hills as a place', () => {
     expect(stepsFromRoad(thing('?'))).toBeLessThanOrEqual(1);
   });
 
-  it('has signposts that name every stop, at the entrance and at two corners of the ring', () => {
+  it('has one sign, at the entrance, that only names the place', () => {
     const signs = hills!.objects.filter((object) => object.sprite === 'sign');
-    expect(signs.length).toBeGreaterThanOrEqual(3);
-    for (const sign of signs) expect(stepsFromRoad(sign), sign.id).toBe(0);
-    const text = said(hills!);
-    for (const stop of HOBBIES) {
-      expect(STOP_NAMES[stop.id], stop.id).toBeDefined();
-      expect(text, stop.id).toContain(`the ${STOP_NAMES[stop.id]}`);
-    }
-    expect(Object.keys(STOP_NAMES).sort()).toEqual(HOBBIES.map((stop) => stop.id).sort());
-    expect(text).toContain('The ring road passes every stop');
+    expect(signs.map((sign) => sign.id)).toEqual(['hills:s']);
+    expect(stepsFromRoad(signs[0]!)).toBe(0);
+    const entrance = resolveSpot(world, { map: 'hills', at: '(', dx: 1 });
+    expect(Math.abs(signs[0]!.x - entrance.x) + Math.abs(signs[0]!.y - entrance.y)).toBeLessThanOrEqual(3);
+    expect(signs[0]!.branches.flatMap((branch) => branch.do)).toEqual([{ say: [`${hills!.name.toUpperCase()}.`] }]);
   });
 
   it('is no longer mostly grass: water, sand, cobbles, fences, flower beds, benches, trees and houses', () => {
@@ -699,7 +695,7 @@ describe('the cave', () => {
     expect(CAVE_LEVEL).toBe(3);
     const low = press(mouth(), { dir: 'left', pressed: 'left' });
     expect(low.map).toBe('west');
-    expect(low.dialogue?.pages.flat().join(' ')).toContain(`Come back at Lv ${CAVE_LEVEL}`);
+    expect(low.dialogue?.pages.flat().join(' ')).toContain(`Lv ${CAVE_LEVEL} and up`);
   });
 
   it('is walked into going left, and the player arrives at its east side still facing left', () => {
