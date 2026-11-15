@@ -23,6 +23,10 @@ describe('complete', () => {
     expect(complete('ne', ctx).line).toBe('neofetch ');
   });
 
+  it('completes play', () => {
+    expect(complete('pl', ctx)).toEqual({ line: 'play ', candidates: [] });
+  });
+
   it('completes a file for cat', () => {
     expect(complete('cat ab', ctx)).toEqual({ line: 'cat about.txt ', candidates: [] });
   });
@@ -53,7 +57,7 @@ describe('complete', () => {
   it('completes a command name for help', () => {
     expect(complete('help ne', ctx).line).toBe('help neofetch ');
     expect(complete('help c', ctx).candidates).toEqual(['cat', 'cd', 'clear', 'contact', 'cowsay']);
-    expect(complete('help ', ctx).candidates).toHaveLength(23);
+    expect(complete('help ', ctx).candidates).toHaveLength(24);
   });
 
   it('completes a theme name', () => {

@@ -41,4 +41,28 @@ describe('SessionProvider', () => {
     expect(result.current.entries).toHaveLength(MAX_ENTRIES);
     expect(result.current.entries.at(-1)!.text).toBe('line 10004');
   });
+
+  it('starts in shell mode with no game progress', () => {
+    const { result } = renderHook(() => useTerminalSession(), { wrapper });
+    expect(result.current.mode).toBe('shell');
+    expect(result.current.game.current).toBeNull();
+  });
+
+  it('keeps the game store across a remount, and writing to it does not re-render', () => {
+    let renders = 0;
+    const { result, rerender } = renderHook(
+      () => {
+        renders++;
+        return useTerminalSession();
+      },
+      { wrapper },
+    );
+    const store = result.current.game;
+    const before = renders;
+    store.current = { x: 7 } as never;
+    expect(renders).toBe(before);
+    rerender();
+    expect(result.current.game).toBe(store);
+    expect(result.current.game.current).toEqual({ x: 7 });
+  });
 });

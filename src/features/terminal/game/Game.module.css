@@ -1,0 +1,104 @@
+/* The game fills the space the log and the prompt line take, so the panel keeps its size when `play` starts. */
+.game {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  outline: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.game:focus-visible {
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+/* The same height as the log, which the game replaces. */
+.area {
+  position: relative;
+  height: min(55vh, 28rem);
+  overflow-y: auto;
+}
+
+/* Pixel art scaled to the panel's width: crisp edges, and a 30 x 12 tile picture that fits a 360px phone. */
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.status {
+  min-height: 1.5em;
+  color: inherit;
+}
+
+.contact {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+/* Touch devices only: the component does not render the pad otherwise. */
+.pad {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.padButton {
+  flex: 1;
+  min-height: 2.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Laid out like the command line it replaces (same prompt width, same wrapping), so the panel keeps its size. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.6ch;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.ghost {
+  visibility: hidden;
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex: 1 1 8ch;
+  gap: 1rem;
+  min-width: 0;
+  font-size: max(16px, 1rem);
+}
+
+.barButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

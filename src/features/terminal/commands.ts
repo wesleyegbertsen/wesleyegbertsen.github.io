@@ -3,6 +3,7 @@ import { THEMES } from '../theme/themes.ts';
 import { cowsayLines, neofetchLines } from './art.ts';
 import {
   aboutLines,
+  careerLines,
   contactLines,
   educationListLines,
   experienceListLines,
@@ -17,7 +18,8 @@ export type Effect =
   | { type: 'cd'; path: string }
   | { type: 'navigate'; to: string }
   | { type: 'theme'; index: number }
-  | { type: 'matrix' };
+  | { type: 'matrix' }
+  | { type: 'game' };
 
 export type Result = { lines: string[]; effects?: Effect[] };
 
@@ -186,6 +188,14 @@ export const commands: Command[] = [
     name: 'matrix', group: 'fun',
     help: 'follow the white rabbit',
     run: () => ({ lines: ['Wake up, guest...'], effects: [{ type: 'matrix' }] }),
+  },
+  {
+    name: 'play', group: 'fun',
+    help: 'run through my career (a platformer); "play skip" prints it as text',
+    run: (args, ctx) =>
+      args[0] === 'skip'
+        ? { lines: careerLines(ctx.data) }
+        : { lines: ['Starting the career run. Esc or q to leave.'], effects: [{ type: 'game' }] },
   },
   { name: 'cowsay', group: 'fun', help: 'a cow says it', run: (args) => ({ lines: cowsayLines(args.join(' ')) }) },
   {

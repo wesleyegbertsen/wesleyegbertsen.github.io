@@ -1,3 +1,4 @@
+import type { FsData } from './fs.ts';
 import type { Education } from '../../data/education.ts';
 import type { Job } from '../../data/experience.ts';
 import type { profile as realProfile } from '../../data/profile.ts';
@@ -76,5 +77,22 @@ export function projectMarkdownLines(project: Project): string[] {
     `Live:   ${project.links.live}`,
     `GitHub: ${project.links.github}`,
     ...(project.links.extras ?? []).map((extra) => `${extra.label}: ${extra.href}`),
+  ];
+}
+
+/** The whole career as plain text: what the platformer's skip path prints. */
+export function careerLines(data: FsData): string[] {
+  return [
+    'Experience',
+    ...experienceListLines(data.experience),
+    '',
+    'Education',
+    ...educationListLines(data.education),
+    '',
+    'Projects',
+    ...projectListLines(data.projects),
+    '',
+    'Contact',
+    ...contactLines(data.profile),
   ];
 }
