@@ -164,7 +164,8 @@ test.describe('the adventure in the terminal', () => {
     await pilot.fight();
     await expect(game(page)).toHaveAttribute('data-battle', '');
     await expect(game(page)).toHaveAttribute('data-badges', '1');
-    await expect(game(page)).toHaveAttribute('data-hp', '35');
+    // Base 30, the badge 5, and the two levels the exam was worth 6.
+    await expect(game(page)).toHaveAttribute('data-hp', '41');
 
     await pilot.press('start');
     await expect(game(page)).toHaveAttribute('data-menu', 'items');
@@ -191,7 +192,22 @@ test.describe('the adventure in the terminal', () => {
     await pilot.press('a');
     await pilot.read();
     await pilot.goTo('office:D');
-    await beat('office:B');
+    // LEGACY CODE is worth level 5, and level 5 offers a new move: the battle stops at the offer.
+    await pilot.goTo('office:B');
+    await pilot.press('a');
+    await pilot.read();
+    await pilot.fight(true);
+    await expect(game(page)).toHaveAttribute('data-learn', 'hotfix');
+    await expect(game(page)).toHaveAttribute('data-level', '5');
+    await expect(status(page)).toContainText('You can learn HOTFIX');
+    await pilot.press('down');
+    await expect(status(page)).toHaveText('Replace DEPLOY: power 16, hits 70%, 5 PP');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-learn', '');
+    await expect(status(page)).toHaveText('You forget DEPLOY and learn HOTFIX!');
+    expect(pilot.state.moves).toEqual(['debug', 'refactor', 'hotfix', 'break']);
+    await pilot.fight();
+    await expect(game(page)).toHaveAttribute('data-badges', '2');
     await pilot.goTo('office:D');
     await pilot.goTo('office:m');
     await pilot.goTo('town:S');
