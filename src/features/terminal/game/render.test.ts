@@ -105,7 +105,8 @@ describe('drawGame', () => {
 
   it('draws the player between two cells while walking, on the walking frame', () => {
     const walking = { ...started(), x: 3, dir: 'right' as const, walk: { fromX: 2, fromY: 2, t: WALK_TICKS / 2 } };
-    expect(spriteDraws(drawn(walking).draws, 'player-right-1')).toEqual([expect.objectContaining({ x: 24 + 2.5 * TILE })]);
+    // Cell 3,2: the second stride (the strides take turns per cell).
+    expect(spriteDraws(drawn(walking).draws, 'player-right-2')).toEqual([expect.objectContaining({ x: 24 + 2.5 * TILE })]);
   });
 
   it('types the dialogue: only the characters shown so far', () => {
@@ -362,18 +363,43 @@ describe('who looks where', () => {
     expect(facingSprite('teacher', teacher, { ...there(), face: { id: 'yard:d', dir: 'up' } })).toBe('teacher');
   });
 
-  it('draws the dog looking the way it walks, and keeps its side when it goes up or down', () => {
+  it('draws the dog looking the way it walks: its own pictures going away and coming closer', () => {
     const roam = (dir: 'up' | 'down' | 'left' | 'right', side?: 'left' | 'right') => ({ ...there(), clock: 500, roam: { 'yard:d': { x: 3, y: 1, fromX: 3, fromY: 1, at: 0, dir, side } } });
     expect(facingSprite('dog', dog, there())).toBe('dog');
     expect(facingSprite('dog', dog, roam('right', 'right'))).toBe('dog-right');
     expect(facingSprite('dog', dog, roam('left', 'left'))).toBe('dog');
-    expect(facingSprite('dog', dog, roam('up', 'right'))).toBe('dog-right');
-    expect(facingSprite('dog', dog, roam('down', 'right'))).toBe('dog-right');
-    expect(facingSprite('dog', dog, roam('down', 'left'))).toBe('dog');
+    // Up and down are drawn from behind and from the front, whatever side it looked to before.
+    expect(facingSprite('dog', dog, roam('up', 'right'))).toBe('dog-up');
+    expect(facingSprite('dog', dog, roam('up', 'left'))).toBe('dog-up');
+    expect(facingSprite('dog', dog, roam('down', 'right'))).toBe('dog-down');
+    expect(facingSprite('dog', dog, roam('down', 'left'))).toBe('dog-down');
     expect(shown(roam('right', 'right'), 'dog-right')).toBe(1);
     expect(shown(roam('right', 'right'), 'dog')).toBe(0);
-    // Talked to from its right while it looked left: it turns round.
+    expect(shown(roam('up', 'left'), 'dog-up')).toBe(1);
+    expect(shown(roam('down', 'left'), 'dog-down')).toBe(1);
+    // Talked to from its right while it looked left: it turns round. From above or below: it turns there too.
     expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'right' } })).toBe('dog-right');
+    expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'left' } })).toBe('dog');
+    expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'up' } })).toBe('dog-up');
+    expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'down' } })).toBe('dog-down');
+  });
+
+  it('has a back and two sides for the cat, and the plain picture looking at you', () => {
+    const cat = { ...teacher, id: 'yard:c', sprite: 'cat' };
+    const faced = (dir: 'up' | 'down' | 'left' | 'right') => facingSprite('cat', cat, { ...there(), face: { id: 'yard:c', dir } });
+    expect(faced('up')).toBe('cat-up');
+    expect(faced('left')).toBe('cat-left');
+    expect(faced('down')).toBe('cat');
+    expect(faced('right')).toBe('cat');
+  });
+
+  it('has a picture of its own for every side of everyone who can turn', () => {
+    const atlas: Record<string, readonly number[]> = sprites;
+    for (const person of ['teacher', 'dev', 'maker', 'librarian', 'wesley', 'kid', 'elder', 'postman', 'gardener']) {
+      const places = [person, `${person}-up`, `${person}-left`, `${person}-right`].map((name) => atlas[name]?.join());
+      expect(places.every((place) => place !== undefined), person).toBe(true);
+      expect(new Set(places).size, person).toBe(4);
+    }
   });
 
   it('gives a person who strolls a picture per direction', () => {
@@ -390,8 +416,9 @@ describe('who looks where', () => {
     expect(facingSprite('sign', sign, { ...there(), face: { id: 'yard:s', dir: 'left' } })).toBe('sign');
   });
 
-  it('walks up and down on both feet: one foot on one cell, the other on the next', () => {
-    const walking = (x: number, y: number, dir: 'up' | 'down' | 'left') => ({ ...there(), x, y, dir, walk: { fromX: x, fromY: y + (dir === 'up' ? 1 : dir === 'down' ? -1 : 0), t: WALK_TICKS / 2 } });
+  it('walks on both feet in every direction: one stride on one cell, the other on the next', () => {
+    const back = { up: [0, 1], down: [0, -1], left: [1, 0], right: [-1, 0] } as const;
+    const walking = (x: number, y: number, dir: 'up' | 'down' | 'left' | 'right') => ({ ...there(), x, y, dir, walk: { fromX: x + back[dir][0], fromY: y + back[dir][1], t: WALK_TICKS / 2 } });
     for (const dir of ['up', 'down'] as const) {
       expect(shown(walking(2, 2, dir), `player-${dir}-1`), dir).toBe(1);
       expect(shown(walking(2, 1, dir), `player-${dir}-2`), dir).toBe(1);
@@ -399,10 +426,17 @@ describe('who looks where', () => {
       // The first half of a step is the standing picture.
       expect(shown({ ...walking(2, 1, dir), walk: { fromX: 2, fromY: 1, t: 0 } }, `player-${dir}-0`), dir).toBe(1);
     }
-    expect(shown(walking(2, 1, 'left'), 'player-left-1')).toBe(1);
-    // The two feet are each other's mirror image on the sheet: different pictures.
-    expect(sprites['player-up-1']).not.toEqual(sprites['player-up-2']);
-    expect(sprites['player-down-1']).not.toEqual(sprites['player-down-2']);
+    // Sideways the arm swings forward on one cell and back on the next.
+    for (const dir of ['left', 'right'] as const) {
+      expect(shown(walking(2, 2, dir), `player-${dir}-1`), dir).toBe(1);
+      expect(shown(walking(1, 2, dir), `player-${dir}-2`), dir).toBe(1);
+      expect(shown(walking(1, 2, dir), `player-${dir}-1`), dir).toBe(0);
+      expect(shown(walking(0, 2, dir), `player-${dir}-1`), dir).toBe(1);
+      expect(shown({ ...walking(1, 2, dir), walk: { fromX: 1, fromY: 2, t: 0 } }, `player-${dir}-0`), dir).toBe(1);
+    }
+    // Every frame is a picture of its own on the sheet.
+    const places = (['up', 'down', 'left', 'right'] as const).flatMap((dir) => ([0, 1, 2] as const).map((frame) => sprites[`player-${dir}-${frame}`].join()));
+    expect(new Set(places).size).toBe(12);
   });
 });
 

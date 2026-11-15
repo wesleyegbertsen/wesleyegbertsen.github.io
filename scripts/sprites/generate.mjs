@@ -152,50 +152,12 @@ function buildTiles() {
   return { sheet, atlas };
 }
 
-/**
- * The people are drawn once, looking at you. Their other sides are worked out here, so a new person needs one
- * drawing: seen from behind the face is covered by the hair (or the hat), seen from the side one eye is left and
- * the back of the head shows. Rough, but it reads at 16 pixels.
- */
-function turned(pixels, side) {
-  const SKIN = 0;
-  const inside = (row) => {
-    const first = row.findIndex((value) => value !== CLEAR);
-    return first < 0 ? null : [first + 1, row.length - 1 - [...row].reverse().findIndex((value) => value !== CLEAR) - 1];
-  };
-  // The face: the rows of the head (above the shoulders) that show skin.
-  const face = [];
-  for (let y = 1; y <= 7; y++) {
-    const span = inside(pixels[y]);
-    if (span && pixels[y].slice(span[0], span[1] + 1).includes(SKIN)) face.push(y);
-  }
-  if (face.length < 2) return pixels;
-  // What covers the head: the shade most seen above the face, or skin for a bald head.
-  const counts = [0, 0, 0, 0];
-  for (let y = 1; y < face[0]; y++) {
-    const span = inside(pixels[y]);
-    if (span) for (let x = span[0]; x <= span[1]; x++) if (pixels[y][x] !== CLEAR) counts[pixels[y][x]]++;
-  }
-  const hair = counts[2] + counts[3] === 0 ? SKIN : counts[3] >= counts[2] ? 3 : 2;
-  const out = pixels.map((row) => [...row]);
-  // The last row of the face is the chin or the neck: it stays.
-  for (const y of face.slice(0, -1)) {
-    const [from, to] = inside(pixels[y]);
-    const eyes = pixels[y].slice(from, to + 1).some((value) => value === 3);
-    for (let x = from; x <= to; x++) {
-      if (side === 'up') out[y][x] = hair;
-      else out[y][x] = x > to - 3 ? (hair === SKIN ? 3 : hair) : SKIN;
-    }
-    if (side === 'left' && eyes) out[y][from + 1] = 3;
-  }
-  return out;
-}
-
 function buildSprites() {
   const people = Object.fromEntries(Object.entries(characters).map(([name, rows]) => [name, parse(name, rows, TILE, TILE)]));
+  // Everyone who can turn is drawn by hand from the front, from behind and from the left; the right is the mirror.
   for (const name of facing) {
-    people[`${name}-up`] = turned(people[name], 'up');
-    people[`${name}-left`] = turned(people[name], 'left');
+    const missing = [name, `${name}-up`, `${name}-left`].filter((side) => !people[side]);
+    if (missing.length > 0) throw new Error(`${name} can turn but has no drawing for: ${missing.join(', ')}`);
     people[`${name}-right`] = mirror(people[`${name}-left`]);
   }
   for (const [name, source] of Object.entries(mirrored)) people[name] = mirror(people[source]);

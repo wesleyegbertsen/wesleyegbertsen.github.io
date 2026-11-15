@@ -34,7 +34,8 @@ describe('the sprite sheets', () => {
     expect(font.width).toBe(FONT.cols * FONT.cellW);
     expect(font.height).toBe(FONT.lightY * 2);
     expect(Math.ceil((FONT.last - FONT.first + 1) / FONT.cols) * FONT.cellH).toBe(FONT.lightY);
-    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(9000);
+    // Raised from 9000: every side of every person, the dog and the player's strides are drawn by hand now.
+    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(10000);
   });
 
   it('have a font in which every character looks different from every other, the M included', () => {
@@ -56,7 +57,42 @@ describe('the sprite sheets', () => {
 
   it('have a player sprite for every direction and walking frame', () => {
     for (const direction of ['up', 'down', 'left', 'right']) {
-      for (const frame of [0, 1]) expect(sprites).toHaveProperty([`player-${direction}-${frame}`]);
+      for (const frame of [0, 1, 2]) expect(sprites).toHaveProperty([`player-${direction}-${frame}`]);
+    }
+  });
+
+  it('swing the arms of the player with the walk: the walking frames differ from standing above the legs', () => {
+    // The pixel rows of a character, mirrors included, straight from the definitions.
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, mirrored }) => { const rows = (name) => characters[name] ?? rows(mirrored[name]).map((row) => [...row].reverse().join('')); console.log(JSON.stringify(Object.fromEntries(['up', 'down', 'left', 'right'].flatMap((dir) => [0, 1, 2].map((frame) => ['player-' + dir + '-' + frame, rows('player-' + dir + '-' + frame)]))))); })";
+    const frames = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as Record<string, string[]>;
+    // Rows 9 to 12 hold the shoulders, the arms and the hands; the legs are below.
+    const arms = (name: string) => frames[name]!.slice(9, 13).join('/');
+    const head = (name: string) => frames[name]!.slice(0, 9).join('/');
+    for (const direction of ['up', 'down', 'left', 'right']) {
+      const [standing, one, two] = [0, 1, 2].map((frame) => `player-${direction}-${frame}`) as [string, string, string];
+      expect(arms(one), one).not.toBe(arms(standing));
+      expect(arms(two), two).not.toBe(arms(standing));
+      expect(arms(one), direction).not.toBe(arms(two));
+      // The head stays still, or the player would wobble (the mirrored frames have a symmetric head).
+      if (direction === 'left' || direction === 'right') expect(head(one)).toBe(head(standing));
+    }
+  });
+
+  it('draw everyone who can turn by hand: a back without a face and a side that is not the front', () => {
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, facing }) => console.log(JSON.stringify({ facing, characters })))";
+    const { facing, characters } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { facing: string[]; characters: Record<string, string[]> };
+    expect(facing).toHaveLength(9);
+    for (const name of [...facing, 'dog', 'cat']) {
+      const front = name === 'dog' ? characters['dog-down']! : characters[name]!;
+      const back = characters[`${name}-up`]!;
+      expect(back, name).toHaveLength(16);
+      expect(back.join(''), name).not.toBe(front.join(''));
+      // A drawing from the front or the back is the same left and right, give or take a detail; a profile is not.
+      const lopsided = (rows: string[]) => rows.filter((row) => row !== [...row].reverse().join('')).length;
+      if (name === 'dog' || name === 'cat') continue;
+      const side = characters[`${name}-left`]!;
+      expect(lopsided(side), name).toBeGreaterThanOrEqual(6);
+      expect(lopsided(side), name).toBeGreaterThan(lopsided(front));
     }
   });
 });

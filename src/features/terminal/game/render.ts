@@ -78,8 +78,9 @@ const drawable = (name: string) => Object.hasOwn(sprites, name) || Object.hasOwn
 
 /**
  * The picture of a thing that can look somewhere: turned to the player while it is talked to, else the way of
- * its last step. People have a picture per side (the plain one looks at you); animals drawn from the side have
- * a left and a right one and keep their side when they go up or down. Anything else has just the one picture.
+ * its last step. People have a picture per side (the plain one looks at you). The dog is drawn from the side
+ * (the plain one looks left) and has its own pictures going away (`-up`) and coming closer (`-down`); an animal
+ * without those keeps its side when it goes up or down. Anything else has just the one picture.
  */
 export function facingSprite(sprite: string, object: GameObject, state: GameState): string {
   const roaming = state.roam[object.id];
@@ -178,8 +179,8 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     const oy = Math.round((roaming.fromY + (at.y - roaming.fromY) * along) * TILE);
     drawSprite(ctx, sheets, facingSprite(sprite, object, state), ox - camX, oy - camY - (along < 1 && Math.floor(along * 4) % 2 === 1 ? 1 : 0));
   }
-  // Up and down the player steps with one foot, then the other: the cell tells which.
-  const foot = (state.dir === 'up' || state.dir === 'down') && (state.x + state.y) % 2 === 1 ? 2 : 1;
+  // The player steps with one foot, then the other, and the arms swing against them: the cell tells which.
+  const foot = (state.x + state.y) % 2 === 1 ? 2 : 1;
   const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? foot : 0;
   drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY);
 
