@@ -273,6 +273,18 @@ describe('a living map', () => {
     expect(textAt(drawn({ ...noted, clock: 20 }, undefined, living).draws, 4)).toBe('');
   });
 
+  it('draws the small star in the place of the mark, in the note and on the Start menu, where the thing has a picture', () => {
+    const starry: World = { ...living, collect: [{ item: 'star', total: 3, label: 'STARS', mark: '*', icon: 'star-mini' }] };
+    const [sx, sy] = tiles['star-mini'];
+    const icons = (draws: Draw[]) => draws.filter((draw) => draw.sheet === 'tiles' && draw.sx === sx && draw.sy === sy);
+    const noted = drawn({ ...there(), clock: 10, notice: { text: '* 2/3', until: 20 } }, undefined, starry).draws;
+    expect(icons(noted)).toEqual([expect.objectContaining({ x: 5, y: 4 })]);
+    expect(textAt(noted, 4)).toBe('2/3');
+    const menu = drawn({ ...there(), menu: { tab: 'items', cursor: 0 } }, undefined, starry).draws;
+    expect(icons(menu)).toEqual([expect.objectContaining({ x: 8, y: 94 })]);
+    expect(textAt(menu, 94)).toBe('STARS0/3');
+  });
+
   describe('the label with the name of a place', () => {
     // 'Park' is four letters: a box of 35 by 16, centred at the top.
     const label = (clock: number, slide = true): GameState => ({ ...there(), clock, banner: { text: 'Park', at: 0, slide } });

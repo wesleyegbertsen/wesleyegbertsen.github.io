@@ -237,11 +237,14 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     drawText(ctx, sheets, name, left + 6, drop - NOTE_H + 4);
   }
 
-  // The note after a find: the count, in the corner, for a moment. While the label is out it hangs under it.
+  // The note after a find: the count, in the corner, for a moment. While the label is out it hangs under it. A
+  // thing to collect with a picture of its own shows that picture in the place of its mark.
   if (state.notice && state.clock < state.notice.until) {
     const { text } = state.notice;
     box(ctx, 0, drop, text.length * FONT.cellW + 11, NOTE_H);
-    drawText(ctx, sheets, text, 6, drop + 4);
+    const icon = world.collect?.find((collect) => collect.icon && text.startsWith(`${collect.mark} `))?.icon;
+    if (icon) drawSprite(ctx, sheets, icon, 5, drop + 4);
+    drawText(ctx, sheets, icon ? ` ${text.slice(1)}` : text, 6, drop + 4);
   }
 }
 
@@ -341,7 +344,11 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
   // The foot of the list: what was found of the things to collect.
   (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
     const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
-    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), COLLECT_Y);
+    // A picture of its own goes before the word.
+    const indent = collect.icon ? 10 : 0;
+    const left = i === 0 ? 8 : rightAligned(text, SCREEN_W - 8) - indent;
+    if (collect.icon) drawSprite(ctx, sheets, collect.icon, left, COLLECT_Y);
+    drawText(ctx, sheets, text, left + indent, COLLECT_Y);
   });
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);

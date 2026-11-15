@@ -31,7 +31,7 @@ export function buildWorld(data: FsData): World {
     hints: HINTS,
     ending: ending(data),
     collect: [
-      { item: COLLECT, total: countCollectibles(specs, COLLECT), label: 'STARS', mark: '*' },
+      { item: COLLECT, total: countCollectibles(specs, COLLECT), label: 'STARS', mark: '*', icon: 'star-mini' },
       { item: STAMP, total: countCollectibles(specs, STAMP), label: 'STAMPS', mark: '#' },
     ],
     music: MUSIC,

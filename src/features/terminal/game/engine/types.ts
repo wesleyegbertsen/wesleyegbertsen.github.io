@@ -224,8 +224,11 @@ export type World = {
   music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
 };
 
-/** `label` is the word on the Start menu, `mark` the sign before the count in the corner note. */
-export type Collect = { item: string; total: number; label: string; mark: string };
+/**
+ * `label` is the word on the Start menu, `mark` the sign before the count in the corner note. `icon` is a small
+ * picture (8 by 8, a name on the sheets) drawn in the place of the mark, and before the label on the menu.
+ */
+export type Collect = { item: string; total: number; label: string; mark: string; icon?: string };
 
 export type Levels = {
   /** The highest level. */
