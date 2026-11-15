@@ -198,7 +198,8 @@ export function step(state: GameState, input: Input, world: World, options: Opti
 
   let current = state;
   if (current.walk) {
-    const t = current.walk.t + 1;
+    // With reduced motion a step that was under way (the setting changed mid-step) is finished at once.
+    const t = ctx.instant ? WALK_TICKS : current.walk.t + 1;
     if (t < WALK_TICKS) return done({ ...current, walk: { ...current.walk, t } });
     current = arrive({ ...current, walk: null }, ctx);
     // Still holding the direction: keep walking without a pause between the cells.

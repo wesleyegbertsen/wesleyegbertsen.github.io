@@ -123,6 +123,12 @@ describe('walking', () => {
     expect(tick(state).state).toBe(state);
   });
 
+  it('finishes a step that was under way when reduced motion is switched on', () => {
+    const walking = tick(started(), { ...NO_INPUT, dir: 'right' }).state;
+    expect(walking.walk).not.toBeNull();
+    expect(step(walking, NO_INPUT, world, { instant: true }).state).toMatchObject({ x: 3, walk: null });
+  });
+
   it('moves one whole cell per press with reduced motion', () => {
     expect(play(started(), 'down')).toMatchObject({ x: 2, y: 3, walk: null });
   });
