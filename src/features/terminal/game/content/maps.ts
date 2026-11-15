@@ -167,7 +167,8 @@ export const CAVE: Record<string, TileDef> = {
  * its sign. C is a chest, F the fountain, e the well.
  * People: B the postman, < the market vendor, ? the star collector, and the ones who stroll: H a kid, E an elder,
  * D a dog, m the gardener. ( and ) in the main road are the ways out of town: west to the mountain, east to
- * Hobby Hills. The duck pond has a sandy shore (+) where there is room beside the lamps and the sign, and reeds (*).
+ * Hobby Hills. The duck pond has a sandy shore (+) all the way round, like the pond of the hills, and reeds (*); its
+ * signpost (9) stands by the main road between two lamps, and the bench (n) east of it.
  */
 export const TOWN = [
   'TYTTYTTTYTTYTTTTYTTYTYTTTYTTYTTT',
@@ -178,11 +179,12 @@ export const TOWN = [
   'T.H..=..fff#F##:####f...##:##""T',
   'T.,..=....8####:##!#f..,..=..u.T',
   '(==============================)',
-  'T..,i.....i..,.=i.....i+u+++i..T',
-  'T.jjjjjj.x..M<.=.ZZZZ.+~~~~~++.T',
-  'T4jjjjjj.zx....=,////+~~^~d~~+2T',
-  'T.v>KSv>s..i,..=bG`XG9*~~~~^~n.T',
-  'T....===============..+~~~~~++.T',
+  'T..,i.....i..,.=i.....i..9..i..T',
+  'T.jjjjjj.x..M<.=.ZZZZ+++++++++.T',
+  'T4jjjjjj.zx....=,////+*~^~~~~+2T',
+  'T.v>KSv>s..i,..=bG`XG+~~~~d~~+nT',
+  'T....===============.+~~~~~^*+.T',
+  'T..,...........=.,...+++++++++.T',
   'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
   'Y..Y...u......i=7..,....Y...,..T',
   'T""""..e...Y...=.,.E..hhhhhhhh.Y',
@@ -225,8 +227,8 @@ export const EAST = [
  * flask (south of it).
  * The pond: a sandy shore (+) all round, reeds (*), a jetty (_) with E, who fishes, at its end, and a stream that
  * runs east under the road (|); t are stepping stones across it. Paths lead from the ring to the pond on three sides.
- * Scenery: two cottages (doors a and b) and a shed (door S) nobody is home in, a sand garden with a rock by the
- * kanji board (y is a rock in the sand), flower beds, fences, benches.
+ * Scenery: two cottages (doors a and b, on the ring road) and a shed (door S) nobody is home in, each under a roof
+ * of two rows; a sand garden with a rock by the kanji board (y is a rock in the sand), flower beds, fences, benches.
  * People: ? keeps the stamp rally, P plays the arcade, B looks after the gate; H a kid, D a dog and m a second cat
  * stroll (keep their ranges apart, and never the only way to a stop). s is the signpost at the entrance, p and o the
  * ones that say where the stops are, k a coffee machine. ( leads back to the road.
@@ -234,8 +236,8 @@ export const EAST = [
 export const HILLS = [
   'TYTTYTTTYTTYTTTTYTTYTTTYTTYTTT',
   'T,,..Y.,RRR.,..,Y.RRR.;.,.;.YT',
-  'T.#1#.u.Waw.P#2#..wbWB;#3#;..T',
-  'T.i##..,.=.n.###i..=.,.###.i.T',
+  'T.#1#.u.RRR.P#2#..RRRB;#3#;..T',
+  'T.i##..,Wawn.###i.wbW,.###.i.T',
   'T.==========================.T',
   'T,=p,..T..,..n=..,....#5#.Y=,T',
   'T.=..4,..+++++++++++..###..=.T',
@@ -244,7 +246,7 @@ export const HILLS = [
   'T.=.f6...+~^~~~~~~~t~~~t~~~|~~',
   'T.=.fff.,+*~~~E~~^~+..,.+++=,T',
   '(========+**~~_~~~*+....+y+=.T',
-  'T,=s.,.,.+++++++++++.n..+++=.T',
+  'T,=s.,jjj+++++++++++.n..+++=.T',
   'T.=...jjj.,..?=.;;..,..,...=,T',
   'T,=#7#vS>..D..=...m...#8#,.=.T',
   'T.=###.=.,.,..=.,.,.T.###n.=.T',

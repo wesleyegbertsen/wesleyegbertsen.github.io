@@ -576,7 +576,7 @@ describe('Hobby Hills as a place', () => {
     expect(reach.has(`${stones.at(-1)!.x},${stones.at(-1)!.y + 1}`)).toBe(true);
   });
 
-  it('has houses nobody is home in: a door with a note under a roof, at the end of a path', () => {
+  it('has houses nobody is home in: a door with a note under a roof of two rows, on a road', () => {
     const doors = hills!.objects.filter((object) => object.sprite?.startsWith('door'));
     expect(doors.length).toBeGreaterThanOrEqual(3);
     const roofs = new Set<string>();
@@ -586,6 +586,11 @@ describe('Hobby Hills as a place', () => {
       const roof = tileOf(hills!, door.x, door.y - 1)!.sprite;
       expect(['roof', 'tin', 'slate', 'shingle'], door.id).toContain(roof);
       roofs.add(roof);
+      // A proper roof: two rows of it over the whole front (the door and the wall on both sides), and no third.
+      for (const dx of [-1, 0, 1]) {
+        for (const dy of [-1, -2]) expect(tileOf(hills!, door.x + dx, door.y + dy)!.sprite, `${door.id} roof at ${door.x + dx},${door.y + dy}`).toBe(roof);
+        expect(tileOf(hills!, door.x + dx, door.y - 3)!.sprite, door.id).not.toBe(roof);
+      }
       expect(tileOf(hills!, door.x, door.y + 1)!.road, door.id).toBe(true);
       expect(roads().has(`${door.x},${door.y + 1}`), door.id).toBe(true);
       // Walls on both sides of it.
@@ -1189,29 +1194,51 @@ describe('small things that looked wrong', () => {
     }
   });
 
-  it('gives the duck pond in town a sandy shore to walk on, where there is room for one', () => {
-    const wet = (x: number, y: number) => WET.includes(tileOf(town!, x, y)?.sprite ?? '');
-    const duck = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'duck')[0]!;
+  it('rims the duck pond in town with a sandy shore all the way round, like the pond of the hills', () => {
+    const pond = pondOf(town!);
+    const wet = new Set(pond.map(keyOf));
+    expect(pond.length).toBeGreaterThanOrEqual(18);
+    const AROUND = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => ({ dx, dy }))).filter(({ dx, dy }) => dx !== 0 || dy !== 0);
+    // Every cell of the water has more water or the shore on all four sides, and across its corners too: a full ring.
+    for (const cell of pond) {
+      for (const { dx, dy } of Object.values(DELTA)) {
+        expect([...WET, 'shore'], `beside ${keyOf(cell)}: ${cell.x + dx},${cell.y + dy}`).toContain(tileOf(town!, cell.x + dx, cell.y + dy)!.sprite);
+      }
+      for (const { dx, dy } of AROUND) {
+        const next = { x: cell.x + dx, y: cell.y + dy };
+        if (!wet.has(keyOf(next))) expect(tileOf(town!, next.x, next.y)!.sprite, `round ${keyOf(cell)}: ${keyOf(next)}`).toBe('shore');
+      }
+    }
+    // The pond is its own water: the stream south of it is not part of it.
+    const bridge = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'bridge')[0]!;
+    expect(wet.has(`${bridge.x + 1},${bridge.y}`)).toBe(false);
+    // The shore is that ring and nothing else: every cell of it lies at the water, can be stood on (no lamp, sign
+    // or bench is left on it) and is walked to from the start of the game.
     const shore = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'shore');
-    expect(shore.length).toBeGreaterThanOrEqual(8);
+    expect(shore.length).toBeGreaterThanOrEqual(16);
     const reach = dryReach(town!, resolveSpot(world, world.start));
     for (const cell of shore) {
-      // Around the duck pond, at the water (straight or across a corner), and walkable from the start of the game.
-      expect(Math.max(Math.abs(cell.x - duck.x), Math.abs(cell.y - duck.y)), keyOf(cell)).toBeLessThanOrEqual(5);
-      const touches = [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => wet(cell.x + dx, cell.y + dy)));
-      expect(touches, keyOf(cell)).toBe(true);
+      expect(AROUND.some(({ dx, dy }) => wet.has(`${cell.x + dx},${cell.y + dy}`)), keyOf(cell)).toBe(true);
+      expect(standable(town!, cell.x, cell.y), keyOf(cell)).toBe(true);
       expect(reach.has(keyOf(cell)), keyOf(cell)).toBe(true);
-      expect(tileOf(town!, cell.x, cell.y)!.solid).toBe(false);
+      // A closed loop: each cell of it has exactly two neighbours on the sand.
+      const onSand = Object.values(DELTA).filter(({ dx, dy }) => tileOf(town!, cell.x + dx, cell.y + dy)!.sprite === 'shore');
+      expect(onSand, keyOf(cell)).toHaveLength(2);
     }
-    // On every side of it.
-    expect(shore.some((cell) => cell.y < duck.y - 1)).toBe(true);
-    expect(shore.some((cell) => cell.y > duck.y + 1)).toBe(true);
-    expect(shore.some((cell) => cell.x < duck.x - 3)).toBe(true);
-    expect(shore.some((cell) => cell.x > duck.x + 1)).toBe(true);
-    // The star behind the pond is still found, and reeds grow by the sign.
-    expect(routeTo(world, started(), 'town:2')).not.toBeNull();
+    // What stood in the way stands beside it now: the signpost by the main road, where it is read from the road
+    // and from the sand, the bench east of the pond, and the lamps in their line along the road.
     const sign = town!.objects.find((object) => object.id === 'town:9')!;
-    expect(tileOf(town!, sign.x + 1, sign.y)!.sprite).toBe('reeds');
+    expect(tileOf(town!, sign.x, sign.y)!.sprite).toBe('grass');
+    expect(tileOf(town!, sign.x, sign.y - 1)!.road).toBe(true);
+    expect(tileOf(town!, sign.x, sign.y + 1)!.sprite).toBe('shore');
+    expect(said(town!)).toContain('DUCK POND.');
+    const benches = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'bench');
+    expect(benches.some((bench) => Object.values(DELTA).some(({ dx, dy }) => tileOf(town!, bench.x + dx, bench.y + dy)!.sprite === 'shore'))).toBe(true);
+    // The star behind the pond is still found, and reeds grow in the water at its edge.
+    expect(routeTo(world, started(), 'town:2')).not.toBeNull();
+    const reeds = pond.filter((cell) => tileOf(town!, cell.x, cell.y)!.sprite === 'reeds');
+    expect(reeds.length).toBeGreaterThanOrEqual(2);
+    for (const cell of reeds) expect(Object.values(DELTA).some(({ dx, dy }) => tileOf(town!, cell.x + dx, cell.y + dy)!.sprite === 'shore'), keyOf(cell)).toBe(true);
   });
 
   it('stands the water cooler of the Office against the wall by the coffee machine, out of the walkway', () => {
