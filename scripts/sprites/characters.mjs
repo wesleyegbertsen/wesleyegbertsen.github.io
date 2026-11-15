@@ -289,8 +289,18 @@ export const characters = {
   ],
 };
 
-/** Sprites made by mirroring another one: name -> source. */
+/**
+ * Sprites made by mirroring another one: name -> source. The player walks up and down on both feet: frame 1 is
+ * one foot, frame 2 (its mirror) the other. The dog is drawn looking left, the cat with its tail to the right.
+ */
 export const mirrored = {
   'player-right-0': 'player-left-0',
   'player-right-1': 'player-left-1',
+  'player-down-2': 'player-down-1',
+  'player-up-2': 'player-up-1',
+  'dog-right': 'dog',
+  'cat-left': 'cat',
 };
+
+/** The people who can turn: the generator works out their back and their sides (name-up, name-left, name-right). */
+export const facing = ['teacher', 'dev', 'maker', 'librarian', 'wesley', 'kid', 'elder', 'postman', 'gardener'];
