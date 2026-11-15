@@ -51,6 +51,12 @@ describe('coins', () => {
     }
   });
 
+  it('are told when the Start menu opens, in a world that has a shop to spend them in', () => {
+    expect(press(started(), { start: true }).events).toEqual([{ kind: 'menu', text: 'Menu. You have 45 COINS.' }]);
+    const plain = playIn(testWorld, initialGame(testWorld, 7), 'a', 'a');
+    expect(step(plain, { ...NO_INPUT, start: true }, testWorld, { instant: true }).events).toEqual([{ kind: 'menu', text: 'Menu' }]);
+  });
+
   it('are named in the singular for one', () => {
     expect(money(1, world)).toBe('1 COIN');
     expect(money(0, world)).toBe('0 COINS');

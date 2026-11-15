@@ -6,7 +6,9 @@ import { DELTA, branchFor, landing, objectAt, passable, resolveSpot, tileAt } fr
 /**
  * A player that knows nothing about the story: it talks to everything it can reach, walks through every door that
  * lets it, rests when it is hurt and presses A through every dialogue and battle (so it always takes the default
- * choice). The tests use it to prove that the game can be finished; the browser tests use `routeTo` to find keys.
+ * choice). A shop it walks into is closed again with B: it never buys, so the game is proven to be finishable
+ * without spending a coin. The tests use it to prove that the game can be finished; the browser tests use `routeTo`
+ * to find keys.
  * People who stroll may step into the way or walk off: a walk that did not land where it should is given up and
  * planned again. Not part of the game itself.
  */

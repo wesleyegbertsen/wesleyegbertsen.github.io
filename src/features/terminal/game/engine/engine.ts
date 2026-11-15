@@ -367,7 +367,9 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
   }
   if (input.start) {
     ctx.cues.push('confirm');
-    ctx.events.push({ kind: 'menu', text: 'Menu' });
+    // The coins are on the screen of the menu; where there is a shop to spend them in, they are told too.
+    const purse = Object.keys(world.shops).length > 0 ? `. You have ${money(state.coins, world)}.` : '';
+    ctx.events.push({ kind: 'menu', text: `Menu${purse}` });
     return { ...state, menu: { tab: 'items', cursor: 0 } };
   }
   if (input.select) {
