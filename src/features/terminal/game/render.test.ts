@@ -162,7 +162,9 @@ describe('drawGame', () => {
     const battle = play(started(), 'down', 'right', 'a');
     const { draws, fills } = drawn({ ...battle, hp: 10, battle: { ...battle.battle!, enemyHp: 5 } });
     expect(spriteDraws(draws, 'bug')).toEqual([expect.objectContaining({ w: 32, h: 32 })]);
-    expect(spriteDraws(draws, 'player-up-0')).toEqual([expect.objectContaining({ w: 32, h: 32 })]);
+    // The trainer from behind, drawn at the size of the sheet (32 by 32), like the enemy: not a small sprite blown up.
+    expect(spriteDraws(draws, 'trainer-back')).toEqual([expect.objectContaining({ x: 12, y: 60, w: 32, h: 32, sw: 32, sh: 32 })]);
+    expect(spriteDraws(draws, 'player-up-0')).toEqual([]);
     expect(textAt(draws, 6)).toBe('RATLv2');
     expect(textAt(draws, 16)).toBe('HP');
     expect(fills).toContainEqual({ shade: PALETTE[2], x: 24, y: 19, w: 30, h: 3 });

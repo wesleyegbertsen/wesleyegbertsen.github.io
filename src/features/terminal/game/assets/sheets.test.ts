@@ -89,6 +89,16 @@ describe('the sprite sheets', () => {
     expect(drawn.crack.slice(13).join('').split('1').length - 1).toBeGreaterThanOrEqual(3);
   });
 
+  it('draw the trainer of the battle from behind at the size of the enemies, at an angle, in all four shades', () => {
+    expect(sprites['trainer-back'].slice(2)).toEqual([32, 32]);
+    const script = "import('./scripts/sprites/trainer.mjs').then(({ trainers }) => console.log(JSON.stringify(trainers['trainer-back'])))";
+    const rows = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as string[];
+    expect(rows).toHaveLength(32);
+    // Turned towards the enemy: not the same left and right (an enemy is a mirrored half).
+    expect(rows.filter((row) => row !== [...row].reverse().join('')).length).toBeGreaterThanOrEqual(24);
+    for (const shade of ['0', '1', '2', '3']) expect(rows.join(''), shade).toContain(shade);
+  });
+
   it('use four shades, lightest first', () => {
     expect(PALETTE).toHaveLength(4);
     const light = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);

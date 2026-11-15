@@ -16,6 +16,7 @@ import { enemies } from './enemies.mjs';
 import { glyphs } from './font.mjs';
 import { scenery } from './scenery.mjs';
 import { tiles as plain } from './tiles.mjs';
+import { trainers } from './trainer.mjs';
 
 const clash = Object.keys(scenery).filter((name) => name in plain);
 if (clash.length > 0) throw new Error(`Tile names used twice (tiles.mjs and scenery.mjs): ${clash.join(", ")}`);
@@ -161,7 +162,11 @@ function buildSprites() {
     people[`${name}-right`] = mirror(people[`${name}-left`]);
   }
   for (const [name, source] of Object.entries(mirrored)) people[name] = mirror(people[source]);
-  const big = Object.entries(enemies).map(([name, rows]) => [name, withMirror(parse(name, rows, ENEMY / 2, ENEMY))]);
+  const big = [
+    ...Object.entries(enemies).map(([name, rows]) => [name, withMirror(parse(name, rows, ENEMY / 2, ENEMY))]),
+    // The trainer stands at an angle: drawn whole, not mirrored.
+    ...Object.entries(trainers).map(([name, rows]) => [name, parse(name, rows, ENEMY, ENEMY)]),
+  ];
 
   const cols = 8;
   const names = Object.keys(people);

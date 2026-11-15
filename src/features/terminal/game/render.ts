@@ -434,9 +434,9 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   drawSprite(ctx, sheets, enemy.sprite, 124, 6);
   rect(ctx, 118, 40, 40, 2, DARK);
 
-  // The player: seen from behind on the left. The energy with its numbers, and the XP as the rail of the box:
-  // a thin bar that runs into the upright.
-  drawSprite(ctx, sheets, 'player-up-0', 12, 60, 2);
+  // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
+  // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.
+  drawSprite(ctx, sheets, 'trainer-back', 12, 60);
   rect(ctx, 4, 92, 48, 2, DARK);
   const energy = `${state.hp}/${state.maxHp}`;
   const end = you.x + 14 + HUD.bar;

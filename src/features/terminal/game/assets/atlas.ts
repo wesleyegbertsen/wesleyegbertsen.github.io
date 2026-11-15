@@ -245,6 +245,7 @@ export const sprites = {
   "interview": [96, 256, 32, 32],
   "review": [128, 256, 32, 32],
   "impostor": [0, 288, 32, 32],
+  "trainer-back": [32, 288, 32, 32],
 } as const;
 
 /** The font sheet: fixed cells, ASCII from `first`, dark ink at y 0 and light ink at `lightY`. */
