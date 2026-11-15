@@ -52,7 +52,7 @@ export const OUTDOORS: Record<string, TileDef> = {
   r: { sprite: 'rock', solid: true },
   y: { sprite: 'boulder', under: 'shore', solid: true }, // a rock in the sand
   ';': { sprite: 'flowerbed', solid: true, animated: true },
-  f: { sprite: 'fence', solid: true },
+  f: { sprite: 'fence', solid: true, join: true }, // joins its neighbours: runs across, up and down, corners and ends
   // Water
   '~': { sprite: 'water', solid: true, animated: true },
   '^': { sprite: 'lily', solid: true, animated: true },
@@ -178,8 +178,8 @@ export const TOWN = [
   'T.RRRRRR....------.....GQGGQG"CT',
   'T.wWJAWwa..pw&WPWwq...oGQUOQG""T',
   'T.n.;=;....####:##B#....##:##""T',
-  'T.H..=..fff#F##:####f...##:##""T',
-  'T.,..=....8####:##!#f..,..=..u.T',
+  'T.H..=....f#F##:####f...##:##""T',
+  'T.,..=...8f####:##!#f..,..=..u.T',
   '(==============================)',
   'T..,i.....i..,.=i.....i..9..i..T',
   'T.jjjjjj.x..M<.=.ZZZZ+++++++++.T',
@@ -255,7 +255,7 @@ export const HILLS = [
   'T.=.,..=.;;,..=.;;.,...=..o=,T',
   'T.==========================.T',
   'T,i..#..,i..,..#i..,...i..,..T',
-  'T.,.#9#...Y..,#0#..u..k.,.fffT',
+  'T.,.#9#...Y..,#0#..u..k.,.,.,T',
   'T.,,..Y..,..,,...Y..,,..Y.,..T',
   'TYTTTYTTYTTTTYTTTYTTYTTTYTTTYT',
 ];

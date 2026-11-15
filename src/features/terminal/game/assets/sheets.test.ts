@@ -34,8 +34,9 @@ describe('the sprite sheets', () => {
     expect(font.width).toBe(FONT.cols * FONT.cellW);
     expect(font.height).toBe(FONT.lightY * 2);
     expect(Math.ceil((FONT.last - FONT.first + 1) / FONT.cols) * FONT.cellH).toBe(FONT.lightY);
-    // Raised from 9000: every side of every person, the dog and the player's strides are drawn by hand now.
-    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(10000);
+    // Raised from 9000: every side of every person, the dog and the player's strides are drawn by hand now. Raised from
+    // 10000 in round seven: sixteen fence pieces that join their neighbours, the trainer of the battle, the cat's sides.
+    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(12000);
   });
 
   it('have a font in which every character looks different from every other, the M included', () => {

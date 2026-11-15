@@ -188,7 +188,7 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
       const tile = map.tiles[map.cells[cy]![cx]!];
       if (!tile) continue;
       if (tile.under) drawSprite(ctx, sheets, tile.under, cx * TILE - camX, cy * TILE - camY);
-      drawSprite(ctx, sheets, frameOf(tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
+      drawSprite(ctx, sheets, frameOf(tile.look ?? tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
     }
   }
   for (const object of map.objects) {

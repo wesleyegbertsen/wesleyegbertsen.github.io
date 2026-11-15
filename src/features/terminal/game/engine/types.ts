@@ -111,6 +111,14 @@ export type TileDef = {
   light?: number;
   /** What the status region calls it when it stops a slide ("a rock"). Without one it is "the wall". */
   name?: string;
+  /**
+   * Joins its neighbours (a fence): each cell is drawn by the sides it shares with more of the same tile, as
+   * `<sprite>-<sides>` (`fence-ew` for a run across, `fence-ns` up and down, `fence-es` a corner...). parseMap
+   * picks the picture and writes it in `look`.
+   */
+  join?: true;
+  /** The picture drawn for this cell when it is not `sprite` (picked by parseMap for a tile that joins). */
+  look?: string;
 };
 
 /** A named part of a map: a rectangle of cells. Walking into it shows its name, like walking onto another map does. */

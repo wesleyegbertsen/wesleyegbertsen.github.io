@@ -10,6 +10,7 @@ import { fold } from '../engine/text.ts';
 import { NO_INPUT, type Action, type Branch, type Cond, type Dir, type GameMap, type GameObject, type GameState, type Input, type World } from '../engine/types.ts';
 import { placeOf } from '../engine/wander.ts';
 import { DELTA, passable, resolveSpot } from '../engine/world.ts';
+import { tiles } from '../assets/atlas.ts';
 import { COLLECT } from './battles.ts';
 import { buildWorld } from './world.ts';
 
@@ -87,6 +88,35 @@ describe('the town', () => {
     }
     const floors = new Set(ROOMS.map((id) => world.maps[id]!.tiles._!.sprite));
     expect(floors.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it('draws every fence with the piece for its neighbours, and leaves no post standing on its own', () => {
+    let count = 0;
+    for (const map of Object.values(world.maps)) {
+      const fence = (x: number, y: number) => tileOf(map, x, y)?.sprite === 'fence';
+      for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+          if (!fence(x, y)) continue;
+          count++;
+          const look = tileOf(map, x, y)!.look!;
+          const at = `${map.id} ${x},${y}`;
+          expect(Object.keys(tiles), at).toContain(look);
+          // Up and down is drawn as up and down, across as across.
+          const sides = look.slice('fence'.length);
+          expect(sides.includes('n'), at).toBe(fence(x, y - 1));
+          expect(sides.includes('s'), at).toBe(fence(x, y + 1));
+          expect(sides.includes('e'), at).toBe(fence(x + 1, y));
+          expect(sides.includes('w'), at).toBe(fence(x - 1, y));
+          expect([fence(x - 1, y), fence(x + 1, y), fence(x, y - 1), fence(x, y + 1)].some(Boolean), `${at}: a post on its own`).toBe(true);
+        }
+      }
+    }
+    expect(count).toBeGreaterThanOrEqual(10);
+    // The rabbit of Hobby Hills is in a pen: fenced above, below and behind, open towards the path.
+    const hills = world.maps.hills!;
+    const rabbit = hills.objects.find((object) => object.sprite === 'bunny')!;
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0]] as const) expect(tileOf(hills, rabbit.x + dx, rabbit.y + dy)!.sprite).toBe('fence');
+    expect(tileOf(hills, rabbit.x + 1, rabbit.y)!.solid).toBe(false);
   });
 
   it('keeps the way into every room clear, and everything in it within reach of the door', () => {

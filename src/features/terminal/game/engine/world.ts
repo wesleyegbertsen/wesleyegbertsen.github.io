@@ -59,13 +59,26 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   if (spec.plates && plateCells.length === 0) throw new Error(`${spec.id}: a plates puzzle without a plate`);
   if (spec.plates && objects.filter((object) => object.push).length < plateCells.length) throw new Error(`${spec.id}: more plates than things to push onto them`);
   const lights = where((tile, x, y) => (tile.light !== undefined ? { x, y, radius: tile.light } : undefined));
+  // Tiles that join their neighbours get a cell of their own in the legend, with the picture for their sides.
+  const tiles = { ...legend };
+  const joined = cells.map((row, y) =>
+    row.map((char, x) => {
+      const tile = legend[char]!;
+      if (!tile.join) return char;
+      const same = (dx: number, dy: number) => cells[y + dy]?.[x + dx] === char;
+      const look = joinedLook(tile.sprite, { n: same(0, -1), e: same(1, 0), s: same(0, 1), w: same(-1, 0) });
+      const key = `${char}:${look}`;
+      tiles[key] ??= { ...tile, look };
+      return key;
+    }),
+  );
   return {
     id: spec.id,
     name: spec.name,
     width,
     height: cells.length,
-    cells,
-    tiles: legend,
+    cells: joined,
+    tiles,
     objects,
     encounters: spec.encounters,
     dark: spec.dark,
@@ -74,6 +87,15 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
     ...(spec.plates ? { plates: { ...spec.plates, cells: plateCells } } : {}),
     ...(lights.length > 0 ? { lights } : {}),
   };
+}
+
+/**
+ * The picture of a tile that joins its neighbours: its sprite and the sides that go on, north, east, south and west
+ * in that order (`fence-ew`, `fence-ns`, `fence-es`). Alone it is the plain sprite.
+ */
+export function joinedLook(sprite: string, sides: { n: boolean; e: boolean; s: boolean; w: boolean }): string {
+  const on = (['n', 'e', 's', 'w'] as const).filter((side) => sides[side]).join('');
+  return on ? `${sprite}-${on}` : sprite;
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {

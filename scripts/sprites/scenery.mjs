@@ -144,24 +144,60 @@ function cutOut(rows, ground = '1') {
   return cells.map((row) => row.join(''));
 }
 
-const fence = [
-  '1111111111111111',
-  '1111111111111111',
-  '1111111111111111',
-  '1111111111111111',
-  '1331133113311331',
-  '1301130113011301',
-  '3333333333333333',
-  '0000000000000000',
-  '3333333333333333',
-  '1301130113011301',
-  '1301130113011301',
-  '3333333333333333',
-  '0000000000000000',
-  '3333333333333333',
-  '1331133113311331',
-  '1111111111111111',
-];
+/**
+ * A wooden fence, one piece per cell, picked by the neighbours (`join` in the legend): a post in the middle, two
+ * rails to every side where the fence goes on across, and a plank up or down where it goes on that way. So a run
+ * across is a row of posts with rails, a run up and down a column of posts joined by planks, and corners and ends
+ * join up. `fence` alone is a post with a short rail on each side. The pieces are named by the sides that go on,
+ * north, east, south, west: `fence-ew`, `fence-ns`, `fence-es`...
+ */
+const fencePiece = (sides) => {
+  const px = Array.from({ length: 16 }, () => Array(16).fill('.'));
+  const put = (x, y, v) => (px[y][x] = v);
+  // The rails across: a dark edge above and below a light plank, at two heights.
+  const across = (from, to) => {
+    for (let x = from; x <= to; x++) {
+      for (const top of [5, 9]) {
+        put(x, top, '3');
+        put(x, top + 1, '0');
+        put(x, top + 2, '3');
+      }
+    }
+  };
+  const alone = !/[nesw]/.test(sides);
+  if (sides.includes('w') || alone) across(alone ? 3 : 0, 6);
+  if (sides.includes('e') || alone) across(9, alone ? 12 : 15);
+  // A plank up or down: the fence goes on that way, seen from above.
+  const plank = (from, to) => {
+    for (let y = from; y <= to; y++) {
+      put(6, y, '3');
+      put(7, y, '0');
+      put(8, y, '1');
+      put(9, y, '3');
+    }
+  };
+  if (sides.includes('n')) plank(0, 2);
+  if (sides.includes('s')) plank(13, 15);
+  // The post: a cap with a light top, the wood lit from the left, a shadow at its foot.
+  const post = [
+    '3333',
+    '3003',
+    '3013',
+    '3013',
+    '3013',
+    '3013',
+    '3013',
+    '3013',
+    '3113',
+    '3123',
+    '3333',
+  ];
+  post.forEach((row, y) => [...row].forEach((v, x) => put(6 + x, 2 + y, v)));
+  if (!sides.includes('s')) for (let x = 5; x <= 10; x++) if (px[13][x] === '.') put(x, 13, '2');
+  return on(tiles.grass, px.map((row) => row.join('')));
+};
+const FENCE_SIDES = ['', 'n', 'e', 's', 'w', 'ne', 'ns', 'nw', 'es', 'ew', 'sw', 'nes', 'new', 'nsw', 'esw', 'nesw'];
+const fences = Object.fromEntries(FENCE_SIDES.map((sides) => [sides ? `fence-${sides}` : 'fence', fencePiece(sides)]));
 
 // --- things that stand on the ground (see-through around them) -----------------------------------------------------
 
@@ -1285,7 +1321,7 @@ export const scenery = {
   bush,
   rock,
   boulder: cutOut(rock),
-  fence,
+  ...fences,
   lamp,
   bench,
   fountain,
