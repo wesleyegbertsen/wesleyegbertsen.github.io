@@ -585,6 +585,104 @@ test.describe('beyond the town', () => {
   });
 });
 
+test.describe('the deep cave', () => {
+  /** Where a cell of the deep cave (24 x 17) is on the 160 x 144 screen, with the player at `px`, `py`. */
+  const onScreen = (px: number, py: number, x: number, y: number) => {
+    const left = Math.max(0, Math.min(24 * 16 - 160, px * 16 + 8 - 80));
+    const top = Math.max(0, Math.min(17 * 16 - 144, py * 16 + 8 - 72));
+    return { x: x * 16 - left, y: y * 16 - top };
+  };
+
+  test('a hidden ladder leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5', async ({ page }) => {
+    test.slow();
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    // Level 3 first: the FINAL EXAM is worth that.
+    await pilot.goTo('town:A');
+    await pilot.goTo('academy:E');
+    await pilot.press('a');
+    await pilot.read();
+    await pilot.fight();
+    await pilot.goTo('academy:m');
+    await pilot.goTo('town:(');
+    await pilot.goTo('west:D');
+    await expect(game(page)).toHaveAttribute('data-map', 'cave');
+
+    // The ladder: a long walk through the dark, past rubble (the Pilot runs from what jumps out).
+    await pilot.goTo('cave:L');
+    await expect(game(page)).toHaveAttribute('data-map', 'deep');
+    await expect(game(page)).toHaveAttribute('data-cue', 'cave');
+    await expect(game(page)).toHaveAttribute('data-music', 'cave');
+    await expect(game(page)).toHaveAttribute('data-banner', 'The Deep Cave');
+    await expect(status(page)).toHaveText('The Deep Cave');
+    await expect(game(page)).toHaveAttribute('data-pushed', '11,2 14,3');
+
+    // Dark, but the fire bowl of the boulder hall lights the cells around it: the floor beside it, four cells from
+    // the player, is beyond the player's own light and still plain to see.
+    await pilot.goTo('deep:r');
+    const x = Number(await game(page).getAttribute('data-x'));
+    const y = Number(await game(page).getAttribute('data-y'));
+    const bowl = onScreen(x, y, 12, 2);
+    const fire = await darkIn(page, bowl.x, bowl.y, 16, 16);
+    expect(fire.all).toBe(256);
+    expect(fire.dark).toBeLessThan(fire.all * 0.2);
+    // The corridor behind the player is black, away from every light.
+    const behind = onScreen(x, y, x - 4, y + 2);
+    const rock = await darkIn(page, behind.x, behind.y, 16, 16);
+    expect(rock.dark).toBe(rock.all);
+
+    // One push, by hand: into the hall, round the first boulder, and push it down.
+    await pilot.goTo('deep:n');
+    await pilot.press('left');
+    await expect(game(page)).toHaveAttribute('data-x', '11');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-pushed', '11,3 14,3');
+    await expect(game(page)).toHaveAttribute('data-cue', 'push');
+    await expect(status(page)).toHaveText('You push the boulder down.');
+    // Against the rock below it does not move.
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-pushed', '11,3 14,3');
+    await expect(game(page)).toHaveAttribute('data-cue', 'bump');
+    await expect(status(page)).toHaveText('The boulder does not move down: something is in the way.');
+    // The lever puts it back.
+    await pilot.goTo('deep:r');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-pushed', '11,2 14,3');
+    await expect(status(page)).toHaveText('You pull the lever. The boulders roll back to where they started.');
+    await pilot.read();
+
+    // The gate is shut until both plates are down. The Pilot finds the pushes by searching its copy of the game.
+    await pilot.solve((state) => !!state.flags['deep:plates'] && !state.dialogue);
+    await expect(game(page)).toHaveAttribute('data-pushed', '15,4 16,2');
+    // The last page of what is said then (the first one says that both plates are down).
+    await expect(status(page)).toContainText('will not move again.');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'false');
+
+    // Through the open gate and on to the slick rock: one press is one slide.
+    await pilot.goTo('deep:i');
+    await expect(game(page)).toHaveAttribute('data-banner', 'Slick Rock');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-y', '12');
+    await expect(game(page)).toHaveAttribute('data-x', '19');
+    await expect(status(page)).toHaveText('You slide down until something stops you.');
+    const slides = await pilot.solve((state) => state.x === 12 && state.y === 11);
+    expect(slides.length).toBeGreaterThanOrEqual(4);
+    await expect(game(page)).toHaveAttribute('data-x', '12');
+
+    // The riddle: add, commit, push.
+    await pilot.solve((state) => !!state.flags['deep:shipped'] && !state.dialogue);
+    await expect(status(page)).toContainText('rolls open.');
+
+    // The way to the boss is open and short, and the door still asks for level 5.
+    await expect(game(page)).toHaveAttribute('data-level', '3');
+    await pilot.goTo('deep:D');
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    await expect(status(page)).toContainText('Lv 5 and up');
+    await expect(game(page)).toHaveAttribute('data-battle', '');
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe('the name of a place', () => {
   // The label is a box of the name's width plus 11 pixels, centred at the top: its top edge is a dark line.
   const edge = (page: Page, name: string) => {

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { initialGame } from './engine/engine.ts';
 import { play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import type { GameState, World } from './engine/types.ts';
+import { parseMap } from './engine/world.ts';
 import { Game } from './Game.tsx';
 import { createSettingsStore } from './settingsStore.ts';
 
@@ -295,6 +296,36 @@ describe('Game', () => {
     await user.keyboard('x');
     expect(game).toHaveAttribute('data-learn', '');
     expect(screen.getByRole('status')).toHaveTextContent('You keep your moves.');
+  });
+
+  it('shows where the boulders are through a data attribute, and tells the status region every push', async () => {
+    const hall = parseMap(
+      {
+        id: 'hall',
+        name: 'Hall',
+        ground: '.',
+        rows: ['######', '#@1.o#', '######'],
+        plates: { flag: 'open', do: [{ say: ['A gate opens.'] }] },
+        objects: { '@': { solid: false, trigger: 'interact', branches: [] }, '1': { sprite: 'boulder', solid: true, trigger: 'interact', branches: [], push: 'boulder' } },
+      },
+      { '#': { sprite: 'cavewall', solid: true }, '.': { sprite: 'cavefloor', solid: false }, o: { sprite: 'plate', solid: false, plate: true } },
+    );
+    const puzzle: World = { ...world, maps: { hall }, start: { map: 'hall', at: '@', dir: 'down' } };
+    const { game, user, view } = setup(playIn(puzzle, initialGame(puzzle, 7), 'a', 'a'), false, false, puzzle);
+    expect(game).toHaveAttribute('data-pushed', '2,1');
+    await user.keyboard('{ArrowRight}');
+    expect(game).toHaveAttribute('data-pushed', '3,1');
+    expect(game).toHaveAttribute('data-x', '2');
+    expect(screen.getByRole('status')).toHaveTextContent('You push the boulder right.');
+    await user.keyboard('{ArrowRight}');
+    expect(game).toHaveAttribute('data-pushed', '4,1');
+    expect(screen.getByRole('status')).toHaveTextContent('You push the boulder right. It settles on a pressure plate: 1 of 1 down. A gate opens.');
+    await user.keyboard('z');
+    await user.keyboard('{ArrowRight}');
+    expect(game).toHaveAttribute('data-pushed', '4,1');
+    // A map with nothing to push says nothing.
+    view.unmount();
+    expect(setup(started()).game).toHaveAttribute('data-pushed', '');
   });
 
   it('shows the coins and the open shop through data attributes, and tells the status region what was bought', async () => {

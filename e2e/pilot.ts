@@ -6,6 +6,7 @@ import { skills } from '../src/data/skills.ts';
 import { buildWorld } from '../src/features/terminal/game/content/world.ts';
 import { routeTo } from '../src/features/terminal/game/engine/bot.ts';
 import { initialGame, step } from '../src/features/terminal/game/engine/engine.ts';
+import { solve } from '../src/features/terminal/game/engine/solve.ts';
 import { NO_INPUT, type GameState, type Input } from '../src/features/terminal/game/engine/types.ts';
 
 // The same world as the site's, minus the projects (their module imports images, which Node cannot load here).
@@ -75,6 +76,23 @@ export class Pilot {
     await expect(game).toHaveAttribute('data-map', this.state.map);
     await expect(game).toHaveAttribute('data-x', String(this.state.x));
     await expect(game).toHaveAttribute('data-y', String(this.state.y));
+  }
+
+  /**
+   * Solves a puzzle: searches the copy of the game for the fewest presses that lead to a state for which `goal`
+   * holds (engine/solve.ts: boulders are pushed, slick rock is slid over, levers are pulled), and plays them on
+   * the page and in the copy. Text boxes on the way are part of the presses. For maps without wild enemies.
+   */
+  async solve(goal: (state: GameState) => boolean) {
+    const keys = solve(world, this.state, goal);
+    if (!keys) throw new Error(`No way to solve that from ${this.state.map} ${this.state.x},${this.state.y}`);
+    for (const key of keys) await this.press(key);
+    const game = gameOf(this.page);
+    await expect(game).toHaveAttribute('data-map', this.state.map);
+    await expect(game).toHaveAttribute('data-x', String(this.state.x));
+    await expect(game).toHaveAttribute('data-y', String(this.state.y));
+    await expect(game).toHaveAttribute('data-dialogue', String(!!this.state.dialogue));
+    return keys;
   }
 
   /**
