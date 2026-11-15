@@ -12,6 +12,7 @@ export type MapSpec = {
   encounters?: GameMap['encounters'];
   dark?: GameMap['dark'];
   areas?: Region[];
+  respawn?: GameMap['respawn'];
 };
 
 export type ObjectSpec = Omit<GameObject, 'id' | 'x' | 'y'> & { under?: string };
@@ -49,7 +50,7 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   for (const char of Object.keys(spec.objects)) {
     if (!seen.has(char)) throw new Error(`${spec.id}: object '${char}' is not on the map`);
   }
-  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark, areas: spec.areas };
+  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark, areas: spec.areas, respawn: spec.respawn };
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {
@@ -117,6 +118,12 @@ export function resolveSpot(world: World, spot: Spot): { map: string; x: number;
   const object = world.maps[spot.map]?.objects.find((o) => o.id === `${spot.map}:${spot.at}`);
   if (!object) throw new Error(`No '${spot.at}' on map '${spot.map}'`);
   return { map: spot.map, x: object.x + (spot.dx ?? 0), y: object.y + (spot.dy ?? 0) };
+}
+
+/** Where a defeat on a map brings the player back to, when that map says so (the town: its cafe). */
+export function home(world: World, mapId: string): GameState['heal'] | null {
+  const spot = world.maps[mapId]?.respawn;
+  return spot ? { ...resolveSpot(world, spot), ...(spot.dir ? { dir: spot.dir } : {}) } : null;
 }
 
 /** The sprite an object shows right now. */

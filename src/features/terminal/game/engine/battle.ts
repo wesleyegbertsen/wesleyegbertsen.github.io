@@ -1,7 +1,10 @@
+import { applyItem, usableItems } from './items.ts';
 import { attackBonus, enemyHpAt, levelFor, maxHpOf, xpFor } from './level.ts';
 import { random } from './rng.ts';
+import { coinsFor, money } from './shop.ts';
 import { fold } from './text.ts';
 import { introTicks } from './transition.ts';
+import { home } from './world.ts';
 import type { Action, Battle, BattleStep, Cue, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
 
 /** The battle menu, in order. The first entry is the default. */
@@ -11,10 +14,7 @@ export const BATTLE_MENU = ['FIGHT', 'ITEM', 'RUN'] as const;
 export const minDamage = (move: MoveDef) => Math.max(1, move.power - 1);
 export const maxDamage = (move: MoveDef) => Math.max(1, move.power + 1);
 
-/** The items that can be used in a battle: the ones that heal and that the player carries. */
-export function usableItems(state: GameState, world: World): string[] {
-  return Object.keys(world.items).filter((id) => world.items[id]!.heal !== undefined && state.items[id]! > 0);
-}
+export { usableItems };
 
 export const fullPp = (world: World, moves: readonly string[] = world.playerMoves): Record<string, number> =>
   Object.fromEntries(moves.map((id) => [id, world.moves[id]!.pp]));
@@ -47,6 +47,7 @@ function reveal(state: GameState, ctx: Ctx): GameState {
     maxHp,
     level,
     xp: step.xp ?? state.xp,
+    coins: step.coins ?? state.coins,
     battle: {
       ...battle,
       enemyHp: step.enemyHp ?? battle.enemyHp,
@@ -104,10 +105,12 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
   let { pp, items } = state;
 
   if ('item' in choice) {
-    const item = world.items[choice.item]!;
-    items = { ...items, [choice.item]: items[choice.item]! - 1 };
-    hp = Math.min(state.maxHp, hp + (item.heal ?? 0));
-    steps.push({ text: `You use the ${item.name}. Energy restored!`, hp, cue: 'heal' });
+    // The caller has checked that it can be used: the same rules as the bag.
+    const used = applyItem(state, choice.item, world);
+    if (used?.ok) {
+      ({ hp, pp, items } = used.state);
+      steps.push({ text: used.text, hp, cue: used.cue });
+    }
   } else {
     const { move, id } = choice;
     if (id) pp = { ...pp, [id]: pp[id]! - 1 };
@@ -128,6 +131,9 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
   if (enemyHp <= 0) {
     steps.push({ text: enemy.defeat, cheer: true });
     outcome = 'win';
+    // It drops coins: a few for a wild one, far more for one that stood guard.
+    const drop = coinsFor(battle.level, battle.wild, world);
+    if (drop > 0) steps.push({ text: `You pick up ${money(drop, world)}.`, coins: state.coins + drop, cue: 'coin' });
     // The win is worth XP, and enough XP is a level: more energy, stronger attacks, now and then a new move.
     if (state.level < world.levels.max) {
       const gain = xpFor(battle.level, battle.wild, world);
@@ -166,10 +172,13 @@ function finish(state: GameState, ctx: Ctx): GameState {
   if (battle.outcome === 'win') return { ...state, battle: null, script: [...battle.win, ...state.script] };
   if (battle.outcome === 'lose') {
     ctx.events.push({ kind: 'defeat', text: 'Defeated. Back to the last coffee stop.' });
+    // The map may have a place of its own to wake up in (the town: its cafe); else it is the last place rested at.
+    const back = home(ctx.world, state.map) ?? state.heal;
     return {
       ...state,
       battle: null,
-      ...state.heal,
+      ...back,
+      heal: back,
       walk: null,
       hp: state.maxHp,
       pp: fullPp(ctx.world, state.moves),
@@ -254,6 +263,7 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
   const item = items[Math.min(battle.cursor, items.length - 1)];
   if (!item) return { ...state, battle: { ...battle, phase: 'menu', cursor: 0 } };
   // The same refusal as the bag menu: nothing is used up, and the enemy does not get a free turn.
-  if (state.hp >= state.maxHp) return show(state, battle, [{ text: 'You are full of energy already.' }], ctx);
+  const use = applyItem(state, item, world);
+  if (use && !use.ok) return show(state, battle, [{ text: use.text }], ctx);
   return turn(state, { item }, ctx);
 }

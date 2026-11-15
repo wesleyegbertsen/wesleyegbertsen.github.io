@@ -37,6 +37,10 @@ export type Action =
   | { boost: number }
   /** Offers a new move: the player picks one to replace, or keeps what they have. */
   | { learn: string }
+  /** Hands over this many coins, with a line that says so. */
+  | { coins: number }
+  /** Opens a shop (a name in `world.shops`): a list to buy from, until the player leaves it. */
+  | { shop: string }
   | { ending: true };
 
 /** What an object does while `when` holds. The first branch that holds is the one that runs. */
@@ -112,6 +116,8 @@ export type GameMap = {
   encounters?: { enemies: string[]; rate: number; levels?: [number, number] };
   /** A dark place: only this many cells around the player are lit (see engine/light.ts). */
   dark?: number;
+  /** Where a defeat on this map brings the player back to, whatever was the last place to rest (the cafe, for the town). */
+  respawn?: Spot;
 };
 
 export type MoveDef = {
@@ -140,7 +146,20 @@ export type EnemyDef = {
   tune?: string;
 };
 
-export type ItemDef = { name: string; description: string; heal?: number };
+export type ItemDef = {
+  name: string;
+  description: string;
+  /** Restores this much energy. */
+  heal?: number;
+  /** Restores the PP of every move. */
+  restore?: true;
+  /** Keeps wild enemies away for this many steps in the tall grass. Used from the bag, not in a battle. */
+  repel?: number;
+};
+/** A shop: what it sells and for how much, and what is said on the way out. */
+export type ShopDef = { name: string; stock: { item: string; price: number }[]; bye?: string[] };
+/** Money: what it is called, what the player starts with, what a win is worth per level of the enemy, and how many of one item fit the bag when buying. */
+export type Economy = { currency: string; start: number; wildCoins: number; bossCoins: number; bagLimit: number };
 export type BadgeDef = { id: string; name: string };
 
 /** Everything the content modules hand to the engine. */
@@ -164,6 +183,9 @@ export type World = {
   levels: Levels;
   /** The move that is offered on reaching a level. */
   learn: Record<number, string>;
+  /** Money and the shops it is spent in. See engine/shop.ts. */
+  economy: Economy;
+  shops: Record<string, ShopDef>;
   intro: string[];
   /** What Select says: the first hint whose condition holds. */
   hints: { when?: Cond; text: string }[];
@@ -201,9 +223,11 @@ export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
 export const SETTINGS = ['sound', 'volume', 'screen'] as const;
 /** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
 export type Learn = { move: string; cursor: number };
+/** An open shop: the cursor runs over its stock and a last entry that leaves. `note` is what the last press led to (bought, too dear, bag full). */
+export type Shopping = { id: string; cursor: number; note: string };
 
 /** One line of a battle. HP, XP and level values in it take effect when the line appears. */
-export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; cheer?: true; cue?: Cue };
+export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; coins?: number; cheer?: true; cue?: Cue };
 
 export type Battle = {
   enemy: string;
@@ -254,10 +278,15 @@ export type GameState = {
   battle: Battle | null;
   menu: Menu | null;
   learn: Learn | null;
+  shop: Shopping | null;
+  /** Money. In memory only, like everything else here. */
+  coins: number;
+  /** Steps in the tall grass that are still safe from wild enemies (a spray from the shop). */
+  repel: number;
   /** Who is being talked to, and which way they turned for it. They turn back a moment after the talk is over: at clock `until`. */
   face: { id: string; dir: Dir; until?: number } | null;
   /** Where a defeat sends the player back to. */
-  heal: { map: string; x: number; y: number };
+  heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;
   finished: boolean;
   /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */
@@ -307,6 +336,8 @@ export type Cue =
   | 'blip'
   | 'door'
   | 'item'
+  /** Coins change hands: picked up, or paid in a shop. */
+  | 'coin'
   | 'star'
   | 'badge'
   | 'bump'

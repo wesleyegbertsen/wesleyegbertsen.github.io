@@ -1,4 +1,4 @@
-import type { BadgeDef, EnemyDef, ItemDef, Levels, MoveDef } from '../engine/types.ts';
+import type { BadgeDef, Economy, EnemyDef, ItemDef, Levels, MoveDef, ShopDef } from '../engine/types.ts';
 
 /**
  * Battle numbers and names. HOW TO EDIT
@@ -17,6 +17,12 @@ import type { BadgeDef, EnemyDef, ItemDef, Levels, MoveDef } from '../engine/typ
  *   they are. `minLevel` is the lowest level a player can have there: 1 for places that are open from the start;
  *   higher only where a door asks for that level (the cave mouth). BOSS_MIN_LEVEL is the same for bosses. The
  *   three of the last fight (FINAL_BOSSES) are met with four badges at level FINAL_LEVEL or more.
+ * - ECONOMY is the money: its name, what the player starts with, what a win drops per level of the enemy (a wild
+ *   one, and a boss), and how many of one item the bag takes when buying. SHOPS is what each shop sells and for
+ *   how much: an entry needs an item from ITEMS. An item can restore energy (`heal`), the PP of every move
+ *   (`restore`) or keep wild enemies away for a number of steps in the tall grass (`repel`).
+ * - Nothing in a shop may ever be needed: the balance promise above is made for a player who buys nothing, and
+ *   the bot that proves the game can be finished never spends a coin.
  */
 
 /** Energy (HP) at the start, and what each badge adds. */
@@ -326,8 +332,11 @@ export const BOSS_MIN_LEVEL: Record<string, number> = {
 
 /** The bag shows the items in this order. */
 export const ITEMS: Record<string, ItemDef> = {
+  stroopwafel: { name: 'STROOPWAFEL', description: 'Restores 10 energy.', heal: 10 },
   coffee: { name: 'COFFEE', description: 'Restores 20 energy.', heal: 20 },
   energydrink: { name: 'ENERGY DRINK', description: 'Restores 40 energy.', heal: 40 },
+  tea: { name: 'GREEN TEA', description: 'Restores the PP of every move.', restore: true },
+  spray: { name: 'BUG SPRAY', description: 'No wild enemies for 60 steps in tall grass.', repel: 60 },
   pizza: { name: 'PIZZA', description: 'Restores all energy.', heal: 99 },
   bento: { name: 'BENTO', description: 'Restores all energy. Made with care.', heal: 99 },
   diploma: { name: 'DIPLOMA', description: 'Proof that the Academy let you go.' },
@@ -345,6 +354,28 @@ export const ITEMS: Record<string, ItemDef> = {
 /** The items that are hidden all over the maps and counted on the Start menu: gold stars and hobby stamps. */
 export const COLLECT = 'star';
 export const STAMP = 'stamp';
+
+/**
+ * Money. A win drops the enemy's level times `wildCoins` (a wild one) or `bossCoins` (a boss): a Lv 3 FLAKY TEST
+ * leaves 6 COINS, the FINAL EXAM 30. `bagLimit` is how many of one item the shop will sell you.
+ */
+export const ECONOMY: Economy = { currency: 'COINS', start: 15, wildCoins: 2, bossCoins: 10, bagLimit: 9 };
+
+/** The shops: what is on the shelf, in this order, and the price. `bye` is said on the way out. */
+export const SHOPS: Record<string, ShopDef> = {
+  cafe: {
+    name: 'CAFE SHOP',
+    stock: [
+      { item: 'stroopwafel', price: 5 },
+      { item: 'coffee', price: 10 },
+      { item: 'energydrink', price: 25 },
+      { item: 'tea', price: 30 },
+      { item: 'spray', price: 20 },
+      { item: 'pizza', price: 60 },
+    ],
+    bye: ['Thanks! Come back any time.'],
+  },
+};
 
 /** What the player carries at the start. */
 export const START_ITEMS: Record<string, number> = { coffee: 2 };

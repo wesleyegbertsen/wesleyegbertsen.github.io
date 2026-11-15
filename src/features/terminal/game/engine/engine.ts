@@ -1,10 +1,12 @@
 import { fullPp, startBattle, stepBattle } from './battle.ts';
+import { applyItem } from './items.ts';
 import { maxHpOf } from './level.ts';
 import { random } from './rng.ts';
+import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
 import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { stroll } from './wander.ts';
-import { DELTA, areaAt, branchFor, gone, holds, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
+import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /** How many ticks one step from cell to cell takes (at 60 ticks a second). */
 export const WALK_TICKS = 10;
@@ -49,8 +51,11 @@ export function initialGame(world: World, seed = 1): GameState {
     battle: null,
     menu: null,
     learn: null,
+    shop: null,
+    coins: world.economy.start,
+    repel: 0,
     face: null,
-    heal: start,
+    heal: home(world, world.start.map) ?? start,
     seed,
     finished: false,
     clock: 0,
@@ -116,6 +121,11 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     ctx.events.push({ kind: 'menu', text: `You can learn ${move.name}: ${describeMove(move)}. Pick a move to replace, or press B to keep your moves.` });
     return { ...state, learn: { move: action.learn, cursor: 0 } };
   }
+  if ('coins' in action) {
+    ctx.cues.push('coin');
+    return say({ ...state, coins: state.coins + action.coins }, [`You got ${money(action.coins, world)}!`], ctx, 'item');
+  }
+  if ('shop' in action) return openShop(state, action.shop, ctx);
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx);
   if ('warp' in action) {
     const spot = resolveSpot(world, action.warp);
@@ -130,7 +140,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
 /** Runs the waiting actions until one of them opens a dialogue or a battle, which the player has to finish first. */
 function runScript(state: GameState, ctx: Ctx): GameState {
   let current = state;
-  while (current.script.length > 0 && !current.dialogue && !current.battle && !current.learn && current.scene === 'world') {
+  while (current.script.length > 0 && !current.dialogue && !current.battle && !current.learn && !current.shop && current.scene === 'world') {
     const [action, ...script] = current.script;
     current = apply({ ...current, script }, action!, ctx);
   }
@@ -234,12 +244,11 @@ function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
   if (!id) return state;
   const item = world.items[id]!;
   ctx.cues.push('confirm');
-  if (item.heal === undefined) return say(state, [`${item.name}: ${item.description}`], ctx);
-  if (state.hp >= state.maxHp) return say(state, ['You are full of energy already.'], ctx);
-  ctx.cues.push('heal');
-  const items = { ...state.items, [id]: state.items[id]! - 1 };
-  const hp = Math.min(state.maxHp, state.hp + item.heal);
-  return say({ ...state, items, hp, menu: { ...menu, cursor: 0 } }, [`You use the ${item.name}. Energy restored!`], ctx);
+  const used = applyItem(state, id, world);
+  if (!used) return say(state, [`${item.name}: ${item.description}`], ctx);
+  if (!used.ok) return say(state, [used.text], ctx);
+  ctx.cues.push(used.cue);
+  return say({ ...used.state, menu: { ...menu, cursor: 0 } }, [used.text], ctx);
 }
 
 /** The player reached a cell: whatever lies there happens, and tall grass may hide something. */
@@ -251,6 +260,12 @@ function arrive(state: GameState, ctx: Ctx): GameState {
     return runScript({ ...state, script: [...(branchFor(object, state)?.do ?? [])] }, ctx);
   }
   if (map.encounters && tileAt(map, state.x, state.y).grass) {
+    if (state.repel > 0) {
+      // A spray from the shop: this step in the grass is a safe one. The last one says so.
+      if (state.repel > 1) return { ...state, repel: state.repel - 1 };
+      ctx.events.push({ kind: 'item', text: 'The spray has worn off.' });
+      return { ...state, repel: 0, notice: { text: 'SPRAY OFF', until: state.clock + NOTICE_TICKS } };
+    }
     const chance = random(state.seed);
     if (chance.value >= map.encounters.rate) return { ...state, seed: chance.seed };
     const pick = random(chance.seed);
@@ -314,7 +329,7 @@ export const FACE_TICKS = 45;
 /** After the talk the clock starts to count; when it has run out, whoever turned to the player looks away again. */
 function letGo(state: GameState): GameState {
   const { face } = state;
-  if (!face || state.dialogue || state.battle || state.learn) return state;
+  if (!face || state.dialogue || state.battle || state.learn || state.shop) return state;
   if (face.until === undefined) return { ...state, face: { ...face, until: state.clock + FACE_TICKS } };
   return state.clock >= face.until ? { ...state, face: null } : state;
 }
@@ -336,7 +351,7 @@ function arrived(state: GameState, from: string, ctx: Ctx): GameState {
   return { ...state, area, banner: { text: area, at: state.clock, slide: !ctx.instant } };
 }
 
-const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && state.scene === 'world';
+const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop && state.scene === 'world';
 
 /** What the player does on the map this tick: carry on walking, open the bag, ask for a hint, talk or step. */
 function act(state: GameState, input: Input, ctx: Ctx): GameState {
@@ -389,11 +404,18 @@ export function step(state: GameState, input: Input, world: World, options: Opti
     return done(next.battle ? next : runScript(next, ctx));
   }
   if (state.learn) return done(stepLearn(state, input, ctx));
+  if (state.shop) {
+    const shopped = stepShop(state, input, ctx);
+    if (!shopped.left) return done(shopped.state);
+    // Out of the shop: a goodbye, and then whatever was still waiting.
+    const bye = world.shops[state.shop.id]?.bye;
+    return done(runScript(bye ? { ...shopped.state, script: [{ say: bye }, ...shopped.state.script] } : shopped.state, ctx));
+  }
   if (state.menu) return done(stepMenu(state, input, ctx));
 
   // The player first, then the town: someone you just turned to and talk to has not walked off in between.
   const next = act(state, input, ctx);
   const clock = state.clock + (ctx.instant ? WALK_TICKS : 1);
-  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu || next.learn) return done({ ...next, clock });
+  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu || next.learn || next.shop) return done({ ...next, clock });
   return done(stroll(next, world, clock, ctx.instant, (object) => gone(object, next)));
 }

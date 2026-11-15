@@ -217,6 +217,28 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /** The cafe: light and easy, with a brush on the hi-hat. */
+  cafe: {
+    bpm: 104,
+    loop: true,
+    voices: [
+      lead(
+        [
+          'B4:2 D5:2 G5:4 E5:2 D5:2 B4:4',
+          'G4:2 B4:2 E5:4 D5:2 B4:2 G4:4',
+          'E5:2 G5:2 C6:4 B5:2 G5:2 E5:4',
+          'F#5:4 A5:4 D5:6 -:2',
+          'B4:2 D5:2 G5:4 B5:2 A5:2 G5:4',
+          'E5:2 G5:2 B5:4 A5:2 G5:2 E5:4',
+          'C5:2 E5:2 A5:4 F#5:2 A5:2 D5:4',
+          'G5:10 -:6',
+        ],
+        0.34,
+      ),
+      ...backing('G Em C D G Em Am+D G', { bass: 'walk', chords: 'quarters', drums: 'h:4 h:2 h:2 h:4 h:2 h:2' }),
+    ],
+  },
+
   /** A wild BUG: quick and minor. The first bar is a run-up that is played once. */
   battle: {
     bpm: 160,
@@ -338,7 +360,7 @@ export const MUSIC: NonNullable<World['music']> = {
   boss: 'boss',
   victory: 'victory',
   indoors: 'indoors',
-  maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave' },
+  maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', cafe: 'cafe' },
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------
@@ -355,6 +377,8 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   blip: { tones: [beep(1150, 0.018, 0.09, 0, undefined, 'thin')], gap: 0.04 },
   door: { tones: [hiss(0.25, 0.12, 0.3, 0, 0.12), beep(180, 0.14, 0.3, 0.02, 90, 'triangle')] },
   item: { tones: [beep(1047, 0.06), beep(1319, 0.06, 0.3, 0.06), beep(1568, 0.06, 0.3, 0.12), beep(2093, 0.16, 0.3, 0.18)] },
+  // Coins change hands: two bright clinks.
+  coin: { tones: [beep(1568, 0.04, 0.24), beep(2093, 0.12, 0.24, 0.05)], gap: 0.05 },
   star: { tones: [beep(1976, 0.05, 0.28), beep(2637, 0.22, 0.28, 0.05)] },
   bump: { tones: [beep(95, 0.07, 0.3, 0, 60, 'triangle')], gap: 0.28 },
   // A hop over a ledge: a quick whistle up, and a soft thud on landing.

@@ -95,6 +95,9 @@ export const testWorld: World = {
   // Out of reach: the tests of the story do not level up. levelWorld below is the one that does.
   levels: { max: 10, xp: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000], hpPerLevel: 3, levelsPerPower: 2, wildXp: 3, bossXp: 10, enemyHpPerLevel: 2 },
   learn: {},
+  // No money in the plain test world: the tests of the story do not count coins. shopWorld below is the one that does.
+  economy: { currency: 'COINS', start: 0, wildCoins: 0, bossCoins: 0, bagLimit: 9 },
+  shops: {},
   intro: ['Welcome.'],
   hints: [{ when: { badges: 1 }, text: 'Go to the door.' }, { text: 'Beat the rat.' }],
   ending: ['THE END'],
@@ -108,6 +111,43 @@ export const levelWorld: World = {
   moves: { ...testWorld.moves, zap: { name: 'ZAP', power: 9, accuracy: 1, pp: 3 } },
   levels: QUICK,
   learn: { 2: 'zap' },
+};
+
+/**
+ * The same world with money: 45 COINS to start with, a wild RAT (level 2) drops 4 and the one that stands guard 20.
+ * West of the start is a purse with 7 COINS (face left), and below it a vendor (go down, face left) with a kiosk:
+ * COFFEE for 10, GREEN TEA for 25 and a KEY for 100. The bag takes three of a kind.
+ */
+export const shopWorld: World = {
+  ...testWorld,
+  maps: {
+    ...testWorld.maps,
+    main: {
+      ...main,
+      objects: [
+        ...main.objects,
+        { id: 'main:p', x: 1, y: 2, sprite: 'chest', solid: true, trigger: 'interact', branches: [{ when: { notFlag: 'purse' }, do: [{ flag: 'purse' }, { coins: 7 }] }] },
+        { id: 'main:v', x: 1, y: 3, sprite: 'maker', solid: true, trigger: 'interact', branches: [{ do: [{ say: ['Welcome.'] }, { shop: 'kiosk' }, { flag: 'shopped' }] }] },
+      ],
+    },
+  },
+  items: {
+    ...testWorld.items,
+    tea: { name: 'GREEN TEA', description: 'Restores the PP of every move.', restore: true },
+    spray: { name: 'BUG SPRAY', description: 'No wild enemies for 2 steps.', repel: 2 },
+  },
+  economy: { currency: 'COINS', start: 45, wildCoins: 2, bossCoins: 10, bagLimit: 3 },
+  shops: {
+    kiosk: {
+      name: 'KIOSK',
+      stock: [
+        { item: 'coffee', price: 10 },
+        { item: 'tea', price: 25 },
+        { item: 'key', price: 100 },
+      ],
+      bye: ['Bye now.'],
+    },
+  },
 };
 
 type Press = keyof Input | Input['dir'];
