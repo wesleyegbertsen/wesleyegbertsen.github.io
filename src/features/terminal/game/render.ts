@@ -111,9 +111,9 @@ function hpBar(ctx: Painter, x: number, y: number, w: number, value: number, max
 }
 
 /** The XP bar: thinner than the energy bar, and full at the top level. */
-function xpBar(ctx: Painter, x: number, y: number, w: number, state: GameState, world: World) {
+function xpBar(ctx: Painter, x: number, y: number, w: number, state: GameState, world: World, h = 4) {
   const progress = xpProgress(state, world);
-  hpBar(ctx, x, y, w, progress ? progress.into : 1, progress ? progress.span : 1, 4);
+  hpBar(ctx, x, y, w, progress ? progress.into : 1, progress ? progress.span : 1, h);
 }
 
 const rightAligned = (text: string, right: number) => right - text.length * FONT.cellW;
@@ -330,28 +330,42 @@ function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   drawLines(ctx, sheets, [`${world.moves[state.moves[0]!]!.name} always stays.`, 'A: swap it in.', 'B: keep your moves.'], 8, BOX_Y + 6);
 }
 
+/** Where the two boxes of the battle screen stand, the pitch of their rows and the width of an energy bar. */
+const HUD = { enemy: { x: 4, y: 6 }, you: { x: 76, y: 58 }, row: 10, bar: 62 } as const;
+
 function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   const battle = state.battle!;
   const enemy = world.enemies[battle.enemy]!;
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
 
-  // The enemy: name, level and energy on the left, picture on the right.
-  drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, 8, 8);
-  drawText(ctx, sheets, 'HP', 8, 19);
-  hpBar(ctx, 22, 20, 60, battle.enemyHp, battle.enemyMax);
-  drawSprite(ctx, sheets, enemy.sprite, 116, 6);
-  rect(ctx, 108, 40, 48, 2, DARK);
+  // Each fighter has a box in one style: the name and the level, the energy under it, and a bracket down one
+  // side and along the bottom. The enemy's is top left with the bracket on its left, the player's bottom right
+  // with the bracket on its right. Labels, bars and rows are the same in both.
+  const { enemy: foe, you } = HUD;
 
-  // The player: seen from behind on the left, energy on the right.
+  // The enemy: no numbers, its picture on the right. The longest name at Lv10 (19 characters) ends before it.
+  rect(ctx, foe.x, foe.y, 2, 22, DARKEST);
+  rect(ctx, foe.x, foe.y + 20, 94, 2, DARKEST);
+  rect(ctx, foe.x + 94, foe.y + 21, 4, 1, DARKEST);
+  drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, foe.x + 5, foe.y);
+  drawText(ctx, sheets, 'HP', foe.x + 5, foe.y + HUD.row);
+  hpBar(ctx, foe.x + 19, foe.y + HUD.row + 2, HUD.bar, battle.enemyHp, battle.enemyMax, 5);
+  drawSprite(ctx, sheets, enemy.sprite, 124, 6);
+  rect(ctx, 118, 40, 40, 2, DARK);
+
+  // The player: seen from behind on the left. The energy with its numbers, and the XP as the rail of the box:
+  // a thin bar that runs into the upright.
   drawSprite(ctx, sheets, 'player-up-0', 12, 60, 2);
   rect(ctx, 4, 92, 48, 2, DARK);
   const energy = `${state.hp}/${state.maxHp}`;
-  drawText(ctx, sheets, `YOU Lv${state.level}`, 78, 58);
-  drawText(ctx, sheets, 'HP', 78, 68);
-  hpBar(ctx, 92, 69, 60, state.hp, state.maxHp);
-  drawText(ctx, sheets, energy, rightAligned(energy, 152), 77);
-  drawText(ctx, sheets, 'XP', 78, 89);
-  xpBar(ctx, 92, 91, 60, state, world);
+  const end = you.x + 14 + HUD.bar;
+  drawText(ctx, sheets, `YOU Lv${state.level}`, you.x, you.y);
+  drawText(ctx, sheets, 'HP', you.x, you.y + HUD.row);
+  hpBar(ctx, you.x + 14, you.y + HUD.row + 2, HUD.bar, state.hp, state.maxHp, 5);
+  drawText(ctx, sheets, energy, rightAligned(energy, end), you.y + 2 * HUD.row - 1);
+  drawText(ctx, sheets, 'XP', you.x, you.y + 3 * HUD.row - 1);
+  xpBar(ctx, you.x + 14, you.y + 33, HUD.bar + 2, state, world, 3);
+  rect(ctx, end + 2, you.y, 2, 36, DARKEST);
 
   if (battle.phase === 'steps') {
     box(ctx, 0, BOX_Y, SCREEN_W, SCREEN_H - BOX_Y);

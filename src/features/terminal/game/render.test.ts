@@ -136,10 +136,12 @@ describe('drawGame', () => {
     const { draws, fills } = drawn({ ...battle, hp: 10, battle: { ...battle.battle!, enemyHp: 5 } });
     expect(spriteDraws(draws, 'bug')).toEqual([expect.objectContaining({ w: 32, h: 32 })]);
     expect(spriteDraws(draws, 'player-up-0')).toEqual([expect.objectContaining({ w: 32, h: 32 })]);
-    expect(textAt(draws, 8)).toBe('RATLv2');
-    expect(fills).toContainEqual({ shade: PALETTE[2], x: 23, y: 21, w: 29, h: 4 });
-    expect(fills).toContainEqual({ shade: PALETTE[2], x: 93, y: 70, w: 29, h: 4 });
+    expect(textAt(draws, 6)).toBe('RATLv2');
+    expect(textAt(draws, 16)).toBe('HP');
+    expect(fills).toContainEqual({ shade: PALETTE[2], x: 24, y: 19, w: 30, h: 3 });
+    expect(fills).toContainEqual({ shade: PALETTE[2], x: 91, y: 71, w: 30, h: 3 });
     expect(textAt(draws, 58)).toBe('YOULv1');
+    expect(textAt(draws, 68)).toBe('HP');
     expect(textAt(draws, 77)).toBe('10/20');
     expect(textAt(draws, 110)).toBe('Whatwill>FIGHT');
     expect(textAt(draws, 120)).toBe('youdo?ITEM');
@@ -237,6 +239,66 @@ describe('a living map', () => {
     expect(corner(drawn(initialGame(living), { muted: true, volume: 5 }, living).fills)).toHaveLength(on.length + 3);
   });
 
+});
+
+describe('the battle screen', () => {
+  const battle = () => play(started(), 'down', 'right', 'a');
+  const dark = (fills: Fill[]) => fills.filter((fill) => fill.shade === PALETTE[3]);
+
+  it('gives each fighter a box in one style: a bracket down one side and along the bottom, mirrored', () => {
+    const { fills } = drawn(battle());
+    // The enemy, top left: the upright on the left, the rail under it, ending in a point.
+    expect(dark(fills)).toContainEqual({ shade: PALETTE[3], x: 4, y: 6, w: 2, h: 22 });
+    expect(dark(fills)).toContainEqual({ shade: PALETTE[3], x: 4, y: 26, w: 94, h: 2 });
+    expect(dark(fills)).toContainEqual({ shade: PALETTE[3], x: 98, y: 27, w: 4, h: 1 });
+    // The player, bottom right: the upright on the right, as tall as its four rows, down to the rail.
+    expect(dark(fills)).toContainEqual({ shade: PALETTE[3], x: 154, y: 58, w: 2, h: 36 });
+  });
+
+  it('makes the XP bar the rail of the box of the player: thin, right under the energy, joined to the upright', () => {
+    const { fills, draws } = drawn(battle());
+    const rail = dark(fills).find((fill) => fill.y === 91 && fill.h === 3)!;
+    expect(rail).toEqual({ shade: PALETTE[3], x: 90, y: 91, w: 64, h: 3 });
+    // It ends where the upright starts, and at the foot of it.
+    expect(rail.x + rail.w).toBe(154);
+    expect(rail.y + rail.h).toBe(58 + 36);
+    // The energy bar above it starts at the same place and is thicker.
+    expect(dark(fills)).toContainEqual({ shade: PALETTE[3], x: 90, y: 70, w: 62, h: 5 });
+    // Both labels stand in one column, in the same font.
+    const label = (y: number) => draws.filter((draw) => draw.sheet === 'font' && draw.y === y).map((draw) => draw.x);
+    expect(label(68)).toEqual([76, 82]);
+    expect(label(87)).toEqual([76, 82]);
+  });
+
+  it('shows the numbers of the energy for the player only', () => {
+    const { draws } = drawn(battle());
+    const rows = [...new Set(draws.filter((draw) => draw.sheet === 'font' && draw.y < 56).map((draw) => draw.y))];
+    expect(rows.sort((a, b) => a - b)).toEqual([6, 16]);
+    expect(textAt(draws, 77)).toBe('20/20');
+    // Right-aligned with the end of the energy bar.
+    expect(Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 77).map((draw) => draw.x + draw.w))).toBe(152);
+  });
+
+  it('has room for the longest name at the highest level beside the picture of the enemy', () => {
+    const long: World = { ...world, enemies: { ...world.enemies, rat: { ...world.enemies.rat!, name: 'RACE CONDITION' } } };
+    const state = battle();
+    const { draws } = drawn({ ...state, battle: { ...state.battle!, level: 10 } }, undefined, long);
+    expect(textAt(draws, 6)).toBe('RACECONDITIONLv10');
+    const end = Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 6).map((draw) => draw.x + draw.w));
+    const picture = spriteDraws(draws, 'bug')[0]!;
+    expect(end).toBeLessThanOrEqual(picture.x);
+    expect(picture.x + picture.w).toBeLessThanOrEqual(SCREEN_W);
+    expect(picture).toMatchObject({ w: 32, h: 32 });
+  });
+
+  it('keeps the menu at the bottom, and the box of the enemy in view above the list of moves', () => {
+    const menu = drawn(battle());
+    expect(menu.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 104, w: 100, h: 40 });
+    const moves = drawn(play(battle(), 'a'));
+    expect(moves.fills).toContainEqual({ shade: PALETTE[3], x: 0, y: 56, w: SCREEN_W, h: 88 });
+    expect(textAt(moves.draws, 6)).toBe('RATLv2');
+    expect(dark(moves.fills)).toContainEqual({ shade: PALETTE[3], x: 4, y: 6, w: 2, h: 22 });
+  });
 });
 
 describe('fitting the screen', () => {
@@ -521,18 +583,19 @@ describe('levels on the screen', () => {
   it('shows both levels and the XP bar in a battle', () => {
     const battle = playIn(levelWorld, { ...play(initialGame(levelWorld, 7), 'a', 'a'), level: 2, xp: 13 }, 'down', 'right', 'a');
     const { draws, fills } = drawn(battle, undefined, levelWorld);
-    expect(textAt(draws, 8)).toBe('RATLv2');
+    expect(textAt(draws, 6)).toBe('RATLv2');
     expect(textAt(draws, 58)).toBe('YOULv2');
-    expect(textAt(draws, 89)).toBe('XP');
-    expect(fills).toContainEqual({ shade: PALETTE[2], x: 93, y: 92, w: 29, h: 2 });
+    expect(textAt(draws, 87)).toBe('XP');
+    // Half way to the next level: half of the rail (62 wide inside) is filled.
+    expect(fills).toContainEqual({ shade: PALETTE[2], x: 91, y: 92, w: 31, h: 1 });
   });
 
   it('measures the enemy against the energy it came with, not its lowest', () => {
     const battle = playIn(levelWorld, play(initialGame(levelWorld, 7), 'a', 'a'), 'down', 'right', 'a');
     const strong = { ...battle, battle: { ...battle.battle!, level: 5, enemyMax: 16, enemyHp: 8 } };
     const { draws, fills } = drawn(strong, undefined, levelWorld);
-    expect(textAt(draws, 8)).toBe('RATLv5');
-    expect(fills).toContainEqual({ shade: PALETTE[2], x: 23, y: 21, w: 29, h: 4 });
+    expect(textAt(draws, 6)).toBe('RATLv5');
+    expect(fills).toContainEqual({ shade: PALETTE[2], x: 24, y: 19, w: 30, h: 3 });
   });
 
   it('draws the offer of a new move: what it does, the moves that can make room, and the way out', () => {
