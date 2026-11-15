@@ -14,7 +14,10 @@ import { crc32, deflateSync, inflateSync } from 'node:zlib';
 import { characters, mirrored } from './characters.mjs';
 import { enemies } from './enemies.mjs';
 import { glyphs } from './font.mjs';
-import { tiles } from './tiles.mjs';
+import { scenery } from './scenery.mjs';
+import { tiles as plain } from './tiles.mjs';
+
+const tiles = { ...plain, ...scenery };
 
 /** The four shades, lightest first. Change them here to recolour every sheet. */
 export const PALETTE = ['#e0f8d0', '#88c070', '#346856', '#081820'];
