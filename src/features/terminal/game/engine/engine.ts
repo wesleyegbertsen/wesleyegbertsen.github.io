@@ -5,7 +5,7 @@ import type { Action, Dir, GameEvent, GameState, Input, Result, World } from './
 import { DELTA, branchFor, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /** How many ticks one step from cell to cell takes (at 60 ticks a second). */
-export const WALK_TICKS = 8;
+export const WALK_TICKS = 10;
 
 export type Options = {
   /** Reduced motion: a step is one whole move and text appears at once. */
