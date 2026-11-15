@@ -10,8 +10,8 @@ export function trackFor(state: GameState, world: World): string | null {
   if (state.scene === 'title') return music.title;
   if (state.scene === 'ending') return music.ending;
   if (state.battle) {
-    // The fanfare starts with the line that says the enemy is beaten: the last line of a won battle.
-    if (state.battle.outcome === 'win' && state.battle.steps.length <= 1) return music.victory;
+    // The fanfare starts with the line that says the enemy is beaten, and lasts through the XP and the new level.
+    if (state.battle.cheer) return music.victory;
     return state.battle.wild ? music.wild : music.boss;
   }
   return music.maps[state.map] ?? music.indoors;

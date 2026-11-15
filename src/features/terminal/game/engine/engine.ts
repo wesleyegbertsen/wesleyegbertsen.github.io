@@ -1,7 +1,8 @@
 import { fullPp, startBattle, stepBattle } from './battle.ts';
+import { maxHpOf } from './level.ts';
 import { random } from './rng.ts';
 import { pageLength, paginate } from './text.ts';
-import type { Action, Cue, Dir, GameEvent, GameState, Input, Result, World } from './types.ts';
+import type { Action, Cue, Dir, GameEvent, GameState, Input, MoveDef, Result, World } from './types.ts';
 import { stroll } from './wander.ts';
 import { DELTA, branchFor, gone, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -33,6 +34,10 @@ export function initialGame(world: World, seed = 1): GameState {
     walk: null,
     hp: world.baseHp,
     maxHp: world.baseHp,
+    level: 1,
+    xp: 0,
+    bonusHp: 0,
+    moves: [...world.playerMoves],
     pp: fullPp(world),
     items: { ...world.startItems },
     flags: {},
@@ -41,6 +46,7 @@ export function initialGame(world: World, seed = 1): GameState {
     script: [],
     battle: null,
     menu: null,
+    learn: null,
     heal: start,
     seed,
     finished: false,
@@ -65,11 +71,11 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     const items = { ...state.items, [action.give]: (state.items[action.give] ?? 0) + 1 };
     if (action.quiet) {
       // Picked up in passing: no text box, a sound, a line for the status region and a note in the corner.
-      const counted = world.collect?.item === action.give;
-      const tally = counted ? `${items[action.give]} of ${world.collect!.total}` : '';
+      const counted = world.collect?.find((collect) => collect.item === action.give);
+      const tally = counted ? `${items[action.give]} of ${counted.total}` : '';
       ctx.cues.push('star');
       ctx.events.push({ kind: 'item', text: `Found a ${item.name}!${tally ? ` ${tally}.` : ''}` });
-      const text = counted ? `${items[action.give]}/${world.collect!.total}` : item.name;
+      const text = counted ? `${counted.mark} ${items[action.give]}/${counted.total}` : item.name;
       return { ...state, items, notice: { text, until: state.clock + NOTICE_TICKS } };
     }
     ctx.cues.push('item');
@@ -83,14 +89,27 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     if (state.badges.includes(action.badge)) return state;
     const badge = world.badges.find((b) => b.id === action.badge)!;
     const badges = [...state.badges, action.badge];
-    const maxHp = world.baseHp + world.hpPerBadge * badges.length;
+    const maxHp = maxHpOf(world, { ...state, badges });
     ctx.cues.push('badge');
     const text = `You earned the ${badge.name}! That is ${badges.length} of ${world.badges.length}. You feel stronger.`;
-    return say({ ...state, badges, maxHp, hp: maxHp, pp: fullPp(world) }, [text], ctx, 'badge');
+    return say({ ...state, badges, maxHp, hp: maxHp, pp: fullPp(world, state.moves) }, [text], ctx, 'badge');
   }
   if ('heal' in action) {
     ctx.cues.push('heal');
-    return { ...state, hp: state.maxHp, pp: fullPp(world), heal: { map: state.map, x: state.x, y: state.y } };
+    return { ...state, hp: state.maxHp, pp: fullPp(world, state.moves), heal: { map: state.map, x: state.x, y: state.y } };
+  }
+  if ('boost' in action) {
+    const bonusHp = state.bonusHp + action.boost;
+    const maxHp = maxHpOf(world, { ...state, bonusHp });
+    ctx.cues.push('levelup');
+    return say({ ...state, bonusHp, maxHp, hp: state.hp + (maxHp - state.maxHp) }, [`Your max energy grows by ${action.boost}, for good!`], ctx, 'item');
+  }
+  if ('learn' in action) {
+    const move = world.moves[action.learn];
+    if (!move || state.moves.includes(action.learn)) return state;
+    ctx.cues.push('item');
+    ctx.events.push({ kind: 'menu', text: `You can learn ${move.name}: ${describeMove(move)}. Pick a move to replace, or press B to keep your moves.` });
+    return { ...state, learn: { move: action.learn, cursor: 0 } };
   }
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx);
   if ('warp' in action) {
@@ -106,7 +125,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
 /** Runs the waiting actions until one of them opens a dialogue or a battle, which the player has to finish first. */
 function runScript(state: GameState, ctx: Ctx): GameState {
   let current = state;
-  while (current.script.length > 0 && !current.dialogue && !current.battle && current.scene === 'world') {
+  while (current.script.length > 0 && !current.dialogue && !current.battle && !current.learn && current.scene === 'world') {
     const [action, ...script] = current.script;
     current = apply({ ...current, script }, action!, ctx);
   }
@@ -131,12 +150,58 @@ function stepDialogue(state: GameState, input: Input, ctx: Ctx): GameState {
   return runScript({ ...state, dialogue: null }, ctx);
 }
 
+/** A move in a few words, for the offer of a new one: on the screen and in the status region. */
+export function describeMove(move: MoveDef): string {
+  const what = move.heal !== undefined ? `heals ${move.heal}` : `power ${move.power}, hits ${Math.round(move.accuracy * 100)}%`;
+  return `${what}, ${move.pp} PP`;
+}
+
+/** The entries of the offer of a new move: the moves that can make room (never the first one), and "keep". */
+export const learnRows = (state: GameState): string[] => state.moves.slice(1);
+
+/** The offer of a new move: pick the one it replaces, or keep what you have (B, or the last entry). */
+function stepLearn(state: GameState, input: Input, ctx: Ctx): GameState {
+  const { world } = ctx;
+  const learn = state.learn!;
+  const rows = learnRows(state);
+  const offered = world.moves[learn.move]!;
+  if (input.pressed === 'up' || input.pressed === 'down') {
+    const cursor = Math.max(0, Math.min(rows.length, learn.cursor + (input.pressed === 'up' ? -1 : 1)));
+    if (cursor === learn.cursor) return state;
+    ctx.cues.push('cursor');
+    const id = rows[cursor];
+    ctx.events.push({ kind: 'menu', text: id ? `Replace ${world.moves[id]!.name}: ${describeMove(world.moves[id]!)}` : 'Keep my moves' });
+    return { ...state, learn: { ...learn, cursor } };
+  }
+  const old = input.a ? rows[learn.cursor] : undefined;
+  if (input.b || (input.a && !old)) {
+    ctx.cues.push('cancel');
+    return say({ ...state, learn: null }, [`You keep your moves. ${offered.name} will have to wait.`], ctx);
+  }
+  if (!old) return state;
+  ctx.cues.push('confirm');
+  const moves = state.moves.map((id) => (id === old ? learn.move : id));
+  const pp = Object.fromEntries(moves.map((id) => [id, id === learn.move ? offered.pp : (state.pp[id] ?? 0)]));
+  return say({ ...state, learn: null, moves, pp }, [`You forget ${world.moves[old]!.name} and learn ${offered.name}!`], ctx);
+}
+
 function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
   const { world } = ctx;
   const menu = state.menu!;
   if (input.b || input.start) {
     ctx.cues.push('cancel');
     return { ...state, menu: null };
+  }
+  // The volume row under the list: left and right turn the wheel. The game itself does not know how loud it is;
+  // it only says "quieter" or "louder", and whoever plays the sound acts on it.
+  if (menu.row === 'volume') {
+    if (input.pressed === 'left' || input.pressed === 'right') {
+      ctx.cues.push(input.pressed === 'left' ? 'quieter' : 'louder');
+      return state;
+    }
+    if (input.pressed !== 'up') return state;
+    ctx.cues.push('cursor');
+    return { ...state, menu: { tab: menu.tab, cursor: menu.cursor } };
   }
   if (input.pressed === 'left' || input.pressed === 'right') {
     ctx.cues.push('cursor');
@@ -146,7 +211,13 @@ function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
   const count = menu.tab === 'items' ? owned.length : world.badges.length;
   if (input.pressed === 'up' || input.pressed === 'down') {
     const cursor = Math.max(0, Math.min(count - 1, menu.cursor + (input.pressed === 'up' ? -1 : 1)));
-    if (cursor === menu.cursor) return state;
+    if (cursor === menu.cursor) {
+      // Down from the last entry: on to the volume row.
+      if (input.pressed === 'up') return state;
+      ctx.cues.push('cursor');
+      ctx.events.push({ kind: 'menu', text: 'Volume. Left and right change it.' });
+      return { ...state, menu: { ...menu, row: 'volume' } };
+    }
     ctx.cues.push('cursor');
     return { ...state, menu: { ...menu, cursor } };
   }
@@ -176,7 +247,12 @@ function arrive(state: GameState, ctx: Ctx): GameState {
     if (chance.value >= map.encounters.rate) return { ...state, seed: chance.seed };
     const pick = random(chance.seed);
     const enemy = map.encounters.enemies[Math.floor(pick.value * map.encounters.enemies.length)]!;
-    return startBattle({ ...state, seed: pick.seed }, enemy, [], true, ctx);
+    if (!map.encounters.levels) return startBattle({ ...state, seed: pick.seed }, enemy, [], true, ctx);
+    // Its level: somewhere in the range of this place.
+    const [low, high] = map.encounters.levels;
+    const roll = random(pick.seed);
+    const level = low + Math.floor(roll.value * (high - low + 1));
+    return startBattle({ ...state, seed: roll.seed }, enemy, [], true, ctx, level);
   }
   return state;
 }
@@ -214,7 +290,7 @@ function interact(state: GameState, ctx: Ctx): GameState {
   return runScript({ ...state, script: [...branch.do] }, ctx);
 }
 
-const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && state.scene === 'world';
+const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && state.scene === 'world';
 
 /** What the player does on the map this tick: carry on walking, open the bag, ask for a hint, talk or step. */
 function act(state: GameState, input: Input, ctx: Ctx): GameState {
@@ -264,11 +340,12 @@ export function step(state: GameState, input: Input, world: World, options: Opti
     const next = stepBattle(state, input, ctx);
     return done(next.battle ? next : runScript(next, ctx));
   }
+  if (state.learn) return done(stepLearn(state, input, ctx));
   if (state.menu) return done(stepMenu(state, input, ctx));
 
   // The player first, then the town: someone you just turned to and talk to has not walked off in between.
   const next = act(state, input, ctx);
   const clock = state.clock + (ctx.instant ? WALK_TICKS : 1);
-  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu) return done({ ...next, clock });
+  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu || next.learn) return done({ ...next, clock });
   return done(stroll(next, world, clock, ctx.instant, (object) => gone(object, next)));
 }

@@ -14,6 +14,8 @@ export type Cond = {
   badges?: number;
   /** Carries at least `min` of an item (the collector counts stars). */
   count?: { item: string; min: number };
+  /** Is at least this level (the cave mouth). */
+  level?: number;
 };
 
 /** A place, named by an object's character on a map (plus an offset), so maps can be redrawn freely. */
@@ -30,6 +32,10 @@ export type Action =
   | { heal: true }
   | { battle: string; win: Action[] }
   | { warp: Spot }
+  /** Max energy grows by this much, for good (the prize at the end of the cave). */
+  | { boost: number }
+  /** Offers a new move: the player picks one to replace, or keeps what they have. */
+  | { learn: string }
   | { ending: true };
 
 /** What an object does while `when` holds. The first branch that holds is the one that runs. */
@@ -87,7 +93,13 @@ export type GameMap = {
   /** The legend of this map: what each of those characters is. */
   tiles: Record<string, TileDef>;
   objects: GameObject[];
-  encounters?: { enemies: string[]; rate: number };
+  /**
+   * Wild enemies in the tall grass: who, how often (0 to 1 per step) and the range of their levels. An enemy is
+   * never below its own level; each level above it adds a little HP.
+   */
+  encounters?: { enemies: string[]; rate: number; levels?: [number, number] };
+  /** A dark place: only this many cells around the player are lit (see engine/light.ts). */
+  dark?: number;
 };
 
 export type MoveDef = {
@@ -104,6 +116,9 @@ export type MoveDef = {
 
 export type EnemyDef = {
   name: string;
+  /** Its level: what it is worth in XP, and the lowest level it appears at. */
+  level: number;
+  /** Energy at its own level. */
   hp: number;
   sprite: string;
   moves: MoveDef[];
@@ -131,25 +146,56 @@ export type World = {
   badges: BadgeDef[];
   baseHp: number;
   hpPerBadge: number;
+  /** How the player grows. See engine/level.ts. */
+  levels: Levels;
+  /** The move that is offered on reaching a level. */
+  learn: Record<number, string>;
   intro: string[];
   /** What Select says: the first hint whose condition holds. */
   hints: { when?: Cond; text: string }[];
   /** Lines of the ending screen. */
   ending: string[];
-  /** The thing to collect, counted on the Start menu: the item and how many of it the maps hide. */
-  collect?: { item: string; total: number };
+  /** The things to collect, counted on the Start menu: the item and how many of it the maps hide. */
+  collect?: Collect[];
   /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
   music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
 };
 
-export type Dialogue = { pages: string[][]; page: number; shown: number };
-export type Menu = { tab: 'items' | 'badges'; cursor: number };
+/** `label` is the word on the Start menu, `mark` the sign before the count in the corner note. */
+export type Collect = { item: string; total: number; label: string; mark: string };
 
-/** One line of a battle. HP values in it take effect when the line appears. */
-export type BattleStep = { text: string; enemyHp?: number; hp?: number; cue?: Cue };
+export type Levels = {
+  /** The highest level. */
+  max: number;
+  /** The total XP needed for level 2, 3, 4... one entry per level after the first. */
+  xp: number[];
+  /** Max energy added per level. */
+  hpPerLevel: number;
+  /** Every this many levels, each attack does one more damage. */
+  levelsPerPower: number;
+  /** XP for a win, per level of the enemy: a wild one, and one that stood guard (a boss). */
+  wildXp: number;
+  bossXp: number;
+  /** HP a wild enemy has more per level above its own. */
+  enemyHpPerLevel: number;
+};
+
+export type Dialogue = { pages: string[][]; page: number; shown: number };
+/** The Start menu. `row` says the cursor is on the volume row under the list. */
+export type Menu = { tab: 'items' | 'badges'; cursor: number; row?: 'volume' };
+/** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
+export type Learn = { move: string; cursor: number };
+
+/** One line of a battle. HP, XP and level values in it take effect when the line appears. */
+export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; cheer?: true; cue?: Cue };
 
 export type Battle = {
   enemy: string;
+  /** The enemy's level in this battle, and the HP it started with. */
+  level: number;
+  enemyMax: number;
+  /** The enemy is down: the fanfare plays from that line on. */
+  cheer: boolean;
   enemyHp: number;
   wild: boolean;
   phase: 'steps' | 'menu' | 'moves' | 'items';
@@ -170,6 +216,13 @@ export type GameState = {
   walk: { fromX: number; fromY: number; t: number } | null;
   hp: number;
   maxHp: number;
+  /** 1 to `world.levels.max`, and the XP gathered so far. */
+  level: number;
+  xp: number;
+  /** Max energy won for good (a prize), on top of what the level and the badges give. */
+  bonusHp: number;
+  /** The moves the player knows, in menu order. The first one is the default and is never replaced. */
+  moves: string[];
   pp: Record<string, number>;
   items: Record<string, number>;
   flags: Record<string, true>;
@@ -179,6 +232,7 @@ export type GameState = {
   script: Action[];
   battle: Battle | null;
   menu: Menu | null;
+  learn: Learn | null;
   /** Where a defeat sends the player back to. */
   heal: { map: string; x: number; y: number };
   seed: number;
@@ -232,6 +286,10 @@ export type Cue =
   | 'faint'
   | 'low'
   | 'run'
-  | 'encounter';
+  | 'encounter'
+  | 'levelup'
+  /** The volume row of the Start menu: the game turns the sound down or up a step. */
+  | 'quieter'
+  | 'louder';
 
 export type Result = { state: GameState; events: GameEvent[]; cues: Cue[] };

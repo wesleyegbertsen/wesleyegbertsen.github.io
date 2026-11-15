@@ -1,3 +1,4 @@
+import { attackBonus, enemyHpAt, levelFor, maxHpOf, xpFor } from './level.ts';
 import { random } from './rng.ts';
 import { fold } from './text.ts';
 import type { Action, Battle, BattleStep, Cue, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
@@ -14,8 +15,8 @@ export function usableItems(state: GameState, world: World): string[] {
   return Object.keys(world.items).filter((id) => world.items[id]!.heal !== undefined && state.items[id]! > 0);
 }
 
-export const fullPp = (world: World): Record<string, number> =>
-  Object.fromEntries(world.playerMoves.map((id) => [id, world.moves[id]!.pp]));
+export const fullPp = (world: World, moves: readonly string[] = world.playerMoves): Record<string, number> =>
+  Object.fromEntries(moves.map((id) => [id, world.moves[id]!.pp]));
 
 type Ctx = { world: World; events: GameEvent[]; cues: Cue[]; instant: boolean };
 
@@ -36,19 +37,36 @@ function reveal(state: GameState, ctx: Ctx): GameState {
   ctx.events.push({ kind: 'battle', text: step.text });
   if (step.cue) ctx.cues.push(step.cue);
   if (step.cue === 'hurt' && step.hp !== undefined && step.hp > 0 && step.hp <= state.maxHp * LOW) ctx.cues.push('low');
+  // A new level: the max energy grows, and the energy with it.
+  const level = step.level ?? state.level;
+  const maxHp = step.level === undefined ? state.maxHp : maxHpOf(ctx.world, { ...state, level });
   return {
     ...state,
-    hp: step.hp ?? state.hp,
-    battle: { ...battle, enemyHp: step.enemyHp ?? battle.enemyHp, shown: ctx.instant ? step.text.length : 0 },
+    hp: (step.hp ?? state.hp) + (maxHp - state.maxHp),
+    maxHp,
+    level,
+    xp: step.xp ?? state.xp,
+    battle: {
+      ...battle,
+      enemyHp: step.enemyHp ?? battle.enemyHp,
+      cheer: battle.cheer || !!step.cheer,
+      shown: ctx.instant ? step.text.length : 0,
+    },
   };
 }
 
-export function startBattle(state: GameState, enemyId: string, win: Action[], wild: boolean, ctx: Ctx): GameState {
+/** `level`: the level a wild enemy shows up at; never under its own. A boss is always at its own level. */
+export function startBattle(state: GameState, enemyId: string, win: Action[], wild: boolean, ctx: Ctx, level = 0): GameState {
   const enemy = ctx.world.enemies[enemyId];
   if (!enemy) throw new Error(`No enemy '${enemyId}'`);
+  const at = Math.max(enemy.level, level);
+  const enemyMax = enemyHpAt(enemy, at, ctx.world);
   const battle: Battle = {
     enemy: enemyId,
-    enemyHp: enemy.hp,
+    level: at,
+    enemyMax,
+    cheer: false,
+    enemyHp: enemyMax,
     wild,
     phase: 'steps',
     steps: [],
@@ -93,7 +111,7 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
       hp = Math.min(state.maxHp, hp + move.heal);
       steps.push({ text: `You take a ${move.name}. Energy restored!`, hp, cue: 'heal' });
     } else if (roll() < move.accuracy) {
-      const dealt = damage(move);
+      const dealt = damage(move) + attackBonus(state.level, world);
       enemyHp = Math.max(0, enemyHp - dealt);
       steps.push({ text: `You use ${move.name}! ${enemy.name} loses ${dealt} HP.`, enemyHp, cue: 'hit' });
     } else {
@@ -102,9 +120,24 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
   }
 
   let outcome: Battle['outcome'] = null;
+  let { win } = battle;
   if (enemyHp <= 0) {
-    steps.push({ text: enemy.defeat });
+    steps.push({ text: enemy.defeat, cheer: true });
     outcome = 'win';
+    // The win is worth XP, and enough XP is a level: more energy, stronger attacks, now and then a new move.
+    if (state.level < world.levels.max) {
+      const gain = xpFor(battle.level, battle.wild, world);
+      const xp = state.xp + gain;
+      steps.push({ text: `You gain ${gain} XP.`, xp });
+      const reached = levelFor(xp, world);
+      const learns: Action[] = [];
+      for (let level = state.level + 1; level <= reached; level++) {
+        steps.push({ text: `You grew to Lv ${level}! More energy, stronger moves.`, level, cue: 'levelup' });
+        const move = world.learn[level];
+        if (move) learns.push({ learn: move });
+      }
+      win = [...learns, ...win];
+    }
   } else {
     const move = enemy.moves[Math.floor(roll() * enemy.moves.length)]!;
     if (roll() < move.accuracy) {
@@ -120,7 +153,7 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
     }
   }
 
-  return show({ ...state, seed, pp, items }, { ...battle, outcome }, steps, ctx);
+  return show({ ...state, seed, pp, items }, { ...battle, outcome, win }, steps, ctx);
 }
 
 /** The battle is over: back to the map. A defeat only costs the walk back from the last coffee stop. */
@@ -135,7 +168,7 @@ function finish(state: GameState, ctx: Ctx): GameState {
       ...state.heal,
       walk: null,
       hp: state.maxHp,
-      pp: fullPp(ctx.world),
+      pp: fullPp(ctx.world, state.moves),
       script: [{ say: ['You wake up at the last coffee stop, fully rested. Nothing was lost. Try again!'] }],
     };
   }
@@ -179,7 +212,7 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
     ctx.cues.push('confirm');
     if (picked === 'FIGHT') {
       // Out of PP everywhere: the fallback move, so the battle can always be finished.
-      if (world.playerMoves.every((id) => !(state.pp[id]! > 0))) return turn(state, { move: world.fallbackMove }, ctx);
+      if (state.moves.every((id) => !(state.pp[id]! > 0))) return turn(state, { move: world.fallbackMove }, ctx);
       return { ...state, battle: { ...battle, phase: 'moves', cursor: 0 } };
     }
     if (picked === 'ITEM') {
@@ -197,10 +230,10 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   if (battle.phase === 'moves') {
     if (!input.a) {
-      const cursor = move(battle.cursor, input, world.playerMoves.length, ctx);
+      const cursor = move(battle.cursor, input, state.moves.length, ctx);
       return cursor === battle.cursor ? state : { ...state, battle: { ...battle, cursor } };
     }
-    const id = world.playerMoves[battle.cursor]!;
+    const id = state.moves[battle.cursor]!;
     const picked = world.moves[id]!;
     if (!(state.pp[id]! > 0)) return show(state, battle, [{ text: `No PP left for ${picked.name}.` }], ctx);
     return turn(state, { move: picked, id }, ctx);

@@ -1,8 +1,10 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
-import { WALK_TICKS, ownedItems } from './engine/engine.ts';
+import { WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
+import { xpProgress } from './engine/level.ts';
+import { dimness } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
-import type { GameState, World } from './engine/types.ts';
+import type { GameState, MoveDef, World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
 
@@ -16,8 +18,11 @@ export type Sheets = { tiles: CanvasImageSource; sprites: CanvasImageSource; fon
 /** What the renderer needs of a 2D context, so a test can hand it a recorder. */
 export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
 
-/** What is shown on top of the game that is not part of its state: whether the sound is off. */
-export type Hud = { muted: boolean };
+/** What is shown on top of the game that is not part of its state: whether the sound is off, and how loud it is (0 to 10). */
+export type Hud = { muted: boolean; volume: number };
+
+/** The volume wheel has this many steps. */
+export const VOLUME_STEPS = 10;
 
 const [LIGHTEST, , DARK, DARKEST] = PALETTE;
 const LINE = 10;
@@ -25,7 +30,9 @@ const BOX_Y = 104;
 /** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
 export const FRAME_TICKS = 30;
 /** How many items the bag shows at once; a longer list scrolls with the cursor. */
-const BAG_ROWS = 5;
+const BAG_ROWS = 4;
+/** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
+const SHADES = ['', 'shade-1', 'shade-2'] as const;
 
 /** The picture to show now: the plain one, or its `-b` twin every other beat when it is animated. */
 const frameOf = (sprite: string, animated: boolean | undefined, clock: number) =>
@@ -78,11 +85,31 @@ function drawSprite(ctx: Painter, sheets: Sheets, name: string, x: number, y: nu
   }
 }
 
-function hpBar(ctx: Painter, x: number, y: number, w: number, value: number, max: number) {
-  rect(ctx, x, y, w, 6, DARKEST);
-  rect(ctx, x + 1, y + 1, w - 2, 4, LIGHTEST);
+function hpBar(ctx: Painter, x: number, y: number, w: number, value: number, max: number, h = 6) {
+  rect(ctx, x, y, w, h, DARKEST);
+  rect(ctx, x + 1, y + 1, w - 2, h - 2, LIGHTEST);
   const fill = value <= 0 ? 0 : Math.max(1, Math.round(((w - 2) * value) / max));
-  if (fill > 0) rect(ctx, x + 1, y + 1, fill, 4, DARK);
+  if (fill > 0) rect(ctx, x + 1, y + 1, Math.min(w - 2, fill), h - 2, DARK);
+}
+
+/** The XP bar: thinner than the energy bar, and full at the top level. */
+function xpBar(ctx: Painter, x: number, y: number, w: number, state: GameState, world: World) {
+  const progress = xpProgress(state, world);
+  hpBar(ctx, x, y, w, progress ? progress.into : 1, progress ? progress.span : 1, 4);
+}
+
+const rightAligned = (text: string, right: number) => right - text.length * FONT.cellW;
+
+/** A move's numbers, short enough for a column: power and accuracy, or what it heals. */
+const moveStats = (move: MoveDef) => (move.heal !== undefined ? `+${move.heal}` : `${move.power} ${Math.round(move.accuracy * 100)}%`);
+
+/** The volume wheel as the Game Boy would draw it: ten steps that grow, filled up to the level. */
+function drawVolume(ctx: Painter, x: number, y: number, hud: Hud) {
+  for (let i = 0; i < VOLUME_STEPS; i++) {
+    const h = 2 + Math.round((i * 6) / (VOLUME_STEPS - 1));
+    if (i < hud.volume) rect(ctx, x + i * 4, y + 8 - h, 3, h, hud.muted ? DARK : DARKEST);
+    else rect(ctx, x + i * 4, y + 7, 3, 1, DARK);
+  }
 }
 
 /** Lines of text, of which only the first `shown` characters are drawn (the typewriter). */
@@ -137,9 +164,22 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? 1 : 0;
   drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY);
 
+  // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
+  // the player, so nothing flickers.
+  if (map.dark !== undefined) {
+    for (let cy = Math.floor(camY / TILE); cy * TILE < camY + SCREEN_H; cy++) {
+      for (let cx = Math.floor(camX / TILE); cx * TILE < camX + SCREEN_W; cx++) {
+        const dim = dimness(cx - px / TILE, cy - py / TILE, map.dark);
+        if (dim === 0) continue;
+        if (dim === 3) rect(ctx, cx * TILE - camX, cy * TILE - camY, TILE, TILE, DARKEST);
+        else drawSprite(ctx, sheets, SHADES[dim], cx * TILE - camX, cy * TILE - camY);
+      }
+    }
+  }
+
   // The note after a find: the count, in the corner, for a moment.
   if (state.notice && state.clock < state.notice.until) {
-    const text = `* ${state.notice.text}`;
+    const { text } = state.notice;
     box(ctx, 0, 0, text.length * FONT.cellW + 11, 16);
     drawText(ctx, sheets, text, 6, 4);
   }
@@ -178,15 +218,23 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
 
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   const menu = state.menu!;
+  const onVolume = menu.row === 'volume';
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
-  drawText(ctx, sheets, 'BAG', 14, 8);
-  drawText(ctx, sheets, 'BADGES', 62, 8);
-  rect(ctx, menu.tab === 'items' ? 14 : 62, 17, (menu.tab === 'items' ? 3 : 6) * FONT.cellW - 1, 1, DARKEST);
-  drawText(ctx, sheets, '< >', 128, 8);
-  drawText(ctx, sheets, 'ENERGY', 14, 24);
-  hpBar(ctx, 56, 25, 50, state.hp, state.maxHp);
-  drawText(ctx, sheets, `${state.hp}/${state.maxHp}`, 110, 24);
-  rect(ctx, 8, 35, SCREEN_W - 16, 1, DARK);
+  drawText(ctx, sheets, 'BAG', 14, 6);
+  drawText(ctx, sheets, 'BADGES', 62, 6);
+  rect(ctx, menu.tab === 'items' ? 14 : 62, 15, (menu.tab === 'items' ? 3 : 6) * FONT.cellW - 1, 1, DARKEST);
+  drawText(ctx, sheets, '< >', 128, 6);
+
+  // Who you are by now: the level, the XP towards the next one, and the energy.
+  const progress = xpProgress(state, world);
+  const xp = progress ? `XP ${progress.into}/${progress.span}` : 'XP MAX';
+  drawText(ctx, sheets, `LV ${state.level}`, 14, 18);
+  xpBar(ctx, 50, 20, 40, state, world);
+  drawText(ctx, sheets, xp, rightAligned(xp, SCREEN_W - 8), 18);
+  drawText(ctx, sheets, 'ENERGY', 14, 28);
+  hpBar(ctx, 56, 29, 50, state.hp, state.maxHp);
+  drawText(ctx, sheets, `${state.hp}/${state.maxHp}`, 110, 28);
+  rect(ctx, 8, 38, SCREEN_W - 16, 1, DARK);
 
   let note: string;
   if (menu.tab === 'items') {
@@ -195,29 +243,59 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
     // A long bag scrolls: the cursor stays in view.
     const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, owned.length - BAG_ROWS));
     owned.slice(top, top + BAG_ROWS).forEach((id, i) => {
-      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      if (top + i === cursor && !onVolume) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
       drawText(ctx, sheets, `${world.items[id]!.name} x${state.items[id]}`, 18, 42 + i * LINE);
     });
     note = owned.length === 0 ? 'Your bag is empty.' : world.items[owned[cursor]!]!.description;
   } else {
-    world.badges.forEach((badge, i) => {
+    world.badges.slice(0, BAG_ROWS).forEach((badge, i) => {
       const earned = state.badges.includes(badge.id);
-      if (i === menu.cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      if (i === menu.cursor && !onVolume) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
       drawText(ctx, sheets, earned ? `* ${badge.name}` : '- ???', 18, 42 + i * LINE);
     });
     note = `${state.badges.length} of ${world.badges.length} badges.`;
   }
-  // The foot of the menu: what was found of the things to collect, and whether the sound is on.
-  if (world.collect) {
-    const name = world.items[world.collect.item]?.name.split(' ').at(-1) ?? '';
-    drawText(ctx, sheets, `${name}S ${state.items[world.collect.item] ?? 0}/${world.collect.total}`, 8, 94);
-  }
+
+  // The foot of the menu: what was found of the things to collect, and the volume wheel.
+  (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
+    const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
+    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), 83);
+  });
   if (hud) {
-    const sound = hud.muted ? 'SOUND OFF' : 'SOUND ON';
-    drawText(ctx, sheets, sound, SCREEN_W - 8 - sound.length * FONT.cellW, 94);
+    if (onVolume) drawText(ctx, sheets, '>', 8, 94);
+    drawText(ctx, sheets, 'VOLUME', 16, 94);
+    drawVolume(ctx, 56, 93, hud);
+    drawText(ctx, sheets, `${hud.volume * 10}%`, 100, 94);
+    if (hud.muted) drawText(ctx, sheets, 'OFF', 130, 94);
+    if (onVolume) note = hud.muted ? 'Left and right change the volume. The sound is off: M switches it on.' : 'Left and right change the volume. M switches the sound off.';
   }
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
+}
+
+/** The offer of a new move: what it does, and the moves that can make room for it. */
+function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const learn = state.learn!;
+  const offered = world.moves[learn.move]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, 'NEW MOVE', 14, 8);
+  drawText(ctx, sheets, `LV ${state.level}`, rightAligned(`LV ${state.level}`, SCREEN_W - 14), 8);
+  drawText(ctx, sheets, offered.name, 14, 20);
+  const stats = offered.heal !== undefined ? `HEALS ${offered.heal}  PP ${offered.pp}` : `POW ${offered.power}  HIT ${Math.round(offered.accuracy * 100)}%  PP ${offered.pp}`;
+  drawText(ctx, sheets, stats, 14, 30);
+  rect(ctx, 8, 41, SCREEN_W - 16, 1, DARK);
+  drawText(ctx, sheets, 'REPLACE WHICH?', 14, 46);
+  const rows = learnRows(state);
+  rows.forEach((id, i) => {
+    const move = world.moves[id]!;
+    const numbers = moveStats(move);
+    drawText(ctx, sheets, move.name, 18, 58 + i * LINE);
+    drawText(ctx, sheets, numbers, rightAligned(numbers, SCREEN_W - 8), 58 + i * LINE);
+  });
+  drawText(ctx, sheets, 'KEEP MY MOVES', 18, 58 + rows.length * LINE);
+  drawText(ctx, sheets, '>', 10, 58 + Math.min(learn.cursor, rows.length) * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  drawLines(ctx, sheets, [`${world.moves[state.moves[0]!]!.name} always stays.`, 'A: swap it in.', 'B: keep your moves.'], 8, BOX_Y + 6);
 }
 
 function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
@@ -225,20 +303,23 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   const enemy = world.enemies[battle.enemy]!;
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
 
-  // The enemy: name and energy on the left, picture on the right.
-  drawText(ctx, sheets, enemy.name, 8, 8);
+  // The enemy: name, level and energy on the left, picture on the right.
+  drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, 8, 8);
   drawText(ctx, sheets, 'HP', 8, 19);
-  hpBar(ctx, 22, 20, 60, battle.enemyHp, enemy.hp);
+  hpBar(ctx, 22, 20, 60, battle.enemyHp, battle.enemyMax);
   drawSprite(ctx, sheets, enemy.sprite, 116, 6);
   rect(ctx, 108, 40, 48, 2, DARK);
 
   // The player: seen from behind on the left, energy on the right.
   drawSprite(ctx, sheets, 'player-up-0', 12, 60, 2);
   rect(ctx, 4, 92, 48, 2, DARK);
-  drawText(ctx, sheets, 'YOU', 78, 62);
-  drawText(ctx, sheets, 'HP', 78, 73);
-  hpBar(ctx, 92, 74, 60, state.hp, state.maxHp);
-  drawText(ctx, sheets, `${state.hp}/${state.maxHp}`, 104, 84);
+  const energy = `${state.hp}/${state.maxHp}`;
+  drawText(ctx, sheets, `YOU Lv${state.level}`, 78, 58);
+  drawText(ctx, sheets, 'HP', 78, 68);
+  hpBar(ctx, 92, 69, 60, state.hp, state.maxHp);
+  drawText(ctx, sheets, energy, rightAligned(energy, 152), 77);
+  drawText(ctx, sheets, 'XP', 78, 89);
+  xpBar(ctx, 92, 91, 60, state, world);
 
   if (battle.phase === 'steps') {
     box(ctx, 0, BOX_Y, SCREEN_W, SCREEN_H - BOX_Y);
@@ -259,7 +340,7 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   box(ctx, 0, 56, SCREEN_W, SCREEN_H - 56);
   const entries =
     battle.phase === 'moves'
-      ? world.playerMoves.map((id) => [world.moves[id]!.name, `${state.pp[id] ?? 0}/${world.moves[id]!.pp}`] as const)
+      ? state.moves.map((id) => [world.moves[id]!.name, `${state.pp[id] ?? 0}/${world.moves[id]!.pp}`] as const)
       : usableItems(state, world).map((id) => [world.items[id]!.name, `x${state.items[id]}`] as const);
   drawText(ctx, sheets, battle.phase === 'moves' ? 'MOVE' : 'ITEM', 16, 62);
   drawText(ctx, sheets, battle.phase === 'moves' ? 'PP' : '', 128, 62);
@@ -314,6 +395,7 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
   }
   if (state.scene === 'ending') return drawEnding(ctx, sheets, world);
   if (state.battle) drawBattle(ctx, sheets, state, world);
+  else if (state.learn) drawLearn(ctx, sheets, state, world);
   else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
   else {
     drawWorld(ctx, sheets, state, world);

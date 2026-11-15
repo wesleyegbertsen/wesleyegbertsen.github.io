@@ -1,4 +1,4 @@
-import { NO_INPUT, type GameState, type Input, type TileDef, type World } from './types.ts';
+import { NO_INPUT, type GameState, type Input, type Levels, type TileDef, type World } from './types.ts';
 import { step } from './engine.ts';
 import { parseMap } from './world.ts';
 
@@ -86,26 +86,44 @@ export const testWorld: World = {
   playerMoves: ['hit', 'nap'],
   fallbackMove: { name: 'FLAIL', power: 3, accuracy: 1, pp: 0 },
   enemies: {
-    rat: { name: 'RAT', hp: 10, sprite: 'bug', moves: [{ name: 'NIBBLE', power: 2, accuracy: 1, pp: 0 }], defeat: 'RAT ran off.' },
-    ogre: { name: 'OGRE', hp: 99, sprite: 'bug', moves: [{ name: 'SMASH', power: 50, accuracy: 1, pp: 0 }], defeat: 'OGRE fell.' },
+    rat: { name: 'RAT', level: 2, hp: 10, sprite: 'bug', moves: [{ name: 'NIBBLE', power: 2, accuracy: 1, pp: 0 }], defeat: 'RAT ran off.' },
+    ogre: { name: 'OGRE', level: 9, hp: 99, sprite: 'bug', moves: [{ name: 'SMASH', power: 50, accuracy: 1, pp: 0 }], defeat: 'OGRE fell.' },
   },
   badges: [{ id: 'one', name: 'FIRST BADGE' }],
   baseHp: 20,
   hpPerBadge: 5,
+  // Out of reach: the tests of the story do not level up. levelWorld below is the one that does.
+  levels: { max: 10, xp: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000], hpPerLevel: 3, levelsPerPower: 2, wildXp: 3, bossXp: 10, enemyHpPerLevel: 2 },
+  learn: {},
   intro: ['Welcome.'],
   hints: [{ when: { badges: 1 }, text: 'Go to the door.' }, { text: 'Beat the rat.' }],
   ending: ['THE END'],
 };
 
-/** Presses one thing per call, with reduced motion (a press is a whole move), and returns the new state. */
-export function play(state: GameState, ...inputs: (keyof Input | Input['dir'])[]): GameState {
+const QUICK: Levels = { max: 4, xp: [6, 20, 40], hpPerLevel: 3, levelsPerPower: 1, wildXp: 3, bossXp: 10, enemyHpPerLevel: 2 };
+
+/** The same world with levels within reach: a wild RAT is worth 6 XP, which is level 2, and level 2 offers ZAP. */
+export const levelWorld: World = {
+  ...testWorld,
+  moves: { ...testWorld.moves, zap: { name: 'ZAP', power: 9, accuracy: 1, pp: 3 } },
+  levels: QUICK,
+  learn: { 2: 'zap' },
+};
+
+type Press = keyof Input | Input['dir'];
+
+/** Presses one thing per call in `world`, with reduced motion (a press is a whole move), and returns the new state. */
+export function playIn(world: World, state: GameState, ...inputs: Press[]): GameState {
   let current = state;
   for (const name of inputs) {
     const input: Input =
       name === 'up' || name === 'down' || name === 'left' || name === 'right'
         ? { ...NO_INPUT, dir: name, pressed: name }
         : { ...NO_INPUT, [name as keyof Input]: true };
-    current = step(current, input, testWorld, { instant: true }).state;
+    current = step(current, input, world, { instant: true }).state;
   }
   return current;
 }
+
+/** The same in the plain test world. */
+export const play = (state: GameState, ...inputs: Press[]): GameState => playIn(testWorld, state, ...inputs);

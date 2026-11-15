@@ -56,7 +56,7 @@ const world: World = {
   maps: { park },
   start: { map: 'park', at: '@', dir: 'down' },
   items: { ...testWorld.items, star: { name: 'STAR', description: 'Shiny.' } },
-  collect: { item: 'star', total: 1 },
+  collect: [{ item: 'star', total: 1, label: 'STARS', mark: '*' }],
 };
 
 const press = (state: GameState, input: Partial<Input>, instant = true) => step(state, { ...NO_INPUT, ...input }, world, { instant });
@@ -167,7 +167,7 @@ describe('a find in passing', () => {
     expect(found.state).toMatchObject({ x: 6, y: 2, dialogue: null, items: { star: 1 }, flags: { 'star:1': true } });
     expect(found.events).toEqual([{ kind: 'item', text: 'Found a STAR! 1 of 1.' }]);
     expect(found.cues).toEqual(['star']);
-    expect(found.state.notice).toEqual({ text: '1/1', until: before.clock + NOTICE_TICKS });
+    expect(found.state.notice).toEqual({ text: '* 1/1', until: before.clock + NOTICE_TICKS });
     expect(objectAt(park, 6, 2, found.state)).toBeUndefined();
   });
 

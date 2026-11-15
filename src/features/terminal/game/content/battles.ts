@@ -1,27 +1,56 @@
-import type { BadgeDef, EnemyDef, ItemDef, MoveDef } from '../engine/types.ts';
+import type { BadgeDef, EnemyDef, ItemDef, Levels, MoveDef } from '../engine/types.ts';
 
 /**
  * Battle numbers and names. HOW TO EDIT
  *
  * - Damage is the move's power, give or take 1. `accuracy` is the chance to hit (1 = always).
- * - The first move in PLAYER_MOVES is the default one. A test (world.test.ts) proves that every enemy can be
- *   beaten with that move alone, from full energy, at the worst luck. If you make an enemy tougher than that,
- *   the test fails and tells you which one.
- * - `sprite` is a name from scripts/sprites/enemies.mjs.
+ * - The first move in PLAYER_MOVES is the default one, and the one move that can never be swapped out. A test
+ *   (world.test.ts) proves that every enemy can be beaten with that move alone, from full energy, at the worst
+ *   luck, by a player who is as low in level as that place allows. If you make an enemy tougher than that, the
+ *   test fails and tells you which one.
+ * - `sprite` is a name from scripts/sprites/enemies.mjs. `level` is what an enemy is worth in XP and the lowest
+ *   level it shows up at. A wild enemy gets a level from the range of its AREA; each level above its own adds
+ *   LEVELS.enemyHpPerLevel HP.
+ * - LEVELS is how the player grows; LEARN is the move that is offered at a level. A new move needs an entry in
+ *   MOVES first. `heal` makes a move restore energy instead of hitting.
+ * - AREAS says who lives in the tall grass of each map, how often they jump out (`rate`, per step) and how strong
+ *   they are. `minLevel` is the lowest level a player can have there: 1 for places that are open from the start;
+ *   higher only where a door asks for that level (the cave mouth). BOSS_MIN_LEVEL is the same for bosses.
  */
 
 /** Energy (HP) at the start, and what each badge adds. */
 export const BASE_HP = 30;
 export const HP_PER_BADGE = 5;
 
+/** Levels: 1 to 10. XP for a win is the enemy's level times `wildXp` (or `bossXp` for a boss). */
+export const LEVELS: Levels = {
+  max: 10,
+  // Total XP for level 2, 3, 4, 5, 6, 7, 8, 9, 10.
+  xp: [10, 25, 45, 70, 100, 140, 190, 250, 320],
+  hpPerLevel: 3,
+  levelsPerPower: 2,
+  wildXp: 3,
+  bossXp: 10,
+  enemyHpPerLevel: 2,
+};
+
 export const MOVES: Record<string, MoveDef> = {
   debug: { name: 'DEBUG', power: 7, accuracy: 1, pp: 25 },
   refactor: { name: 'REFACTOR', power: 11, accuracy: 0.9, pp: 10 },
   deploy: { name: 'DEPLOY', power: 16, accuracy: 0.7, pp: 5 },
   break: { name: 'COFFEE BREAK', power: 0, accuracy: 1, pp: 5, heal: 15 },
+  // Offered at a level (see LEARN).
+  hotfix: { name: 'HOTFIX', power: 13, accuracy: 0.95, pp: 10 },
+  rewrite: { name: 'BIG REWRITE', power: 24, accuracy: 0.75, pp: 4 },
+  // Spare ones: put one in LEARN to offer it.
+  pairup: { name: 'PAIR UP', power: 9, accuracy: 1, pp: 15 },
+  nap: { name: 'POWER NAP', power: 0, accuracy: 1, pp: 3, heal: 30 },
 };
 
 export const PLAYER_MOVES = ['debug', 'refactor', 'deploy', 'break'];
+
+/** The move that is offered on reaching a level. The player picks which move it replaces, or keeps what they have. */
+export const LEARN: Record<number, string> = { 5: 'hotfix', 10: 'rewrite' };
 
 /** What Fight does when every move is out of PP. */
 export const FALLBACK_MOVE: MoveDef = { name: 'PANIC FIX', power: 4, accuracy: 1, pp: 0 };
@@ -29,15 +58,162 @@ export const FALLBACK_MOVE: MoveDef = { name: 'PANIC FIX', power: 4, accuracy: 1
 const attack = (name: string, power: number, accuracy = 1): MoveDef => ({ name, power, accuracy, pp: 0 });
 
 export const ENEMIES: Record<string, EnemyDef> = {
+  // --- the meadows of Career Town --------------------------------------------------------------------------------
   bug: {
     name: 'BUG',
+    level: 1,
     hp: 12,
     sprite: 'bug',
-    moves: [attack('NULL POINTER', 3, 0.9), attack('OFF BY ONE', 2)],
+    moves: [attack('CRASH', 3, 0.9), attack('OFF BY ONE', 2)],
     defeat: 'The BUG is fixed! It works on your machine now.',
   },
+  typo: {
+    name: 'TYPO',
+    level: 1,
+    hp: 10,
+    sprite: 'typo',
+    moves: [attack('TEH', 2), attack('RECIEVE', 3, 0.8)],
+    defeat: 'The TYPO is corrected! Spell check approves.',
+  },
+  lint: {
+    name: 'LINT WARNING',
+    level: 1,
+    hp: 11,
+    sprite: 'lint',
+    moves: [attack('UNUSED VARIABLE', 2), attack('MISSING SEMICOLON', 2, 0.9)],
+    defeat: 'LINT WARNING is resolved! Zero problems.',
+  },
+  todo: {
+    name: 'TODO',
+    level: 2,
+    hp: 14,
+    sprite: 'todo',
+    moves: [attack('FIX LATER', 3, 0.9), attack('TEMPORARY HACK', 2)],
+    defeat: 'The TODO is done! Only 99 more to go.',
+  },
+
+  // --- the east route, on the way to Hobby Hills -----------------------------------------------------------------
+  popup: {
+    name: 'POPUP',
+    level: 2,
+    hp: 16,
+    sprite: 'popup',
+    moves: [attack('ACCEPT ALL', 3), attack('NEWSLETTER', 4, 0.8)],
+    defeat: 'The POPUP is closed! It will not ask again. Today.',
+  },
+  spam: {
+    name: 'SPAM',
+    level: 2,
+    hp: 15,
+    sprite: 'spam',
+    moves: [attack('YOU WON', 3, 0.9), attack('REPLY ALL', 3)],
+    defeat: 'The SPAM is filtered! Inbox zero.',
+  },
+  lag: {
+    name: 'LAG',
+    level: 3,
+    hp: 18,
+    sprite: 'lag',
+    moves: [attack('RUBBER BAND', 4, 0.85), attack('PING 999', 3)],
+    defeat: 'The LAG is gone! Sixty frames a second.',
+  },
+  update: {
+    name: 'FORCED UPDATE',
+    level: 3,
+    hp: 20,
+    sprite: 'update',
+    moves: [attack('RESTART NOW', 4, 0.9), attack('1 OF 99', 3)],
+    defeat: 'FORCED UPDATE is installed! Nothing moved. Much.',
+  },
+
+  // --- the west route, on the way to the mountain ----------------------------------------------------------------
+  flaky: {
+    name: 'FLAKY TEST',
+    level: 3,
+    hp: 20,
+    sprite: 'flaky',
+    moves: [attack('RED BUILD', 4, 0.8), attack('WORKS LOCALLY', 3)],
+    defeat: 'FLAKY TEST is stable! Green three times in a row.',
+  },
+  debt: {
+    name: 'TECH DEBT',
+    level: 4,
+    hp: 24,
+    sprite: 'debt',
+    moves: [attack('QUICK HACK', 4, 0.9), attack('INTEREST', 3)],
+    defeat: 'TECH DEBT is paid off! For this sprint.',
+  },
+  meeting: {
+    name: 'LONG MEETING',
+    level: 3,
+    hp: 22,
+    sprite: 'meeting',
+    moves: [attack('NO AGENDA', 3), attack('RUNS OVER', 4, 0.85)],
+    defeat: 'LONG MEETING is over! It could have been an email.',
+  },
+
+  // --- the cave: what goes wrong on production -------------------------------------------------------------------
+  memleak: {
+    name: 'MEMORY LEAK',
+    level: 4,
+    hp: 26,
+    sprite: 'memleak',
+    moves: [attack('HEAP GROWS', 5, 0.9), attack('SWAP STORM', 4)],
+    defeat: 'MEMORY LEAK is plugged! The graph is flat again.',
+  },
+  nullptr: {
+    name: 'NULL POINTER',
+    level: 4,
+    hp: 24,
+    sprite: 'nullptr',
+    moves: [attack('SEGFAULT', 5, 0.85), attack('UNDEFINED', 4)],
+    defeat: 'NULL POINTER is checked! It points at something now.',
+  },
+  race: {
+    name: 'RACE CONDITION',
+    level: 5,
+    hp: 28,
+    sprite: 'race',
+    moves: [attack('DATA RACE', 5, 0.9), attack('DEADLOCK', 4)],
+    defeat: 'RACE CONDITION is locked down! One at a time, please.',
+  },
+  droptable: {
+    name: 'DROPPED TABLE',
+    level: 5,
+    hp: 30,
+    sprite: 'droptable',
+    moves: [attack('NO BACKUP', 6, 0.8), attack('CASCADE', 4)],
+    defeat: 'DROPPED TABLE is restored! The backup worked.',
+  },
+  error500: {
+    name: '500 ERROR',
+    level: 6,
+    hp: 32,
+    sprite: 'error500',
+    moves: [attack('STACK TRACE', 5), attack('RETRY STORM', 5, 0.9)],
+    defeat: '500 ERROR is handled! 200 OK.',
+  },
+  friday: {
+    name: 'FRIDAY DEPLOY',
+    level: 6,
+    hp: 30,
+    sprite: 'friday',
+    moves: [attack('SHIP IT', 6, 0.8), attack('ROLLBACK', 5)],
+    defeat: 'FRIDAY DEPLOY is rolled back! See you on Monday.',
+  },
+  diskfull: {
+    name: 'DISK FULL',
+    level: 7,
+    hp: 36,
+    sprite: 'diskfull',
+    moves: [attack('LOG FLOOD', 5), attack('NO SPACE LEFT', 4, 0.9)],
+    defeat: 'DISK FULL is cleaned up! 40 GB of logs, gone.',
+  },
+
+  // --- the bosses --------------------------------------------------------------------------------------------------
   exam: {
     name: 'FINAL EXAM',
+    level: 3,
     hp: 28,
     sprite: 'exam',
     moves: [attack('TRICK QUESTION', 4, 0.85), attack('TIME PRESSURE', 3)],
@@ -45,6 +221,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   legacy: {
     name: 'LEGACY CODE',
+    level: 5,
     hp: 34,
     sprite: 'legacy',
     moves: [attack('SPAGHETTI', 4, 0.9), attack('NO COMMENTS', 3)],
@@ -52,6 +229,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   scope: {
     name: 'SCOPE CREEP',
+    level: 6,
     hp: 32,
     sprite: 'scope',
     moves: [attack('ONE MORE THING', 4, 0.9), attack('QUICK QUESTION', 3)],
@@ -59,18 +237,53 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   deadline: {
     name: 'DEADLINE',
+    level: 7,
     hp: 36,
     sprite: 'deadline',
     moves: [attack('IT IS DUE TODAY', 4, 0.85), attack('TICK TOCK', 3)],
     defeat: 'DEADLINE is met! With a day to spare.',
   },
+  outage: {
+    name: 'THE OUTAGE',
+    level: 10,
+    hp: 56,
+    sprite: 'outage',
+    moves: [attack('ALL RED', 5, 0.9), attack('PAGER STORM', 5), attack('STATUS: DOWN', 4)],
+    defeat: 'THE OUTAGE is over! All systems operational.',
+  },
 };
+
+export type Area = {
+  /** The lowest level a player can have here. Above 1 only where a door asks for it. */
+  minLevel: number;
+  /** The range of levels of the wild enemies. */
+  levels: [number, number];
+  /** The chance of a wild enemy per step in the tall grass. */
+  rate: number;
+  enemies: string[];
+};
+
+/** Who lives in the tall grass, per map. */
+export const AREAS: Record<string, Area> = {
+  town: { minLevel: 1, levels: [1, 2], rate: 0.15, enemies: ['bug', 'typo', 'lint', 'todo'] },
+  east: { minLevel: 1, levels: [2, 4], rate: 0.14, enemies: ['popup', 'spam', 'lag', 'update'] },
+  west: { minLevel: 1, levels: [3, 5], rate: 0.14, enemies: ['flaky', 'debt', 'meeting'] },
+  cave: { minLevel: 3, levels: [4, 7], rate: 0.16, enemies: ['memleak', 'nullptr', 'race', 'droptable', 'error500', 'friday', 'diskfull'] },
+};
+
+/** The level the cave mouth asks for, and the one the door to its last chamber asks for. */
+export const CAVE_LEVEL = AREAS.cave!.minLevel;
+export const DEEP_CAVE_LEVEL = 5;
+
+/** The lowest level a player can have when facing each boss. The four badge bosses can be met at level 1. */
+export const BOSS_MIN_LEVEL: Record<string, number> = { exam: 1, legacy: 1, scope: 1, deadline: 1, outage: DEEP_CAVE_LEVEL };
 
 /** The bag shows the items in this order. */
 export const ITEMS: Record<string, ItemDef> = {
   coffee: { name: 'COFFEE', description: 'Restores 20 energy.', heal: 20 },
   energydrink: { name: 'ENERGY DRINK', description: 'Restores 40 energy.', heal: 40 },
   pizza: { name: 'PIZZA', description: 'Restores all energy.', heal: 99 },
+  bento: { name: 'BENTO', description: 'Restores all energy. Made with care.', heal: 99 },
   diploma: { name: 'DIPLOMA', description: 'Proof that the Academy let you go.' },
   keycard: { name: 'KEY CARD', description: 'Opens the server room in the Office.' },
   librarycard: { name: 'LIBRARY CARD', description: 'Opens the Library.' },
@@ -78,10 +291,14 @@ export const ITEMS: Record<string, ItemDef> = {
   letter: { name: 'LETTER', description: 'For the head librarian.' },
   star: { name: 'GOLD STAR', description: 'Shiny. A collector in town wants them all.' },
   trophy: { name: 'TROPHY', description: 'Proof that you looked under every rock.' },
+  stamp: { name: 'HOBBY STAMP', description: 'From the stamp rally in HOBBY HILLS. Ten make a full card.' },
+  omamori: { name: 'OMAMORI', description: 'A lucky charm for a full stamp card.' },
+  medal: { name: 'UPTIME MEDAL', description: 'Five nines. You ended THE OUTAGE.' },
 };
 
-/** The item that is hidden all over the maps and counted on the Start menu. */
+/** The items that are hidden all over the maps and counted on the Start menu: gold stars and hobby stamps. */
 export const COLLECT = 'star';
+export const STAMP = 'stamp';
 
 /** What the player carries at the start. */
 export const START_ITEMS: Record<string, number> = { coffee: 2 };

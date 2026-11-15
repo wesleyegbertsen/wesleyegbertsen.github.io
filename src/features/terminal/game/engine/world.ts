@@ -10,6 +10,7 @@ export type MapSpec = {
   ground: string;
   objects: Record<string, ObjectSpec>;
   encounters?: GameMap['encounters'];
+  dark?: GameMap['dark'];
 };
 
 export type ObjectSpec = Omit<GameObject, 'id' | 'x' | 'y'> & { under?: string };
@@ -47,7 +48,7 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   for (const char of Object.keys(spec.objects)) {
     if (!seen.has(char)) throw new Error(`${spec.id}: object '${char}' is not on the map`);
   }
-  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters };
+  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark };
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {
@@ -58,6 +59,7 @@ export function holds(cond: Cond | undefined, state: GameState): boolean {
   if (cond.noItem !== undefined && state.items[cond.noItem]! > 0) return false;
   if (cond.badges !== undefined && state.badges.length < cond.badges) return false;
   if (cond.count !== undefined && !(state.items[cond.count.item]! >= cond.count.min)) return false;
+  if (cond.level !== undefined && state.level < cond.level) return false;
   return true;
 }
 

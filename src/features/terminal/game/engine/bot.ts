@@ -20,22 +20,38 @@ function free(world: World, state: GameState, mapId: string, x: number, y: numbe
   return !tileAt(map, x, y).solid && !objectAt(map, x, y, state);
 }
 
-/** The shortest walk from `from` to each cell it can reach on a map, never stepping on objects. */
+/** What a step into tall grass counts for when a walk is planned: a long way round is better than a wild enemy. */
+const GRASS_COST = 40;
+
+/**
+ * The best walk from `from` to each cell it can reach on a map, never stepping on objects: the one through the
+ * least tall grass, and the shortest of those.
+ */
 function walks(world: World, state: GameState, mapId: string, from: Cell, grassOk: boolean): Map<string, Dir[]> {
-  const found = new Map<string, Dir[]>([[`${from.x},${from.y}`, []]]);
-  const queue: Cell[] = [from];
-  for (let cell = queue.shift(); cell; cell = queue.shift()) {
-    const path = found.get(`${cell.x},${cell.y}`)!;
+  const map = world.maps[mapId]!;
+  const found = new Map<string, { path: Dir[]; cost: number }>([[`${from.x},${from.y}`, { path: [], cost: 0 }]]);
+  const queue: (Cell & { cost: number })[] = [{ ...from, cost: 0 }];
+  while (queue.length > 0) {
+    // The cheapest cell first. The maps are small, so a plain search for it will do.
+    let at = 0;
+    for (let i = 1; i < queue.length; i++) if (queue[i]!.cost < queue[at]!.cost) at = i;
+    const cell = queue.splice(at, 1)[0]!;
+    const here = found.get(`${cell.x},${cell.y}`)!;
+    if (cell.cost > here.cost) continue;
     for (const dir of DIRS) {
       const x = cell.x + DELTA[dir].dx;
       const y = cell.y + DELTA[dir].dy;
-      if (found.has(`${x},${y}`) || !free(world, state, mapId, x, y)) continue;
-      if (!grassOk && tileAt(world.maps[mapId]!, x, y).grass) continue;
-      found.set(`${x},${y}`, [...path, dir]);
-      queue.push({ x, y });
+      if (!free(world, state, mapId, x, y)) continue;
+      const grass = !!tileAt(map, x, y).grass;
+      if (!grassOk && grass) continue;
+      const cost = here.cost + 1 + (grass ? GRASS_COST : 0);
+      const known = found.get(`${x},${y}`);
+      if (known && known.cost <= cost) continue;
+      found.set(`${x},${y}`, { path: [...here.path, dir], cost });
+      queue.push({ x, y, cost });
     }
   }
-  return found;
+  return new Map([...found].map(([key, value]) => [key, value.path]));
 }
 
 /** The directions to press to end up facing (or stepping onto) an object, or null when it cannot be reached. */
@@ -47,8 +63,11 @@ function routeIn(
   object: GameObject,
   grassOk = true,
 ): Dir[] | null {
-  const reach = walks(world, state, mapId, from, grassOk);
-  const at = placeOf(object, state);
+  return facing(walks(world, state, mapId, from, grassOk), placeOf(object, state));
+}
+
+/** From the walks to every cell: the one that ends beside `at`, plus the turn towards it. */
+function facing(reach: Map<string, Dir[]>, at: Cell): Dir[] | null {
   let best: Dir[] | null = null;
   for (const dir of DIRS) {
     const path = reach.get(`${at.x - DELTA[dir].dx},${at.y - DELTA[dir].dy}`);
@@ -66,7 +85,7 @@ export function routeTo(world: World, state: GameState, objectId: string): Dir[]
 }
 
 const progress = (state: GameState) =>
-  JSON.stringify([Object.keys(state.flags).sort(), Object.keys(state.items).filter((id) => state.items[id]! > 0).sort(), state.badges]);
+  JSON.stringify([Object.keys(state.flags).sort(), Object.keys(state.items).filter((id) => state.items[id]! > 0).sort(), state.badges, state.level]);
 
 const heals = (object: GameObject, state: GameState) =>
   object.trigger === 'interact' && !!branchFor(object, state)?.do.some((action) => 'heal' in action);
@@ -74,7 +93,7 @@ const heals = (object: GameObject, state: GameState) =>
 export type BotRun = { state: GameState; events: GameEvent[]; defeats: number; presses: number; stuck: boolean };
 
 /** Plays from the title screen until the ending, or until nothing new is left to try. */
-export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun {
+export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun {
   let state = initialGame(world, seed);
   const events: GameEvent[] = [];
   const tried = new Set<string>();
@@ -87,7 +106,7 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
     events.push(...result.events);
     presses++;
   };
-  const busy = () => state.scene !== 'world' || !!state.dialogue || !!state.battle || !!state.menu;
+  const busy = () => state.scene !== 'world' || !!state.dialogue || !!state.battle || !!state.menu || !!state.learn;
   /**
    * Walks a route; stops early when something interrupts (a wild enemy) or when a step did not land (someone
    * strolled into the way). True when it got to the end.
@@ -121,8 +140,8 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
       return objectAt(here, at.x, at.y, state) === object;
     };
 
-    // Hurt, and a coffee machine is in reach: rest first, as a careful player would.
-    if (state.hp < state.maxHp) {
+    // Hurt or short of PP for the first move, and a coffee machine is in reach: rest first, as a careful player would.
+    if (state.hp < state.maxHp || state.pp[state.moves[0]!]! < world.moves[state.moves[0]!]!.pp / 2) {
       const rest = here.objects.find((object) => visible(object) && heals(object, state) && routeIn(world, state, here.id, state, object));
       if (rest) {
         if (walk(routeIn(world, state, here.id, state, rest)!)) press({ a: true });
@@ -141,10 +160,11 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
       if (seen.has(`${node.map}:${node.at.x},${node.at.y}`)) continue;
       seen.add(`${node.map}:${node.at.x},${node.at.y}`);
       const map = world.maps[node.map]!;
+      const reach = walks(world, state, node.map, node.at, true);
       for (const object of map.objects) {
         const at = placeOf(object, state);
         if (object.branches.length === 0 || objectAt(map, at.x, at.y, state) !== object) continue;
-        const route = routeIn(world, state, node.map, node.at, object);
+        const route = facing(reach, at);
         if (!route) continue;
         if (object.trigger === 'interact') {
           if (tried.has(`${object.id}|${key}`)) continue;
