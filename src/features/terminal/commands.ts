@@ -193,7 +193,7 @@ export const commands: Command[] = [
     name: 'play', group: 'fun',
     help: 'walk through my career (a Game Boy adventure with music, m mutes); "play skip" prints it as text',
     run: (args, ctx) => {
-      if (args.length === 0) return { lines: ['Career Quest. Esc or q to leave, m for sound.'], effects: [{ type: 'game' }] };
+      if (args.length === 0) return { lines: ['Career Quest. Esc or q to leave, m for sound, volume in the Start menu.'], effects: [{ type: 'game' }] };
       if (args.length === 1 && args[0] === 'skip') return { lines: careerLines(ctx.data) };
       return say('Usage: play [skip]');
     },
