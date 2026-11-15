@@ -227,7 +227,8 @@ export const EAST = [
  * The stops: 1 the telescope, 2 the arcade cabinet, 3 the torii gate (north of the ring); 4 the cat, 6 the rabbit
  * in its pen, 5 the old console, 7 the soldering bench, 8 the kanji board (inside it); 9 the home server, 0 the
  * flask (south of it).
- * The pond: a sandy shore (+) all round, reeds (*), a jetty (_) with E, who fishes, at its end, and a stream that
+ * The pond: a sandy shore (+) all round, reeds (*), a jetty (_) with E, who fishes, at its end, facing the water
+ * with his float (F) in front of him, and a stream that
  * runs east under the road (|); t are stepping stones across it. Paths lead from the ring to the pond on three sides.
  * Scenery: two cottages (doors a and b, on the ring road) and a shed (door S) nobody is home in, each under a roof
  * of two rows; a sand garden with a rock by the kanji board (y is a rock in the sand), flower beds, fences, benches.
@@ -245,7 +246,7 @@ export const HILLS = [
   'T.=..4,..+++++++++++..###..=.T',
   'T.=,....u+*~~^~~~~*+.,..H..=,T',
   'T,=.fff..+~~~~~~d~~+..,,..u=.T',
-  'T.=.f6...+~^~~~~~~~t~~~t~~~|~~',
+  'T.=.f6...+~^~~F~~~~t~~~t~~~|~~',
   'T.=.fff.,+*~~~E~~^~+..,.+++=,T',
   '(========+**~~_~~~*+....+y+=.T',
   'T,=s.,jjj+++++++++++.n..+++=.T',

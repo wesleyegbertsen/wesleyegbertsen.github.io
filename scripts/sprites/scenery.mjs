@@ -519,6 +519,25 @@ const reed = [
   '................',
 ];
 
+
+/**
+ * The end of the angler's rod and his float, in the water in front of the jetty (the cell above him). The rod comes
+ * in at the bottom right, where it leaves his own cell, and ends in a tip; from there a light line runs out over the
+ * water to a float with a dark body and a light top, with a ripple round it. The second frame bobs it a pixel down.
+ */
+const floatOver = (dy) => {
+  const px = Array.from({ length: 16 }, () => Array(16).fill('.'));
+  for (const [x, y] of [[15, 15], [15, 14], [15, 13]]) px[y][x] = '3';
+  for (const [x, y] of [[14, 12], [13, 11], [12, 10], [11, 9 + dy], [10, 8 + dy]]) px[y][x] = '0';
+  px[6 + dy][9] = '3';
+  px[7 + dy][8] = '3';
+  px[7 + dy][9] = '0';
+  px[7 + dy][10] = '3';
+  for (const x of [8, 9, 10]) px[8 + dy][x] = '3';
+  for (const [x, y] of [[6, 9], [12, 9], [7, 10], [11, 10]]) if (px[y + dy][x] === '.') px[y + dy][x] = '1';
+  return px.map((row) => row.join(''));
+};
+
 // --- buildings -----------------------------------------------------------------------------------------------------
 
 const brick = ['11121111', '11121111', '11121111', '22222222', '11111121', '11111121', '11111121', '22222222'];
@@ -1345,6 +1364,8 @@ export const scenery = {
   stones: on(tiles.water, steppingStone),
   'stones-b': on(waterB, steppingStone),
   reeds: on(tiles.water, reed),
+  float: on(tiles.water, floatOver(0)),
+  'float-b': on(waterB, floatOver(1)),
   'reeds-b': on(waterB, reed),
   brick,
   planks,

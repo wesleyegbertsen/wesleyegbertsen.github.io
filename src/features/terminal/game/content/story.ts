@@ -917,7 +917,9 @@ export function buildMaps(data: FsData): BuiltMap[] {
       // The people of the hills. The ones with stroll() walk about, off the roads and away from each other.
       P: person('dev', HILLS_FOLK.gamer(who)),
       B: person('gardener', HILLS_FOLK.keeper(who)),
-      E: person('elder', HILLS_FOLK.angler(), '_'),
+      // The angler at the end of the jetty faces the water and keeps fishing: his float (F) bobs in front of him.
+      E: person('angler', HILLS_FOLK.angler(), '_'),
+      F: { sprite: 'float', animated: true, solid: true, trigger: 'interact', under: '~', branches: [] },
       H: stroll(person('kid', HILLS_FOLK.kid()), 2, 100),
       D: stroll(person('dog', HILLS_FOLK.dog()), 2, 80),
       m: stroll(person('cat', HILLS_FOLK.cat()), 2, 110),

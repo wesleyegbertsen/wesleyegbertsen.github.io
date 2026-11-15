@@ -1,3 +1,4 @@
+import { sprites, tiles } from '../assets/atlas.ts';
 import { execFileSync } from 'node:child_process';
 import { education } from '../../../../data/education.ts';
 import { experience } from '../../../../data/experience.ts';
@@ -618,16 +619,24 @@ describe('Hobby Hills as a place', () => {
       }
     }
     expect(HILLS_FOLK.gamer(first).join(' ')).toContain(first);
-    const people = hills!.objects.filter((object) => ['dev', 'gardener', 'elder', 'kid', 'dog', 'cat', 'maker'].includes(object.sprite ?? '') && !HOBBIES.some((stop) => `hills:${stop.at}` === object.id));
+    const people = hills!.objects.filter((object) => ['dev', 'gardener', 'elder', 'angler', 'kid', 'dog', 'cat', 'maker'].includes(object.sprite ?? '') && !HOBBIES.some((stop) => `hills:${stop.at}` === object.id));
     expect(people.length).toBeGreaterThanOrEqual(7);
     expect(strollers.length).toBeGreaterThanOrEqual(3);
     expect(people.filter((object) => !object.wander).length).toBeGreaterThanOrEqual(4);
     for (const person of people) if (person.id !== 'hills:?') expect(onlyTalks(person.id.split(':')[1]!), person.id).toBe(true);
-    // The angler stands on the jetty, at its end: water ahead and on both sides.
+    // The angler stands on the jetty, at its end: water ahead and on both sides. He faces the water, drawn from
+    // behind with his rod, and keeps fishing while he talks (no picture of another side). His float is in the water
+    // straight ahead of him.
     const angler = thing('E');
+    expect(angler.sprite).toBe('angler');
     expect(tileOf(hills!, angler.x, angler.y)!.sprite).toBe('jetty');
     expect(tileOf(hills!, angler.x, angler.y + 1)!.sprite).toBe('jetty');
     expect(WET).toContain(tileOf(hills!, angler.x, angler.y - 1)!.sprite);
+    const float = thing('F');
+    expect(float).toMatchObject({ sprite: 'float', x: angler.x, y: angler.y - 1, solid: true, animated: true });
+    for (const side of ['up', 'down', 'left', 'right']) expect(sprites, side).not.toHaveProperty([`angler-${side}`]);
+    expect(sprites).toHaveProperty(['angler']);
+    expect(tiles).toHaveProperty(['float-b']);
   });
 
   it('lets the ones who stroll walk for minutes without a step on a road, on a thing, on each other or out of range', () => {

@@ -390,6 +390,29 @@ export const characters = {
     '................',
   ],
 
+  // The angler of Hobby Hills, at the end of the jetty, seen from behind: he faces the water and keeps fishing
+  // while he talks (no other sides). A bucket hat, grey hair, a fishing vest, and the rod held up and out to the
+  // right; it leaves the cell at the top, and its tip, the line and the float are drawn in the water above him
+  // (`float` in scenery.mjs).
+  angler: [
+    '..............3.',
+    '..............3.',
+    '.............3..',
+    '......3333...3..',
+    '.....322223.3...',
+    '...3333333333...',
+    '....300000033...',
+    '....30000003....',
+    '....33333333....',
+    '...3222222003...',
+    '..302212212203..',
+    '..302212212203..',
+    '...3222222223...',
+    '....32233223....',
+    '....333..333....',
+    '................',
+  ],
+
   // --- the other sides of the people: `-up` is the back, `-left` the profile ---
   // A profile: the face is set one pixel back under the hair or the hat and the nose comes out to the edge of the
   // head on the row below the eye, so it is a nose and not a beak. The arm hangs from the shoulder to the hip
