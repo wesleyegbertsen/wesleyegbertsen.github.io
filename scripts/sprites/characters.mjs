@@ -369,6 +369,27 @@ export const characters = {
     '..3333333333....',
   ],
 
+  // From the side, looking left: the whole cat turns. Pointed ears, an eye and a nose at the front of the head, the
+  // back in one line, a light patch on the belly, two legs in front and two behind, and the tail up at the back.
+  'cat-left': [
+    '................',
+    '................',
+    '................',
+    '.3...3.......3..',
+    '.33.33......323.',
+    '.322223.....323.',
+    '32022223....323.',
+    '3222222333333323',
+    '.32222222222223.',
+    '..322222222223..',
+    '..320022222223..',
+    '..332333333233..',
+    '...323....323...',
+    '...333....333...',
+    '................',
+    '................',
+  ],
+
   // --- the other sides of the people: `-up` is the back, `-left` the profile ---
   // A profile: the face is set one pixel back under the hair or the hat and the nose comes out to the edge of the
   // head on the row below the eye, so it is a nose and not a beak. The arm hangs from the shoulder to the hip
@@ -775,7 +796,7 @@ export const characters = {
 /**
  * Sprites made by mirroring another one: name -> source. The player walks up and down on both feet: frame 1 is
  * one foot, frame 2 (its mirror) the other, and the arms swing the other way with it. The dog is drawn looking
- * left, the cat with its tail to the right.
+ * left, and so is the cat from the side.
  */
 export const mirrored = {
   'player-right-0': 'player-left-0',
@@ -784,7 +805,7 @@ export const mirrored = {
   'player-down-2': 'player-down-1',
   'player-up-2': 'player-up-1',
   'dog-right': 'dog',
-  'cat-left': 'cat',
+  'cat-right': 'cat-left',
 };
 
 /**

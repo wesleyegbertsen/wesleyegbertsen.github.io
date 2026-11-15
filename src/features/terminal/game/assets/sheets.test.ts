@@ -147,6 +147,13 @@ describe('the sprite sheets', () => {
       expect(back.join(''), name).not.toBe(front.join(''));
       // A drawing from the front or the back is the same left and right, give or take a detail; a profile is not.
       const lopsided = (rows: string[]) => rows.filter((row) => row !== [...row].reverse().join('')).length;
+      // The cat turns its whole body: a profile of its own (looking left; the right is its mirror), not the front.
+      if (name === 'cat') {
+        expect(characters['cat-left'], 'cat-left').toHaveLength(16);
+        expect(lopsided(characters['cat-left']!)).toBeGreaterThanOrEqual(6);
+        expect(characters['cat-left']!.join()).not.toBe(front.map((row) => [...row].reverse().join('')).join());
+        expect(sprites).toHaveProperty(['cat-right']);
+      }
       if (name === 'dog' || name === 'cat') continue;
       const side = characters[`${name}-left`]!;
       expect(lopsided(side), name).toBeGreaterThanOrEqual(6);

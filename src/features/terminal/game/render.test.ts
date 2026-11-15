@@ -813,13 +813,13 @@ describe('who looks where', () => {
     expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'down' } })).toBe('dog-down');
   });
 
-  it('has a back and two sides for the cat, and the plain picture looking at you', () => {
+  it('has a back and two sides for the cat, and the plain picture looking at you; it turns its whole body to the side', () => {
     const cat = { ...teacher, id: 'yard:c', sprite: 'cat' };
     const faced = (dir: 'up' | 'down' | 'left' | 'right') => facingSprite('cat', cat, { ...there(), face: { id: 'yard:c', dir } });
     expect(faced('up')).toBe('cat-up');
     expect(faced('left')).toBe('cat-left');
     expect(faced('down')).toBe('cat');
-    expect(faced('right')).toBe('cat');
+    expect(faced('right')).toBe('cat-right');
   });
 
   it('has a picture of its own for every side of everyone who can turn', () => {
