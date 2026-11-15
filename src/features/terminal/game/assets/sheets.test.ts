@@ -104,6 +104,22 @@ describe('the sprite sheets', () => {
     }
   });
 
+  it('keep the arm at the side of the body when the player walks left or right: a swing of one pixel, nothing sticks out', () => {
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify([0, 1, 2].map((frame) => characters['player-left-' + frame]))))";
+    const [standing, ...walking] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as string[][];
+    // Rows 9 to 12: the shoulders, the arm and the hand. The legs below may stride.
+    const filled = (rows: string[]) => new Set(rows.slice(9, 13).flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [`${x},${y}`]))));
+    const body = filled(standing!);
+    for (const frame of walking) {
+      // Inside the outline of the standing body: no arm in front of it or behind the back.
+      for (const cell of filled(frame)) expect(body.has(cell), cell).toBe(true);
+      // A small swing: a handful of pixels change, not a whole arm.
+      const changed = frame.slice(9, 13).flatMap((row, y) => [...row].filter((dot, x) => dot !== standing![9 + y]![x])).length;
+      expect(changed).toBeGreaterThan(0);
+      expect(changed).toBeLessThanOrEqual(8);
+    }
+  });
+
   it('draw everyone who can turn by hand: a back without a face and a side that is not the front', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters, facing }) => console.log(JSON.stringify({ facing, characters })))";
     const { facing, characters } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { facing: string[]; characters: Record<string, string[]> };

@@ -87,21 +87,22 @@ export const characters = {
     '.........333....',
   ),
   'player-left-0': left,
-  // A stride with the arm swung forward, then one with the arm swung back.
+  // A stride with the arm a pixel forward, then one with it a pixel back. The arm stays at the side of the body:
+  // seen from the side it hangs over the hip and only sways.
   'player-left-1': step(
     left,
-    '...332122223....',
-    '..3001222223....',
-    '...332222223....',
+    '....32222223....',
+    '....30122223....',
+    '....30122223....',
     '....32222223....',
     '...3223.3223....',
     '..3333..333.....',
   ),
   'player-left-2': step(
     left,
-    '....322221233...',
-    '....3222221003..',
-    '....322222233...',
+    '....32222223....',
+    '....32201223....',
+    '....32201223....',
     '....32222223....',
     '....3223.3223...',
     '....333.3333....',
