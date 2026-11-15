@@ -5,8 +5,8 @@ import { contactLines } from '../../content.ts';
 import type { FsData } from '../../fs.ts';
 import type { Action, Cond, Spot, TileDef } from '../engine/types.ts';
 import type { MapSpec, ObjectSpec } from '../engine/world.ts';
-import { BADGES, COLLECT } from './battles.ts';
-import { ACADEMY, CONTACT, LIBRARY, OFFICE, OUTDOORS, TOWN, WORKSHOP, indoors } from './maps.ts';
+import { AREAS, BADGES, CAVE_LEVEL, COLLECT, DEEP_CAVE_LEVEL, ENEMIES, STAMP } from './battles.ts';
+import { ACADEMY, CAVE, CAVE_MAP, CONTACT, EAST, HILLS, LIBRARY, OFFICE, OUTDOORS, TOWN, WEST, WORKSHOP, indoors } from './maps.ts';
 
 /**
  * Who and what is on the maps, and what they say. HOW TO EDIT
@@ -20,7 +20,10 @@ import { ACADEMY, CONTACT, LIBRARY, OFFICE, OUTDOORS, TOWN, WORKSHOP, indoors } 
  *   branches: the first whose `when` holds runs its actions in order (say, give, take, flag, badge, heal, battle,
  *   warp, ending). See engine/types.ts.
  * - The main path is the four badges and the contact office. Everything else (the townsfolk, the signposts, the
- *   gold stars, the errands) is extra: a test fails when a door, a boss or the ending starts to depend on it.
+ *   gold stars, the errands, the roads east and west, Hobby Hills, the cave) is extra: a test fails when a door,
+ *   a boss or the ending starts to depend on it.
+ * - HOBBIES is the text of the ten stops in Hobby Hills, in Wesley's own voice. It is a draft: rewrite it freely.
+ *   A new hobby needs a line there, a digit on the HILLS map and a picture (scripts/sprites/scenery.mjs).
  * - People with `stroll(...)` walk about. They keep off the roads, so they can never block the way to a door.
  * - After a change run `npm test`: a bot plays the whole game and fails if it can no longer be finished.
  */
@@ -29,6 +32,12 @@ import { ACADEMY, CONTACT, LIBRARY, OFFICE, OUTDOORS, TOWN, WORKSHOP, indoors } 
 export type BuiltMap = MapSpec & { legend: Record<string, TileDef> };
 
 // --- helpers --------------------------------------------------------------------------------------------------
+
+/** The wild enemies of a map, from AREAS in battles.ts. */
+const wild = (area: string): MapSpec['encounters'] => {
+  const { enemies, rate, levels } = AREAS[area]!;
+  return { enemies, rate, levels };
+};
 
 const sign = (...text: string[]): ObjectSpec => ({
   sprite: 'sign',
@@ -97,6 +106,41 @@ const door = (to: Spot, lock?: { when: Cond; deny: string }, sprite = 'door'): O
   branches: lock ? [{ when: lock.when, do: [{ warp: to }] }, { do: [{ say: [lock.deny] }] }] : [{ do: [{ warp: to }] }],
 });
 
+/** The edge of an outdoor map: walk off it to get to the next map. It lies on the road. */
+const wayOut = (to: Spot): ObjectSpec => ({ solid: false, trigger: 'step', under: '=', branches: [{ do: [{ warp: to }] }] });
+
+/**
+ * A stop of the stamp rally in Hobby Hills: look at it to read about the hobby; the first time it also stamps the
+ * card. `id` must be unique (it is the flag that remembers the stamp).
+ */
+const hobby = (id: string, sprite: string, lines: string[], animated?: boolean): ObjectSpec => ({
+  sprite,
+  animated,
+  solid: true,
+  trigger: 'interact',
+  branches: [
+    { when: { notFlag: `hobby:${id}` }, do: [{ say: lines }, { flag: `hobby:${id}` }, { give: STAMP, quiet: true }] },
+    { do: [{ say: lines }] },
+  ],
+});
+
+/**
+ * The ten stops of Hobby Hills: the character on the HILLS map, the picture, and what it says. Written as Wesley
+ * would say it. A DRAFT: these are guesses at the details, so rewrite them.
+ */
+export const HOBBIES: { at: string; id: string; sprite: string; animated?: boolean; lines: string[] }[] = [
+  { at: '1', id: 'astronomy', sprite: 'telescope', lines: ['A telescope, pointed at the night sky.', 'Astronomy: I can look at planets and stars for hours. It puts a bug report in perspective.'] },
+  { at: '2', id: 'gaming', sprite: 'arcade', lines: ['An arcade cabinet. INSERT COIN.', 'Gaming: "one more run", I said. That was two hours ago.'] },
+  { at: '3', id: 'japan', sprite: 'torii', lines: ['A small torii gate. It is quiet here.', 'Japanese culture: the food, the craft, the care for small things. It never stops fascinating me.'] },
+  { at: '4', id: 'cats', sprite: 'cat', lines: ['Purr... (A cat, asleep on the warmest spot in the hills.)', 'Cats: I am a cat person. There is a cat on this website for a reason.'] },
+  { at: '5', id: 'retro', sprite: 'crt', lines: ['An old console on a small TV. The pixels glow just right.', 'Retro gaming: the classics taught me that 160 by 144 pixels is plenty.'] },
+  { at: '6', id: 'animals', sprite: 'bunny', lines: ['A rabbit munches on clover and looks at you.', 'Animals: I have a soft spot for all of them. Even the BUGs. Almost.'] },
+  { at: '7', id: 'soldering', sprite: 'solder', lines: ['A soldering iron, still warm. It smells of flux.', 'Soldering: I like building small electronics. Software you can drop on your foot.'] },
+  { at: '8', id: 'language', sprite: 'kanji', lines: ['A board full of kanji. Today: "nihon", Japan.', 'Language study: I am learning Japanese. Slowly, one character at a time.'] },
+  { at: '9', id: 'homeserver', sprite: 'server', animated: true, lines: ['A home server hums in the grass. Its lights blink.', 'Home server: my own little cloud. When it breaks, I am the helpdesk.'] },
+  { at: '0', id: 'science', sprite: 'flask', lines: ['A flask bubbles away. Better not drink it.', 'Science: my favourite rabbit hole. Space, physics, how things work.'] },
+];
+
 /** The mat at the bottom of a room: step on it to go back to town, in front of that building's door. */
 const exitTo = (townDoor: string): ObjectSpec => ({
   sprite: 'mat',
@@ -152,10 +196,10 @@ const plural = (count: number, one: string, many = `${one}s`) => `${count} ${cou
 const gives = (actions: Action[], item: string): number =>
   actions.reduce((sum, action) => sum + ('give' in action && action.give === item ? 1 : 'battle' in action ? gives(action.win, item) : 0), 0);
 
-/** How many of the collectible the maps hold: every star on the ground and every star somebody hands out. */
-export const countCollectibles = (maps: MapSpec[]): number =>
+/** How many of a collectible the maps hold: every one on the ground and every one somebody hands out. */
+export const countCollectibles = (maps: MapSpec[], item: string): number =>
   maps.reduce(
-    (sum, map) => sum + Object.values(map.objects).reduce((inner, object) => inner + Math.max(0, ...object.branches.map((branch) => gives(branch.do, COLLECT))), 0),
+    (sum, map) => sum + Object.values(map.objects).reduce((inner, object) => inner + Math.max(0, ...object.branches.map((branch) => gives(branch.do, item))), 0),
     0,
   );
 
@@ -247,9 +291,11 @@ export function buildMaps(data: FsData): BuiltMap[] {
     name: 'Career Town',
     rows: TOWN,
     ground: '.',
-    encounters: { enemies: ['bug'], rate: 0.15 },
+    encounters: wild('town'),
     objects: {
       '@': marker('='),
+      '(': wayOut({ map: 'west', at: ')', dx: -1, dir: 'left' }),
+      ')': wayOut({ map: 'east', at: '(', dx: 1, dir: 'right' }),
       A: door(into('academy')),
       a: sign('ACADEMY. Where it all started.'),
       O: door(
@@ -271,8 +317,9 @@ export function buildMaps(data: FsData): BuiltMap[] {
       '0': sign(
         `CAREER TOWN. ${plural(jobs.length, 'employer')}, ${plural(data.education.length, 'school')}, ${plural(data.projects.length, 'side project')} and ${plural(data.skills.length, 'skill')} live here.`,
         'North: the plaza and the CONTACT OFFICE. Over the bridge, that is.',
+        'The main road leaves town on both sides. East: HOBBY HILLS. West: the mountain and its CAVE.',
       ),
-      '7': sign('STREAM OF CONSCIOUSNESS. Mind the gap between the planks.'),
+      '7': sign('BRIDGE. North: the ACADEMY, THE OFFICE and the WORKSHOP. South: the LIBRARY.'),
       '8': sign(
         oldest ? `TOWN PLAZA. ${who} has been building software since ${yearOf(oldest.start)}. The fountain is older.` : 'TOWN PLAZA. The fountain is older than the town.',
       ),
@@ -288,7 +335,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
           `Fresh skills! Today: ${skillNames.slice(0, 3).join(', ') || 'none, sold out'}.`,
           'Not for sale, mind you. You earn them. The LIBRARY has the full list.',
         ],
-        '#',
       ),
       H: stroll(person('kid', [`When I grow up I want to be a ${data.profile.role}, just like ${who}!`]), 2, 90),
       E: stroll(
@@ -300,7 +346,6 @@ export function buildMaps(data: FsData): BuiltMap[] {
               : `I remember when ${who} wrote the first line of code.`,
             'They grow up so fast.',
           ],
-          '#',
         ),
         2,
         150,
@@ -506,7 +551,7 @@ export function buildMaps(data: FsData): BuiltMap[] {
   };
 
   // The collector counts what the maps above hold, so adding a star needs no other change.
-  const total = countCollectibles([town, academy, office, workshop, library, contact]);
+  const total = countCollectibles([town, academy, office, workshop, library, contact], COLLECT);
   town.objects['?'] = {
     sprite: 'teacher',
     solid: true,
@@ -521,7 +566,128 @@ export function buildMaps(data: FsData): BuiltMap[] {
     ],
   };
 
+  // --- beyond the town: all of it is extra ---------------------------------------------------------------------
+
+  const east: MapSpec = {
+    id: 'east',
+    name: 'East Road',
+    rows: EAST,
+    ground: '.',
+    encounters: wild('east'),
+    objects: {
+      '(': wayOut({ map: 'town', at: ')', dx: -1, dir: 'left' }),
+      ')': wayOut({ map: 'hills', at: '(', dx: 1, dir: 'right' }),
+      s: sign(
+        'EAST ROAD. HOBBY HILLS lies ahead.',
+        `The wild things in the tall grass here are Lv ${AREAS.east!.levels[0]} to ${AREAS.east!.levels[1]}. The road itself is safe.`,
+      ),
+      k: coffee(),
+      C: chest('chest:east', 'energydrink', '"'),
+    },
+  };
+
+  const stamps = HOBBIES.length;
+  const hills: MapSpec = {
+    id: 'hills',
+    name: 'Hobby Hills',
+    rows: HILLS,
+    ground: '.',
+    objects: {
+      '(': wayOut({ map: 'east', at: ')', dx: -1, dir: 'left' }),
+      ...Object.fromEntries(HOBBIES.map((stop) => [stop.at, hobby(stop.id, stop.sprite, stop.lines, stop.animated)])),
+      s: sign(
+        `HOBBY HILLS. What ${who} does when the laptop is closed.`,
+        `${stamps} stops, ${stamps} stamps. Look at each one, then see the rally keeper by the pond.`,
+      ),
+      '?': {
+        sprite: 'maker',
+        solid: true,
+        trigger: 'interact',
+        branches: [
+          { when: { flag: 'rally:done' }, do: [{ say: [`A full card! You know ${who} better than most colleagues do.`] }] },
+          {
+            when: { count: { item: STAMP, min: stamps } },
+            do: [
+              { say: [`All ${stamps} stamps! That is every hobby in the hills.`, 'A full card earns a lucky charm, and lunch.'] },
+              { flag: 'rally:done' },
+              { give: 'omamori' },
+              { give: 'bento' },
+            ],
+          },
+          { do: [{ say: [`Welcome to the HOBBY HILLS stamp rally! ${stamps} stops, one stamp each.`, 'Fill your card and come back to me. START shows how many you have.'] }] },
+        ],
+      },
+      k: coffee(),
+      m: stroll(person('cat', ['Mrrp. (A second cat. In these hills there is always a second cat.)']), 2, 110),
+    },
+  };
+
+  const west: MapSpec = {
+    id: 'west',
+    name: 'West Road',
+    rows: WEST,
+    ground: '.',
+    encounters: wild('west'),
+    objects: {
+      ')': wayOut({ map: 'town', at: '(', dx: 1, dir: 'right' }),
+      D: door(
+        { map: 'cave', at: 'm', dy: -1, dir: 'up' },
+        { when: { level: CAVE_LEVEL }, deny: `The CAVE is no place for a beginner. Come back at Lv ${CAVE_LEVEL}: wild battles and bosses make you stronger.` },
+        'cavemouth',
+      ),
+      s: sign(
+        `WEST ROAD. Ahead: the mountain and its CAVE. Lv ${CAVE_LEVEL} and up.`,
+        `The wild things in the tall grass here are Lv ${AREAS.west!.levels[0]} to ${AREAS.west!.levels[1]}. In the CAVE: Lv ${AREAS.cave!.levels[0]} to ${AREAS.cave!.levels[1]}, and it is dark.`,
+      ),
+      k: coffee(),
+      C: chest('chest:west', 'energydrink', '"'),
+    },
+  };
+
+  const cave: MapSpec = {
+    id: 'cave',
+    name: 'The Cave',
+    rows: CAVE_MAP,
+    ground: '_',
+    dark: 1,
+    encounters: wild('cave'),
+    objects: {
+      m: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' } }] }] },
+      k: coffee(),
+      j: coffee(),
+      a: sign('Scratched into the rock: "It worked on staging."', 'Below it, in another hand: "Everything that goes wrong on production lives down here."'),
+      b: sign('A post-mortem, pinned to the wall. ROOT CAUSE: it was DNS. It is always DNS.'),
+      E: chest('chest:cave', 'energydrink'),
+      D: {
+        sprite: 'door',
+        solid: true,
+        trigger: 'step',
+        branches: [
+          { when: { level: DEEP_CAVE_LEVEL }, do: [], pass: true },
+          { do: [{ say: [`A heavy door. A red light blinks: "INCIDENT ROOM. Lv ${DEEP_CAVE_LEVEL} and up." The wild things out here are good practice.`] }] },
+        ],
+      },
+      B: boss(
+        'outage',
+        ['Every screen in the room is red. A pager goes off. Then another.', `It is ${ENEMIES.outage!.name}!`],
+        [{ say: ['The dashboards turn green, one by one. Somewhere, a pager falls silent.'] }],
+      ),
+      C: {
+        sprite: 'chest',
+        spriteWhen: { flag: 'chest:prize', sprite: 'chest-open' },
+        solid: true,
+        trigger: 'interact',
+        branches: [{ when: { notFlag: 'chest:prize' }, do: [{ flag: 'chest:prize' }, { give: 'medal' }, { boost: 10 }] }, { do: [{ say: ['It is empty. The ladder beside it leads back up.'] }] }],
+      },
+      L: { sprite: 'caveexit', solid: false, trigger: 'step', branches: [{ do: [{ warp: { map: 'west', at: 'D', dx: 1, dir: 'right' } }] }] },
+    },
+  };
+
   return [
+    { ...east, legend: OUTDOORS },
+    { ...hills, legend: OUTDOORS },
+    { ...west, legend: OUTDOORS },
+    { ...cave, legend: CAVE },
     { ...town, legend: OUTDOORS },
     { ...academy, legend: indoors('checker') },
     { ...office, legend: indoors('floor') },
@@ -536,6 +702,7 @@ export const intro = (data: FsData): string[] => [
   `Welcome to Career Town! Here, ${firstName(data)}'s career is a place to explore.`,
   `Every building is a chapter with a badge to win. Collect all ${BADGES.length} and the CONTACT OFFICE opens.`,
   'Walk up to people and press A to talk. START opens your bag, SELECT gives a hint.',
+  'There is more beyond the town: HOBBY HILLS to the east, a mountain with a CAVE to the west. Winning battles makes you stronger.',
 ];
 
 /** What Select says: the first one whose condition holds. */

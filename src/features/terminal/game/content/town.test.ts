@@ -20,7 +20,7 @@ const world = buildWorld(data);
 const town = world.maps.town!;
 
 const press = (state: GameState, input: Partial<Input>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
-const busy = (state: GameState) => !!state.dialogue || !!state.battle || !!state.menu;
+const busy = (state: GameState) => !!state.dialogue || !!state.battle || !!state.menu || !!state.learn;
 /** Presses A until the text and the battles are over. */
 function settle(state: GameState): GameState {
   let current = state;
@@ -75,15 +75,17 @@ describe('the town', () => {
     expect(animated.length).toBeGreaterThanOrEqual(5);
   });
 
+  const ROOMS = ['academy', 'office', 'workshop', 'library', 'contact'];
+
   it('furnishes every room: no room is a bare box', () => {
     for (const map of Object.values(world.maps)) {
-      if (map === town) continue;
+      if (!ROOMS.includes(map.id)) continue;
       const furniture = new Set(
         map.cells.flat().filter((char) => map.tiles[char]!.solid && map.tiles[char]!.sprite !== 'iwall').map((char) => map.tiles[char]!.sprite),
       );
       expect(furniture.size, map.id).toBeGreaterThanOrEqual(5);
     }
-    const floors = new Set(Object.values(world.maps).filter((map) => map !== town).map((map) => map.tiles._!.sprite));
+    const floors = new Set(ROOMS.map((id) => world.maps[id]!.tiles._!.sprite));
     expect(floors.size).toBeGreaterThanOrEqual(4);
   });
 });
@@ -114,6 +116,11 @@ describe('the roads', () => {
     const doors = town.objects.filter((object) => object.trigger === 'step' && object.solid);
     expect(doors).toHaveLength(5);
     for (const door of doors) expect(roads, door.id).toContain(`${door.x},${door.y + 1}`);
+    // And both ends of the main road, where it leaves town.
+    for (const char of ['(', ')']) {
+      const end = town.objects.find((object) => object.id === `town:${char}`)!;
+      expect(roads, end.id).toContain(`${end.x},${end.y}`);
+    }
   });
 
   it('are where every way out of a building puts the player, on any map where people stroll', () => {
@@ -226,7 +233,7 @@ describe('the gold stars and the errands', () => {
 
   it('counts every star on the ground and the one that is handed out', () => {
     expect(stars.length).toBeGreaterThanOrEqual(8);
-    expect(world.collect).toEqual({ item: COLLECT, total: stars.length + 1 });
+    expect(world.collect![0]).toEqual({ item: COLLECT, total: stars.length + 1, label: 'STARS', mark: '*' });
     expect(new Set(stars.map((object) => object.hideWhen?.flag)).size).toBe(stars.length);
   });
 
@@ -252,11 +259,15 @@ describe('the gold stars and the errands', () => {
         (cond.noItem === undefined || MAIN_ITEMS.includes(cond.noItem)) &&
         (cond.flag === undefined || mainFlag(cond.flag)) &&
         (cond.notFlag === undefined || mainFlag(cond.notFlag)) &&
-        cond.count === undefined);
+        cond.count === undefined &&
+        cond.level === undefined);
     const matters = (branch: Branch) =>
       branch.pass === true || deep(branch.do).some((action) => 'warp' in action || 'badge' in action || 'battle' in action || 'ending' in action || ('give' in action && MAIN_ITEMS.includes(action.give)));
     const optional = (object: GameObject) => object.sprite === 'star';
+    // The roads out of town and what lies along them are extra as a whole (regions.test.ts proves that).
+    const EXTRA = ['east', 'hills', 'west', 'cave'];
     for (const map of Object.values(world.maps)) {
+      if (EXTRA.includes(map.id)) continue;
       for (const object of map.objects) {
         if (optional(object)) continue;
         // Every branch before one that matters decides whether it is reached, so all of them must be main-path.
@@ -270,7 +281,7 @@ describe('the gold stars and the errands', () => {
   it('picks a star up in passing and shows the count', () => {
     const before = goTo(started(), 'town:5');
     expect(owned(before)).toBe(1);
-    expect(before.notice?.text).toBe(`1/${world.collect!.total}`);
+    expect(before.notice?.text).toBe(`* 1/${world.collect![0]!.total}`);
     expect(before.dialogue).toBeNull();
   });
 
@@ -322,7 +333,7 @@ describe('the gold stars and the errands', () => {
     expect(state.flags['errand:letter:done']).toBe(true);
     state = goTo(state, 'library:m');
 
-    expect(owned(state)).toBe(world.collect!.total);
+    expect(owned(state)).toBe(world.collect![0]!.total);
     state = talk(state, 'town:?');
     expect(state.items.trophy).toBe(1);
     state = talk(state, 'town:?');

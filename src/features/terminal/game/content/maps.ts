@@ -4,7 +4,8 @@ import type { TileDef } from '../engine/types.ts';
  * The maps, drawn as text. HOW TO EDIT
  *
  * - One character is one cell (16x16 pixels). Every row of a map must be equally long.
- * - The characters in the legends below are ground and scenery: OUTDOORS for the town, `indoors()` for the rooms.
+ * - The characters in the legends below are ground and scenery: OUTDOORS for the town, the routes and the hills,
+ *   `indoors()` for the rooms, CAVE for the cave.
  *   `solid` ones cannot be walked on. `road` ones are kept free: the townsfolk who stroll never step on them, so
  *   the way from door to door is never blocked. Every door of the town must have a road cell in front of it (a test checks).
  *   `animated` ones have a second picture (`<name>-b` in scripts/sprites/scenery.mjs) and move.
@@ -12,7 +13,12 @@ import type { TileDef } from '../engine/types.ts';
  *   its map. What it is and what it says is in story.ts, under the same map and character.
  * - The digits 1, 2, 3... in a building are the people who tell the facts from src/data: the first school, job,
  *   project or skill group goes to 1, the next to 2. A digit that has nobody left to tell about is simply empty.
- *   In town the digits 1-6 are hidden gold stars and 0, 7, 8, 9 are signposts.
+ *   In town the digits 1-6 are hidden gold stars and 0, 7, 8, 9 are signposts. In Hobby Hills the digits are the
+ *   ten hobby stops.
+ * - Lamp posts (i, I) stand beside a road, at even distances: a test fails for a lamp that does not touch a road.
+ * - `(` and `)` on the edge of an outdoor map are the ways out to the west and to the east.
+ * - Tall grass (and the rubble in the cave) is where wild enemies live. Keep a way around it on the routes: the
+ *   road. Who lives there is in AREAS in battles.ts.
  * - The screen shows 10 x 9 cells, so a room of that size needs no scrolling.
  * - A typo (an unknown character, a ragged row) fails `npm test` with a message naming the map and the place.
  */
@@ -38,11 +44,13 @@ export const OUTDOORS: Record<string, TileDef> = {
   '^': { sprite: 'lily', solid: true, animated: true },
   d: { sprite: 'duck', solid: true, animated: true },
   // Street furniture (the capital stands on the plaza)
-  i: { sprite: 'lamp', under: 'grass', solid: true, animated: true },
-  I: { sprite: 'lamp', under: 'cobble', solid: true, animated: true },
+  i: { sprite: 'lamp', under: 'grass', solid: true },
+  I: { sprite: 'lamp', under: 'cobble', solid: true },
   n: { sprite: 'bench', under: 'grass', solid: true },
   N: { sprite: 'bench', under: 'cobble', solid: true },
-  M: { sprite: 'stall', under: 'cobble', solid: true },
+  M: { sprite: 'stall', under: 'grass', solid: true },
+  // The mountain
+  c: { sprite: 'cliff', solid: true },
   x: { sprite: 'crate', under: 'grass', solid: true },
   z: { sprite: 'barrel', under: 'grass', solid: true },
   q: { sprite: 'mailbox', under: 'grass', solid: true },
@@ -104,37 +112,132 @@ export function indoors(floor: string): Record<string, TileDef> {
   };
 }
 
+/** The legend of the cave: rock, a floor, and rubble where the wild things hide. */
+export const CAVE: Record<string, TileDef> = {
+  _: { sprite: 'cavefloor', solid: false },
+  ',': { sprite: 'rubble', solid: false, grass: true },
+  X: { sprite: 'cavewall', solid: true },
+  s: { sprite: 'stalagmite', solid: true },
+};
+
 /**
  * The town. A O S L P are the doors of the Academy, Office, workShop, Library and contact office (Post); the same
  * letters in lower case are their signs. k is the coffee machine, C a chest, F the fountain, e the well.
  * People: B the postman, < the market vendor, ? the star collector, and the ones who stroll: H a kid, E an elder,
- * D a dog, m the gardener.
+ * D a dog, m the gardener. ( and ) in the main road are the ways out of town: west to the mountain, east to
+ * Hobby Hills.
  */
 export const TOWN = [
-  'TYTTYTTTYTTYTTTTYTTYTTTYTTYTTT',
-  'T1RRVRRR.g..RRRRRR...ZZZZZZ""T',
-  'T.RRRRRR.,..------.i.GQGGQG"CT',
-  'T.wWJAWwa,.pw&WPWwq.oGQUOQG""T',
-  'T.n.;=;....####:###B.I##:##""T',
-  'T.H..=..ff.##F#:##M<..##:##""T',
-  'T.,..=....8N###:#E#N.,..=..u.T',
-  'T.==========================.T',
-  'T..,.......i.,.=...k..u...,..T',
-  'T.jjjjjj.x..;;.=.u...~~~~~.Y.T',
-  'T4jjjjjj.zx..u.=,...~~^~d~~.2T',
-  'T.v>KSv>s...,..=...9~~~~~^~n.T',
-  'T....===========7....~~~~~...T',
-  'T~~~~^~~~~~~~~~|~~~~^~~~r....T',
-  'Y..Y...u....i..=...,..Y...,..T',
-  'T""""..e...Y...=.,..hhhhhhhh.Y',
-  'T"""""....n....=..u.h{{{{{{h6T',
-  'T""3""..,..D...=....;{{{{{{;.T',
-  'Y"""""..r....Y.=.Y..l][%L[];.T',
-  'T.""""........,==========....Y',
-  'T..""...ffff...=..m.n..i..u..T',
-  'T.......;;;;.?.=0........,...T',
-  'T...,....,.....@.....Y......5T',
-  'TTYTTTYTTYTTTTYTTTYTTYTTTTYTTT',
+  'TYTTYTTTYTTYTTTTYTTYTYTTTYTTYTTT',
+  'T1RRVRRR.g..RRRRRR.....ZZZZZZ""T',
+  'T.RRRRRR....------.....GQGGQG"CT',
+  'T.wWJAWwa..pw&WPWwq...oGQUOQG""T',
+  'T.n.;=;....####:##B#....##:##""T',
+  'T.H..=..ff.#F##:####....##:##""T',
+  'T.,..=....8###I:I###...,..=..u.T',
+  '(==============================)',
+  'T..,i.....i..,.=i..k..i.u...i..T',
+  'T.jjjjjj.x.M<..=.u.....~~~~~.Y.T',
+  'T4jjjjjj.zx..u.=,.E...~~^~d~~.2T',
+  'T.v>KSv>s..i,..=.....9~~~~~^~n.T',
+  'T....===========7......~~~~~...T',
+  'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
+  'Y..Y...u......i=...,....Y...,..T',
+  'T""""..e...Y...=.,....hhhhhhhh.Y',
+  'T"""""....n....=..u...h{{{{{{h6T',
+  'T""3""..,..D...=......;{{{{{{;.T',
+  'Y"""""..r....Y.=.Y....l][%L[];.T',
+  'T.""""........,============....Y',
+  'T..""...ffff...=i.m...n..i..u..T',
+  'T.......;;;;.?.=0..........,...T',
+  'T...,....,.....@.......Y......5T',
+  'TTYTTTYTTYTTTTYTTTYTTYTYTTTTYTTT',
+];
+
+/**
+ * The road east, to Hobby Hills. ( leads back to town, ) on to the hills. s is a signpost, k a coffee machine,
+ * C a chest in the tall grass. The road itself is safe.
+ */
+export const EAST = [
+  'TYTTYTTTYTTYTTTTYTTYTTTYTT',
+  'T""""..T...,..""""""...u.T',
+  'T""""".r....."""""""C""..T',
+  'T."""..........""""""....T',
+  'T....s.i.......k.......i.T',
+  '(========================)',
+  'T..i.......i.......i.....T',
+  'T...."""""......,..""""..T',
+  'T..""""""""..Y...."""""".T',
+  'T...""""""..........""""nT',
+  'TYTTTYTTYTTTTYTTTYTTYTTTYT',
+];
+
+/**
+ * Hobby Hills: a ring road around a pond, with ten stops, one per hobby. 1 the telescope, 2 the arcade cabinet,
+ * 3 the torii gate, 4 the cat, 5 the old console, 6 the rabbit in its pen, 7 the soldering bench, 8 the kanji board,
+ * 9 the home server, 0 the flask. ? keeps the stamp rally, s is the signpost, k a coffee machine, m a second cat
+ * who strolls. ( leads back to the road.
+ */
+export const HILLS = [
+  'TYTTYTTTYTTYTTTTYTTYTTTYTTYT',
+  'T..,....Y......,.....Y...,.T',
+  'T..1.......2........3......T',
+  'T.i....i.......i.......i...T',
+  'T.========================.T',
+  'T.=..,....hhhhhhhh...,...=.T',
+  'T.=.4.....h~~^~~~h....5..=.T',
+  'T.=.......h~~~~d~h.......=.T',
+  'T.=..ff...h~^~~~~h...n...=.T',
+  'T.=..f6...hhhhhhhh.......=.T',
+  '(==.......,..?...........=.T',
+  'T.=...........s..........=.T',
+  'T.=.7.............m....8.=.T',
+  'T.=......................=.T',
+  'T.========================.T',
+  'T.i....i.......i.......i...T',
+  'T...9........0.......k.....T',
+  'T.,......Y.........,....Y..T',
+  'T..........................T',
+  'TYTTTYTTYTTTTYTTTYTTYTTTYTTT',
+];
+
+/**
+ * The road west, to the mountain (c is rock). D is the mouth of the cave, ) leads back to town. s is a signpost,
+ * k a coffee machine, C a chest in the tall grass.
+ */
+export const WEST = [
+  'ccccccTYTTYTTTYTTYTTTTYTTT',
+  'cccccc..""""""...,..""""CT',
+  'ccccc...""""""...."""""".T',
+  'cccc..s...""""...........T',
+  'cccc.i.......i..k....i...T',
+  'cccD=====================)',
+  'cccc...i.......i.......i.T',
+  'cccc.."""""".......""""..T',
+  'ccccc.""""""""..Y.."""""rT',
+  'cccccc.."""""........"""TT',
+  'ccccccTYTTTYTTYTTTTYTTTYTT',
+];
+
+/**
+ * The cave: one long winding tunnel, dark. m is the way out (daylight), k and j are coffee machines, a and b are
+ * notes on the wall, E a chest. D is the door to the last chamber, B the boss, C the prize, L a ladder back up.
+ * The commas are rubble: wild things hide there.
+ */
+export const CAVE_MAP = [
+  'XXXXXXXXXXXXXXXXXXXX',
+  'X_______,,_________X',
+  'X_XXXXXXXXXXbXXXXs_X',
+  'X_XX______,_____XX_X',
+  'X_XX_sXXXXXXXXX_XX_X',
+  'X,XX_XX_D_B_CXX_XX_X',
+  'X,XX,XX_XXXLXXX,XX,X',
+  'X_XX_XX_XXXXXXE_XX,X',
+  'X_XX_XX____,____XX_X',
+  'X_aX_jXXXXXXXXXXXX_X',
+  'X_kX_XXXXXXXXXXXXs_X',
+  'XmXX______,,_______X',
+  'XXXXXXXXXXXXXXXXXXXX',
 ];
 
 /** Education: a classroom. 1-3 teachers (one per school), E the examiner, k coffee, * a star, m the way out. */
