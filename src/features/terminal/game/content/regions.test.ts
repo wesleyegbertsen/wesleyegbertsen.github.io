@@ -116,6 +116,25 @@ function grassTo(map: GameMap, from: Cell, ledges = true): Map<string, number> {
   return best;
 }
 
+/** What is water, and what stands in it or lies on it. */
+const WET = ['water', 'lily', 'duck', 'reeds'];
+const ON_WATER = ['jetty', 'stones'];
+/** The cells of the pond the duck swims in: the water that hangs together with it. A stepping stone ends it. */
+function pondOf(map: GameMap): Cell[] {
+  const duck = cellsOf(map, (x, y) => tileOf(map, x, y)!.sprite === 'duck')[0]!;
+  const seen = new Set([keyOf(duck)]);
+  const queue = [duck];
+  for (let cell = queue.shift(); cell; cell = queue.shift()) {
+    for (const { dx, dy } of Object.values(DELTA)) {
+      const next = { x: cell.x + dx, y: cell.y + dy };
+      if (seen.has(keyOf(next)) || !WET.includes(tileOf(map, next.x, next.y)?.sprite ?? '')) continue;
+      seen.add(keyOf(next));
+      queue.push(next);
+    }
+  }
+  return [...seen].map((key) => ({ x: Number(key.split(',')[0]), y: Number(key.split(',')[1]) }));
+}
+
 describe('the lamp posts', () => {
   const lamps = (map: GameMap) => cellsOf(map, (x, y) => tileOf(map, x, y)!.sprite === 'lamp');
 
@@ -765,14 +784,70 @@ describe('small things that looked wrong', () => {
     expect(sprites(hills!)).toContain('shore');
     expect(sprites(hills!)).not.toContain('hedge');
     expect(sprites(town!)).toContain('hedge');
-    expect(sprites(town!)).not.toContain('shore');
-    // Every water cell of the hills has water or shore on all four sides.
-    const wet = ['water', 'lily', 'duck'];
-    for (const cell of cellsOf(hills!, (x, y) => wet.includes(tileOf(hills!, x, y)!.sprite))) {
+    // Every cell of the pond has more pond, the shore, or something that stands in or on the water on all four sides.
+    for (const cell of pondOf(hills!)) {
       for (const { dx, dy } of Object.values(DELTA)) {
-        expect([...wet, 'shore'], `${cell.x + dx},${cell.y + dy}`).toContain(tileOf(hills!, cell.x + dx, cell.y + dy)!.sprite);
+        expect([...WET, ...ON_WATER, 'shore'], `${cell.x + dx},${cell.y + dy}`).toContain(tileOf(hills!, cell.x + dx, cell.y + dy)!.sprite);
       }
     }
+  });
+
+  it('makes the pond of Hobby Hills look meant: a jetty to walk out on, and reeds at its edge', () => {
+    const pond = new Set(pondOf(hills!).map(keyOf));
+    expect(pond.size).toBeGreaterThanOrEqual(12);
+    const wet = (x: number, y: number) => pond.has(`${x},${y}`);
+    const jetty = cellsOf(hills!, (x, y) => tileOf(hills!, x, y)!.sprite === 'jetty');
+    expect(jetty.length).toBeGreaterThanOrEqual(1);
+    const reach = dryReach(hills!, resolveSpot(world, { map: 'hills', at: '(', dx: 1 }));
+    for (const cell of jetty) {
+      // Planks that run north to south: water on both sides, and the shore or more jetty at an end.
+      expect(wet(cell.x - 1, cell.y) && wet(cell.x + 1, cell.y), keyOf(cell)).toBe(true);
+      expect(['shore', 'jetty'], keyOf(cell)).toContain(tileOf(hills!, cell.x, cell.y + 1)!.sprite);
+      expect(tileOf(hills!, cell.x, cell.y)!.solid).toBe(false);
+      // Not a road: someone may stand there.
+      expect(tileOf(hills!, cell.x, cell.y)!.road).toBeFalsy();
+    }
+    // It can be walked onto from the shore (or, where somebody stands on it, up to them).
+    expect(jetty.some((cell) => reach.has(keyOf(cell)) || reach.has(`${cell.x},${cell.y + 1}`))).toBe(true);
+    const reeds = cellsOf(hills!, (x, y) => tileOf(hills!, x, y)!.sprite === 'reeds');
+    expect(reeds.length).toBeGreaterThanOrEqual(2);
+    for (const cell of reeds) {
+      expect(tileOf(hills!, cell.x, cell.y)!.solid, keyOf(cell)).toBe(true);
+      // In the water, at its edge: the shore is right beside them.
+      const around = Object.values(DELTA).map(({ dx, dy }) => tileOf(hills!, cell.x + dx, cell.y + dy)!.sprite);
+      expect(around, keyOf(cell)).toContain('shore');
+      expect(around.every((sprite) => [...WET, ...ON_WATER, 'shore'].includes(sprite)), keyOf(cell)).toBe(true);
+    }
+    // The things in and on the water move with it: each has its second picture.
+    for (const sprite of ['jetty', 'stones', 'reeds']) {
+      const tile = Object.values(hills!.tiles).find((candidate) => candidate.sprite === sprite)!;
+      expect(tile.animated, sprite).toBe(true);
+    }
+  });
+
+  it('gives the duck pond in town a sandy shore to walk on, where there is room for one', () => {
+    const wet = (x: number, y: number) => WET.includes(tileOf(town!, x, y)?.sprite ?? '');
+    const duck = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'duck')[0]!;
+    const shore = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'shore');
+    expect(shore.length).toBeGreaterThanOrEqual(8);
+    const reach = dryReach(town!, resolveSpot(world, world.start));
+    for (const cell of shore) {
+      // Around the duck pond, at the water (straight or across a corner), and walkable from the start of the game.
+      expect(Math.max(Math.abs(cell.x - duck.x), Math.abs(cell.y - duck.y)), keyOf(cell)).toBeLessThanOrEqual(5);
+      const touches = [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => wet(cell.x + dx, cell.y + dy)));
+      expect(touches, keyOf(cell)).toBe(true);
+      expect(reach.has(keyOf(cell)), keyOf(cell)).toBe(true);
+      expect(tileOf(town!, cell.x, cell.y)!.solid).toBe(false);
+    }
+    // On every side of it.
+    expect(shore.some((cell) => cell.y < duck.y - 1)).toBe(true);
+    expect(shore.some((cell) => cell.y > duck.y + 1)).toBe(true);
+    expect(shore.some((cell) => cell.x < duck.x - 3)).toBe(true);
+    expect(shore.some((cell) => cell.x > duck.x + 1)).toBe(true);
+    // The star behind the pond is still found, and reeds grow by the sign.
+    expect(routeTo(world, started(), 'town:2')).not.toBeNull();
+    const sign = town!.objects.find((object) => object.id === 'town:9')!;
+    expect(tileOf(town!, sign.x + 1, sign.y)!.sprite).toBe('reeds');
   });
 
   it('stands the water cooler of the Office against the wall by the coffee machine, out of the walkway', () => {

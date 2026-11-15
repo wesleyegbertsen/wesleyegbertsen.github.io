@@ -400,6 +400,49 @@ const duck = [
   '................',
 ];
 
+/** A wooden jetty out into a pond, walked on from the shore: planks across, a beam along each side, water beside it. */
+const jettyPlanks = Array.from({ length: 16 }, (_, y) => (y % 4 === 3 ? '..333333333333..' : y % 8 === 1 ? '..300001000003..' : '..300000000003..'));
+
+/** A stepping stone: flat, lit from the top left, just above the water. */
+const steppingStone = [
+  '................',
+  '................',
+  '....33333333....',
+  '..330000000033..',
+  '.30000000000113.',
+  '.30000000011113.',
+  '.30000000111113.',
+  '.30000001111113.',
+  '.30000111111113.',
+  '.30011111111123.',
+  '.31111111111223.',
+  '..331111112233..',
+  '....33333333....',
+  '................',
+  '................',
+  '................',
+];
+
+/** Reeds at the edge of a pond: light stalks with dark heads, standing in the water. */
+const reed = [
+  '................',
+  '....3......3....',
+  '....3...3..3....',
+  '...030..3.030...',
+  '...030.030030...',
+  '...030.030030...',
+  '....1..030.1....',
+  '....1...1..1....',
+  '....1...1..1....',
+  '...11...1..11...',
+  '....1..11..1....',
+  '....1...1..1....',
+  '....1...1..1....',
+  '...1.1.1.1.1.1..',
+  '................',
+  '................',
+];
+
 // --- buildings -----------------------------------------------------------------------------------------------------
 
 const brick = ['11121111', '11121111', '11121111', '22222222', '11111121', '11111121', '11111121', '22222222'];
@@ -1053,6 +1096,12 @@ export const scenery = {
   'lily-b': on(waterB, pads),
   duck: on(tiles.water, duck),
   'duck-b': on(waterB, lower(duck)),
+  jetty: on(tiles.water, jettyPlanks),
+  'jetty-b': on(waterB, jettyPlanks),
+  stones: on(tiles.water, steppingStone),
+  'stones-b': on(waterB, steppingStone),
+  reeds: on(tiles.water, reed),
+  'reeds-b': on(waterB, reed),
   brick,
   planks,
   stone,

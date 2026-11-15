@@ -50,6 +50,9 @@ export const OUTDOORS: Record<string, TileDef> = {
   '~': { sprite: 'water', solid: true, animated: true },
   '^': { sprite: 'lily', solid: true, animated: true },
   d: { sprite: 'duck', solid: true, animated: true },
+  '*': { sprite: 'reeds', solid: true, animated: true }, // at the edge of a pond, in the water
+  _: { sprite: 'jetty', solid: false, animated: true }, // planks out into the water: walk on it from the shore, north or south
+  t: { sprite: 'stones', solid: false, animated: true }, // a stepping stone: a way across the water
   // Street furniture (the capital stands on the plaza)
   i: { sprite: 'lamp', under: 'grass', solid: true },
   I: { sprite: 'lamp', under: 'cobble', solid: true },
@@ -137,7 +140,7 @@ export const CAVE: Record<string, TileDef> = {
  * letters in lower case are their signs. k is the coffee machine, C a chest, F the fountain, e the well.
  * People: B the postman, < the market vendor, ? the star collector, and the ones who stroll: H a kid, E an elder,
  * D a dog, m the gardener. ( and ) in the main road are the ways out of town: west to the mountain, east to
- * Hobby Hills.
+ * Hobby Hills. The duck pond has a sandy shore (+) where there is room beside the lamps and the sign, and reeds (*).
  */
 export const TOWN = [
   'TYTTYTTTYTTYTTTTYTTYTYTTTYTTYTTT',
@@ -148,11 +151,11 @@ export const TOWN = [
   'T.H..=..fff#F##:####f...##:##""T',
   'T.,..=....8####:##!#f..,..=..u.T',
   '(==============================)',
-  'T..,i.....i..,.=i..k..i.u...i..T',
-  'T.jjjjjj.x..M<.=.u.....~~~~~.Y.T',
-  'T4jjjjjj.zx....=,.E...~~^~d~~.2T',
-  'T.v>KSv>s..i,..=.....9~~~~~^~n.T',
-  'T....===========7......~~~~~...T',
+  'T..,i.....i..,.=i..k..i+u+++i..T',
+  'T.jjjjjj.x..M<.=.u....+~~~~~++.T',
+  'T4jjjjjj.zx....=,.E..+~~^~d~~+2T',
+  'T.v>KSv>s..i,..=.....9*~~~~^~n.T',
+  'T....===========7.....+~~~~~++.T',
   'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
   'Y..Y...u......i=...,....Y...,..T',
   'T""""..e...Y...=.,....hhhhhhhh.Y',
@@ -199,9 +202,9 @@ export const HILLS = [
   'T.i##..i..###..i...###.i...T',
   'T.========================.T',
   'T.=..,....++++++++...,...=.T',
-  'T.=.4,....+~~^~~~+...#5#.=.T',
+  'T.=.4,....+*~^~~~+...#5#.=.T',
   'T.=.......+~~~~d~+.......=.T',
-  'T.=..ff...+~^~~~~+...n...=.T',
+  'T.=..ff...+~^~_~*+...n...=.T',
   'T.=..f6...++++++++.......=.T',
   '(==.......,..?...........=.T',
   'T.=....,......s......u...=.T',
