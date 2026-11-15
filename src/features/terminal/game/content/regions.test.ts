@@ -216,6 +216,13 @@ describe('the roads out of town', () => {
       expect(tileOf(map, sign.x, sign.y + 1)?.road, map.id).toBe(true);
       expect(Math.abs(sign.x - map.width / 2), map.id).toBeLessThanOrEqual(map.width / 4 + 2);
     }
+    // Each a quarter of the way in from the town end of its road: the east road's on the left, the west road's on the right.
+    const eastSign = east!.objects.find((object) => object.sprite === 'sign')!;
+    const westSign = west!.objects.find((object) => object.sprite === 'sign')!;
+    expect(eastSign.x / east!.width).toBeLessThan(0.3);
+    expect(westSign.x / west!.width).toBeGreaterThan(0.65);
+    expect(westSign.x / west!.width).toBeLessThan(0.85);
+    expect(west!.width - 1 - westSign.x).toBe(eastSign.x + 1);
     const leaving = step(goToward('town:)'), { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
     expect(leaving.state.map).toBe('east');
     expect(leaving.cues).toContain('path');
@@ -657,5 +664,48 @@ describe('small things that looked wrong', () => {
     expect(tileOf(office, cooler.x, cooler.y - 1)!.solid).toBe(true);
     // The row under the wall is free from the left wall to the cooler: nothing stands in the middle of it.
     for (let x = 1; x < cooler.x; x++) expect(tileOf(office, x, cooler.y)!.solid, String(x)).toBe(false);
+  });
+});
+
+describe('round five, the small things', () => {
+  it('gives the gardener the flower bed he talks about', () => {
+    const gardener = town!.objects.find((object) => object.sprite === 'gardener')!;
+    const beds = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'flowerbed');
+    const near = beds.filter((bed) => Math.max(Math.abs(bed.x - gardener.x), Math.abs(bed.y - gardener.y)) <= 1);
+    expect(near.length).toBeGreaterThanOrEqual(2);
+    expect(said(town!)).toMatch(/I named this flower bed/);
+  });
+
+  it('has no lamp posts on the plaza any more, and a light fence beside it that leaves the roads open', () => {
+    const door = town!.objects.find((object) => object.id === 'town:P')!;
+    const plaza = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'cobble' && y > door.y && y <= door.y + 3 && Math.abs(x - door.x) <= 4);
+    const lamps = cellsOf(town!, (x, y) => tileOf(town!, x, y)!.sprite === 'lamp');
+    for (const lamp of lamps) expect(lamp.y <= door.y + 3 && Math.abs(lamp.x - door.x) <= 5, `${lamp.x},${lamp.y}`).toBe(false);
+    const left = Math.min(...plaza.map((cell) => cell.x));
+    const right = Math.max(...plaza.map((cell) => cell.x));
+    const fence = (x: number, y: number) => tileOf(town!, x, y)?.sprite === 'fence';
+    const rows = [door.y + 1, door.y + 2, door.y + 3];
+    expect(rows.some((y) => fence(left - 1, y))).toBe(true);
+    expect(rows.filter((y) => fence(right + 1, y)).length).toBeGreaterThanOrEqual(2);
+    // Light: a handful of posts, and none on or across a road.
+    const posts = cellsOf(town!, (x, y) => fence(x, y) && y <= door.y + 3 && Math.abs(x - door.x) <= 6);
+    expect(posts.length).toBeLessThanOrEqual(6);
+    for (let x = left; x <= right; x++) expect(fence(x, door.y + 4), String(x)).toBe(false);
+    expect(tileOf(town!, door.x, door.y + 3)!.road).toBe(true);
+  });
+
+  it('lets the player walk on the shore of the pond, and not on the water', () => {
+    for (const tile of Object.values(hills!.tiles)) {
+      if (tile.sprite === 'shore') expect(tile.solid).toBe(false);
+      if (['water', 'lily', 'duck'].includes(tile.sprite)) expect(tile.solid).toBe(true);
+    }
+    const shore = cellsOf(hills!, (x, y) => tileOf(hills!, x, y)!.sprite === 'shore');
+    expect(shore.length).toBeGreaterThanOrEqual(16);
+    const reach = dryReach(hills!, resolveSpot(world, { map: 'hills', at: '(', dx: 1 }));
+    for (const cell of shore) expect(reach.has(`${cell.x},${cell.y}`), `${cell.x},${cell.y}`).toBe(true);
+    // All the way round on the sand.
+    const state = goTo(at('hills', '(', {}, 1), 'hills:?');
+    const walked = press({ ...state, x: shore[0]!.x, y: shore[0]!.y - 1, dir: 'down' }, { dir: 'down', pressed: 'down' });
+    expect({ x: walked.x, y: walked.y }).toEqual(shore[0]);
   });
 });

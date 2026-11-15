@@ -90,7 +90,24 @@
     linear-gradient(to right, rgb(8 24 32 / 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(8 24 32 / 0.16) 1px, transparent 1px),
     radial-gradient(ellipse at center, transparent 55%, rgb(8 24 32 / 0.22) 100%);
-  box-shadow: inset 0 0 12px rgb(8 24 32 / 0.35);
+  /* The lens sits a little above the screen: the light falls in at an angle, so the shadow of its inner edge is
+     wide along the top and the left and thin along the bottom and the right. */
+  box-shadow:
+    inset 9px 9px 10px -4px rgb(8 24 32 / 0.5),
+    inset -2px -2px 5px -1px rgb(8 24 32 / 0.28);
+}
+
+/* On a phone a game pixel is only two or three screen pixels: the same grid would take over the picture. */
+@media (pointer: coarse), (max-width: 700px) {
+  .lcd {
+    background-image:
+      linear-gradient(to right, rgb(8 24 32 / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(8 24 32 / 0.06) 1px, transparent 1px),
+      radial-gradient(ellipse at center, transparent 55%, rgb(8 24 32 / 0.22) 100%);
+    box-shadow:
+      inset 6px 6px 7px -3px rgb(8 24 32 / 0.5),
+      inset -1px -1px 3px -1px rgb(8 24 32 / 0.28);
+  }
 }
 
 .hint {

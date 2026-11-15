@@ -172,7 +172,7 @@ test.describe('the settings', () => {
     await expect(game(page)).toHaveAttribute('data-row', '');
   });
 
-  test('the screen has an LCD look laid over it, which SCREEN switches off and on', async ({ page }) => {
+  test('the screen has an LCD look laid over it, which SCREEN switches off and on', async ({ page, isMobile }) => {
     const { pilot, errors } = await play(page);
     await pilot.start();
     const lcd = page.getByTestId('lcd');
@@ -184,6 +184,18 @@ test.describe('the settings', () => {
     for (const side of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(over[side] - under[side])).toBeLessThan(1);
     expect(await lcd.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
     expect(await lcd.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('linear-gradient');
+    // The lens: a shadow along the inner edge, wider at the top and the left than at the bottom and the right.
+    const shadow = await lcd.evaluate((el) => getComputedStyle(el).boxShadow);
+    const insets = [...shadow.matchAll(/(-?\d+)px (-?\d+)px (\d+)px (-?\d+)px inset/g)].map((match) => match.slice(1, 5).map(Number));
+    expect(insets).toHaveLength(2);
+    expect(insets[0]![0]).toBeGreaterThan(Math.abs(insets[1]![0]!) * 2);
+    expect(insets[0]![1]).toBeGreaterThan(0);
+    expect(insets[1]![0]).toBeLessThan(0);
+    // The grid is drawn fainter on a phone than on a desktop, where a game pixel is bigger.
+    const grid = await lcd.evaluate((el) => getComputedStyle(el).backgroundImage);
+    const alpha = Number(/rgba\(8, 24, 32, ([\d.]+)\)/.exec(grid)![1]);
+    if (isMobile) expect(alpha).toBeLessThanOrEqual(0.08);
+    else expect(alpha).toBeGreaterThanOrEqual(0.12);
     // The grid is one cell per game pixel.
     const cell = await lcd.evaluate((el) => parseFloat(getComputedStyle(el).backgroundSize));
     expect(cell).toBeCloseTo(under.width / 160, 1);

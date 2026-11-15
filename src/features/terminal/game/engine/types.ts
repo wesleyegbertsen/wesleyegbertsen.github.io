@@ -238,8 +238,8 @@ export type GameState = {
   battle: Battle | null;
   menu: Menu | null;
   learn: Learn | null;
-  /** Who is being talked to, and which way they turned for it. They turn back when the talk is over. */
-  face: { id: string; dir: Dir } | null;
+  /** Who is being talked to, and which way they turned for it. They turn back a moment after the talk is over: at clock `until`. */
+  face: { id: string; dir: Dir; until?: number } | null;
   /** Where a defeat sends the player back to. */
   heal: { map: string; x: number; y: number };
   seed: number;

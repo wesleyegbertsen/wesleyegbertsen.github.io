@@ -1,5 +1,5 @@
 import { trackFor } from '../audio/director.ts';
-import { initialGame, learnRows, step } from './engine.ts';
+import { FACE_TICKS, initialGame, learnRows, step } from './engine.ts';
 import { levelWorld, playIn, testWorld } from './testWorld.ts';
 import { NO_INPUT, SETTINGS, type Cue, type GameEvent, type GameState, type Input, type World } from './types.ts';
 import { holds, parseMap } from './world.ts';
@@ -339,7 +339,19 @@ describe('who looks where', () => {
     expect(second.face).toEqual({ id: 'main:s', dir: 'down' });
     const over = press(testWorld, second, { a: true }).state;
     expect(over.dialogue).toBeNull();
-    expect(over.face).toBeNull();
+    // Not at once: they keep looking for a moment, on the game clock, and then turn back.
+    expect(over.face).toEqual({ id: 'main:s', dir: 'down', until: over.clock + FACE_TICKS });
+    let state = over;
+    for (let tick = 1; tick < FACE_TICKS; tick++) state = step(state, NO_INPUT, testWorld).state;
+    expect(state.face?.id).toBe('main:s');
+    state = step(state, NO_INPUT, testWorld).state;
+    expect(state.face).toBeNull();
+    expect(FACE_TICKS).toBeGreaterThanOrEqual(36);
+    expect(FACE_TICKS).toBeLessThanOrEqual(60);
+    // With reduced motion a press is ten ticks of the clock: a few presses later they have turned back too.
+    let reduced = over;
+    for (let i = 0; i < 5; i++) reduced = press(testWorld, reduced, { dir: 'left', pressed: 'left' }).state;
+    expect(reduced.face).toBeNull();
   });
 
   it('turns them to whichever side the player stands on', () => {
@@ -360,6 +372,8 @@ describe('who looks where', () => {
     expect(inBattle.face?.id).toBe('main:n');
     let state = inBattle;
     for (let i = 0; i < 200 && (state.battle || state.dialogue); i++) state = press(testWorld, state, { a: true }).state;
+    expect(state.face?.until).toBe(state.clock + FACE_TICKS);
+    for (let tick = 0; tick < FACE_TICKS; tick++) state = step(state, NO_INPUT, testWorld).state;
     expect(state.face).toBeNull();
   });
 });

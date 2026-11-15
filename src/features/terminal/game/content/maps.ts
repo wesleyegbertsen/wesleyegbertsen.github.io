@@ -56,7 +56,7 @@ export const OUTDOORS: Record<string, TileDef> = {
   q: { sprite: 'mailbox', under: 'grass', solid: true },
   g: { sprite: 'flag', under: 'grass', solid: true, animated: true },
   '!': { sprite: 'flag', under: 'cobble', solid: true, animated: true }, // on the plaza
-  '+': { sprite: 'shore', solid: true }, // the sandy rim of a pond
+  '+': { sprite: 'shore', solid: false }, // the sandy rim of a pond: you can walk on it, the water is what stops you
   // The Academy and the contact office: light walls, tiled roofs
   R: { sprite: 'roof', solid: true },
   V: { sprite: 'roof-bell', solid: true },
@@ -135,8 +135,8 @@ export const TOWN = [
   'T.RRRRRR....------.....GQGGQG"CT',
   'T.wWJAWwa..pw&WPWwq...oGQUOQG""T',
   'T.n.;=;....####:##B#....##:##""T',
-  'T.H..=..ff.#F##:####....##:##""T',
-  'T.,..=....8###I:I#!#...,..=..u.T',
+  'T.H..=..fff#F##:####f...##:##""T',
+  'T.,..=....8####:##!#f..,..=..u.T',
   '(==============================)',
   'T..,i.....i..,.=i..k..i.u...i..T',
   'T.jjjjjj.x..M<.=.u.....~~~~~.Y.T',
@@ -151,7 +151,7 @@ export const TOWN = [
   'Y"""""..r....Y.=.Y....l][%L[];.T',
   'T.""""........,============....Y',
   'T..""...ffff...=i.m...n..i..u..T',
-  'T.......;;;;.?.=0..........,...T',
+  'T.......;;;;.?.=0.;;.......,...T',
   'T...,....,.....@.......Y......5T',
   'TTYTTTYTTYTTTTYTTTYTTYTYTTTTYTTT',
 ];
@@ -212,7 +212,7 @@ export const WEST = [
   'cccccc..""""""...,..""""CT',
   'ccccc...""""""...."""""".T',
   'cccc......""""...........T',
-  'cccc.i.....s.i..k....i...T',
+  'cccc.i.......i..k..s.i...T',
   'cccD=====================)',
   'cccc...i.......i.......i.T',
   'cccc.."""""".......""""..T',

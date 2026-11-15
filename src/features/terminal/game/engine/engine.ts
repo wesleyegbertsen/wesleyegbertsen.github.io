@@ -296,6 +296,17 @@ function interact(state: GameState, ctx: Ctx): GameState {
   return runScript({ ...state, face: { id: object.id, dir: back[state.dir] }, script: [...branch.do] }, ctx);
 }
 
+/** How long someone keeps looking at the player after a talk, in ticks of the game clock (60 a second). */
+export const FACE_TICKS = 45;
+
+/** After the talk the clock starts to count; when it has run out, whoever turned to the player looks away again. */
+function letGo(state: GameState): GameState {
+  const { face } = state;
+  if (!face || state.dialogue || state.battle || state.learn) return state;
+  if (face.until === undefined) return { ...state, face: { ...face, until: state.clock + FACE_TICKS } };
+  return state.clock >= face.until ? { ...state, face: null } : state;
+}
+
 const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && state.scene === 'world';
 
 /** What the player does on the map this tick: carry on walking, open the bag, ask for a hint, talk or step. */
@@ -333,12 +344,8 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
  */
 export function step(state: GameState, input: Input, world: World, options: Options = {}): Result {
   const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false };
-  // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back.
-  const done = (next: GameState): Result => ({
-    state: next.face && !next.dialogue && !next.battle && !next.learn ? { ...next, face: null } : next,
-    events: ctx.events,
-    cues: ctx.cues,
-  });
+  // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back, a moment later.
+  const done = (next: GameState): Result => ({ state: letGo(next), events: ctx.events, cues: ctx.cues });
 
   if (state.scene === 'ending') return done(state);
   if (state.scene === 'title') {
