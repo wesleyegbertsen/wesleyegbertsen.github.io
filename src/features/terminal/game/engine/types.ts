@@ -12,6 +12,8 @@ export type Cond = {
   noItem?: string;
   /** Has at least this many badges. */
   badges?: number;
+  /** Carries at least `min` of an item (the collector counts stars). */
+  count?: { item: string; min: number };
 };
 
 /** A place, named by an object's character on a map (plus an offset), so maps can be redrawn freely. */
@@ -20,7 +22,8 @@ export type Spot = { map: string; at: string; dx?: number; dy?: number; dir?: Di
 /** One thing that happens when the player talks to, opens or steps on something. They run in order. */
 export type Action =
   | { say: string[] }
-  | { give: string }
+  /** `quiet`: no text box, only a line for the status region and a sound (a star picked up in passing). */
+  | { give: string; quiet?: true }
   | { take: string }
   | { flag: string }
   | { badge: string }
@@ -52,6 +55,11 @@ export type GameObject = {
   /** `interact`: press A while facing it. `step`: walk onto it (or into it, when it does not let you pass). */
   trigger: 'interact' | 'step';
   branches: Branch[];
+  /**
+   * Strolls about: every `every` ticks of the game clock it may take a step, never further than `radius` cells
+   * from where the map puts it, never onto a road. See wander.ts.
+   */
+  wander?: { radius: number; every: number };
 };
 
 export type TileDef = {
@@ -61,6 +69,10 @@ export type TileDef = {
   solid: boolean;
   /** Tall grass: wild enemies may appear. */
   grass?: boolean;
+  /** A road: townsfolk never stroll onto it, so the way between the doors is always free. */
+  road?: boolean;
+  /** Animated: the sheet also has `<sprite>-b`, and the two take turns. */
+  animated?: boolean;
 };
 
 export type GameMap = {
@@ -121,13 +133,17 @@ export type World = {
   hints: { when?: Cond; text: string }[];
   /** Lines of the ending screen. */
   ending: string[];
+  /** The thing to collect, counted on the Start menu: the item and how many of it the maps hide. */
+  collect?: { item: string; total: number };
+  /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
+  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
 };
 
 export type Dialogue = { pages: string[][]; page: number; shown: number };
 export type Menu = { tab: 'items' | 'badges'; cursor: number };
 
 /** One line of a battle. HP values in it take effect when the line appears. */
-export type BattleStep = { text: string; enemyHp?: number; hp?: number };
+export type BattleStep = { text: string; enemyHp?: number; hp?: number; cue?: Cue };
 
 export type Battle = {
   enemy: string;
@@ -164,7 +180,15 @@ export type GameState = {
   heal: { map: string; x: number; y: number };
   seed: number;
   finished: boolean;
+  /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */
+  clock: number;
+  /** Where the townsfolk who left their spot are now, by object id. `at` is the clock when the step began. */
+  roam: Record<string, Roaming>;
+  /** A short note in the corner of the map (the star count after a find), shown until the clock reaches `until`. */
+  notice: { text: string; until: number } | null;
 };
+
+export type Roaming = { x: number; y: number; fromX: number; fromY: number; at: number };
 
 /** Something worth telling a screen reader. */
 export type GameEvent = {
@@ -185,4 +209,26 @@ export type Input = {
 
 export const NO_INPUT: Input = { dir: null, pressed: null, a: false, b: false, start: false, select: false };
 
-export type Result = { state: GameState; events: GameEvent[] };
+/**
+ * Something worth a sound. The engine only names what happened; what it sounds like is in content/music.ts.
+ */
+export type Cue =
+  | 'cursor'
+  | 'confirm'
+  | 'cancel'
+  | 'blip'
+  | 'door'
+  | 'item'
+  | 'star'
+  | 'badge'
+  | 'bump'
+  | 'heal'
+  | 'hit'
+  | 'hurt'
+  | 'miss'
+  | 'faint'
+  | 'low'
+  | 'run'
+  | 'encounter';
+
+export type Result = { state: GameState; events: GameEvent[]; cues: Cue[] };

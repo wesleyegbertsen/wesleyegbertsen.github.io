@@ -3,7 +3,7 @@ import { random } from './rng.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { fold, paginate, wrap } from './text.ts';
 import { NO_INPUT, type GameState } from './types.ts';
-import { objectAt, parseMap, spriteOf } from './world.ts';
+import { holds, objectAt, parseMap, spriteOf } from './world.ts';
 
 const fresh = () => initialGame(world, 7);
 /** Past the title and the intro. */
@@ -116,11 +116,25 @@ describe('walking', () => {
     expect(state).toMatchObject({ x: 4, walk: null });
   });
 
-  it('turns towards a wall but does not walk into it, and returns the same state when nothing changes', () => {
+  it('turns towards a wall but does not walk into it: only the clock moves on', () => {
     const state = play(started(), 'left', 'left');
     expect(state).toMatchObject({ x: 1, y: 2, dir: 'left' });
-    expect(play(state, 'left')).toBe(state);
-    expect(tick(state).state).toBe(state);
+    const bumped = step(state, { ...NO_INPUT, dir: 'left', pressed: 'left' }, world, { instant: true });
+    expect(bumped.state).toEqual({ ...state, clock: state.clock + WALK_TICKS });
+    expect(bumped.cues).toEqual(['bump']);
+    expect(tick(state).state).toEqual({ ...state, clock: state.clock + 1 });
+    expect(tick(state).cues).toEqual([]);
+  });
+
+  it('runs the clock on the map only: not on the title, in a text box, a menu or a battle', () => {
+    expect(fresh().clock).toBe(0);
+    expect(tick(fresh()).state.clock).toBe(0);
+    const talking = tick(fresh(), { ...NO_INPUT, a: true }).state;
+    expect(tick(tick(talking).state).state.clock).toBe(0);
+    const menu = play(started(), 'start');
+    expect(tick(menu).state.clock).toBe(menu.clock);
+    const battle = play(started(), 'down', 'right');
+    expect(tick(battle).state.clock).toBe(battle.clock);
   });
 
   it('finishes a step that was under way when reduced motion is switched on', () => {
@@ -214,6 +228,13 @@ describe('the menu and the hint', () => {
 
     const described = play(full, 'start', 'down', 'a');
     expect(described.dialogue?.pages[0]).toEqual(['KEY: Opens a door.']);
+  });
+
+  it('counts items for a condition', () => {
+    const state = { ...started(), items: { coffee: 2 } };
+    expect(holds({ count: { item: 'coffee', min: 2 } }, state)).toBe(true);
+    expect(holds({ count: { item: 'coffee', min: 3 } }, state)).toBe(false);
+    expect(holds({ count: { item: 'key', min: 1 } }, state)).toBe(false);
   });
 
   it('gives the first hint that applies on Select', () => {

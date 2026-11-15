@@ -1,6 +1,6 @@
 import { random } from './rng.ts';
 import { fold } from './text.ts';
-import type { Action, Battle, BattleStep, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
+import type { Action, Battle, BattleStep, Cue, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
 
 /** The battle menu, in order. The first entry is the default. */
 export const BATTLE_MENU = ['FIGHT', 'ITEM', 'RUN'] as const;
@@ -17,7 +17,11 @@ export function usableItems(state: GameState, world: World): string[] {
 export const fullPp = (world: World): Record<string, number> =>
   Object.fromEntries(world.playerMoves.map((id) => [id, world.moves[id]!.pp]));
 
-type Ctx = { world: World; events: GameEvent[]; instant: boolean };
+type Ctx = { world: World; events: GameEvent[]; cues: Cue[]; instant: boolean };
+
+/** At or under this share of the energy the low-energy beep sounds. */
+const LOW = 0.25;
+const BLIP_EVERY = 3;
 
 /** Shows a list of lines one by one. The first one appears (and takes effect) at once. */
 function show(state: GameState, battle: Battle, steps: BattleStep[], ctx: Ctx): GameState {
@@ -30,6 +34,8 @@ function reveal(state: GameState, ctx: Ctx): GameState {
   const battle = state.battle!;
   const step = battle.steps[0]!;
   ctx.events.push({ kind: 'battle', text: step.text });
+  if (step.cue) ctx.cues.push(step.cue);
+  if (step.cue === 'hurt' && step.hp !== undefined && step.hp > 0 && step.hp <= state.maxHp * LOW) ctx.cues.push('low');
   return {
     ...state,
     hp: step.hp ?? state.hp,
@@ -52,7 +58,7 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
     win,
   };
   const intro = wild ? `A wild ${enemy.name} appeared!` : `${enemy.name} wants to battle!`;
-  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro }], ctx);
+  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: 'encounter' }], ctx);
 }
 
 type Choice = { move: MoveDef; id?: string } | { item: string };
@@ -79,19 +85,19 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
     const item = world.items[choice.item]!;
     items = { ...items, [choice.item]: items[choice.item]! - 1 };
     hp = Math.min(state.maxHp, hp + (item.heal ?? 0));
-    steps.push({ text: `You use the ${item.name}. Energy restored!`, hp });
+    steps.push({ text: `You use the ${item.name}. Energy restored!`, hp, cue: 'heal' });
   } else {
     const { move, id } = choice;
     if (id) pp = { ...pp, [id]: pp[id]! - 1 };
     if (move.heal !== undefined) {
       hp = Math.min(state.maxHp, hp + move.heal);
-      steps.push({ text: `You take a ${move.name}. Energy restored!`, hp });
+      steps.push({ text: `You take a ${move.name}. Energy restored!`, hp, cue: 'heal' });
     } else if (roll() < move.accuracy) {
       const dealt = damage(move);
       enemyHp = Math.max(0, enemyHp - dealt);
-      steps.push({ text: `You use ${move.name}! ${enemy.name} loses ${dealt} HP.`, enemyHp });
+      steps.push({ text: `You use ${move.name}! ${enemy.name} loses ${dealt} HP.`, enemyHp, cue: 'hit' });
     } else {
-      steps.push({ text: `You use ${move.name}... but it fails!` });
+      steps.push({ text: `You use ${move.name}... but it fails!`, cue: 'miss' });
     }
   }
 
@@ -104,12 +110,12 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
     if (roll() < move.accuracy) {
       const dealt = damage(move);
       hp = Math.max(0, hp - dealt);
-      steps.push({ text: `${enemy.name} uses ${move.name}! You lose ${dealt} HP.`, hp });
+      steps.push({ text: `${enemy.name} uses ${move.name}! You lose ${dealt} HP.`, hp, cue: 'hurt' });
     } else {
-      steps.push({ text: `${enemy.name} uses ${move.name}, but misses!` });
+      steps.push({ text: `${enemy.name} uses ${move.name}, but misses!`, cue: 'miss' });
     }
     if (hp <= 0) {
-      steps.push({ text: 'You are out of energy...' });
+      steps.push({ text: 'You are out of energy...', cue: 'faint' });
       outcome = 'lose';
     }
   }
@@ -136,8 +142,12 @@ function finish(state: GameState, ctx: Ctx): GameState {
   return { ...state, battle: null };
 }
 
-const move = (cursor: number, input: Input, count: number) =>
-  input.pressed === 'up' ? Math.max(0, cursor - 1) : input.pressed === 'down' ? Math.min(count - 1, cursor + 1) : cursor;
+/** The cursor after this input; a move that changes it ticks. */
+function move(cursor: number, input: Input, count: number, ctx: Ctx): number {
+  const next = input.pressed === 'up' ? Math.max(0, cursor - 1) : input.pressed === 'down' ? Math.min(count - 1, cursor + 1) : cursor;
+  if (next !== cursor) ctx.cues.push('cursor');
+  return next;
+}
 
 /** One tick of a battle. When it returns a state without a battle, the engine carries on with the script. */
 export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState {
@@ -148,7 +158,11 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   if (battle.phase === 'steps') {
     const length = battle.steps[0]?.text.length ?? 0;
-    if (!press) return battle.shown < length ? { ...state, battle: { ...battle, shown: battle.shown + 1 } } : state;
+    if (!press) {
+      if (battle.shown >= length) return state;
+      if (battle.shown % BLIP_EVERY === 0) ctx.cues.push('blip');
+      return { ...state, battle: { ...battle, shown: battle.shown + 1 } };
+    }
     if (battle.shown < length) return { ...state, battle: { ...battle, shown: length } };
     const rest = battle.steps.slice(1);
     if (rest.length > 0) return reveal({ ...state, battle: { ...battle, steps: rest } }, ctx);
@@ -158,10 +172,11 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   if (battle.phase === 'menu') {
     if (!input.a) {
-      const cursor = move(battle.cursor, input, BATTLE_MENU.length);
+      const cursor = move(battle.cursor, input, BATTLE_MENU.length, ctx);
       return cursor === battle.cursor ? state : { ...state, battle: { ...battle, cursor } };
     }
     const picked = BATTLE_MENU[battle.cursor];
+    ctx.cues.push('confirm');
     if (picked === 'FIGHT') {
       // Out of PP everywhere: the fallback move, so the battle can always be finished.
       if (world.playerMoves.every((id) => !(state.pp[id]! > 0))) return turn(state, { move: world.fallbackMove }, ctx);
@@ -172,14 +187,17 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
       return { ...state, battle: { ...battle, phase: 'items', cursor: 0 } };
     }
     if (!battle.wild) return show(state, battle, [{ text: `There is no running from ${enemy.name}!` }], ctx);
-    return show(state, { ...battle, outcome: 'run' }, [{ text: 'You got away safely.' }], ctx);
+    return show(state, { ...battle, outcome: 'run' }, [{ text: 'You got away safely.', cue: 'run' }], ctx);
   }
 
-  if (input.b) return { ...state, battle: { ...battle, phase: 'menu', cursor: 0 } };
+  if (input.b) {
+    ctx.cues.push('cancel');
+    return { ...state, battle: { ...battle, phase: 'menu', cursor: 0 } };
+  }
 
   if (battle.phase === 'moves') {
     if (!input.a) {
-      const cursor = move(battle.cursor, input, world.playerMoves.length);
+      const cursor = move(battle.cursor, input, world.playerMoves.length, ctx);
       return cursor === battle.cursor ? state : { ...state, battle: { ...battle, cursor } };
     }
     const id = world.playerMoves[battle.cursor]!;
@@ -190,7 +208,7 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   const items = usableItems(state, world);
   if (!input.a) {
-    const cursor = move(battle.cursor, input, items.length);
+    const cursor = move(battle.cursor, input, items.length, ctx);
     return cursor === battle.cursor ? state : { ...state, battle: { ...battle, cursor } };
   }
   const item = items[Math.min(battle.cursor, items.length - 1)];

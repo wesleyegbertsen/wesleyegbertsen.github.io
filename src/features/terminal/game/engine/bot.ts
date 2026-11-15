@@ -1,12 +1,14 @@
 import { initialGame, step } from './engine.ts';
 import { NO_INPUT, type Dir, type GameEvent, type GameObject, type GameState, type Input, type World } from './types.ts';
+import { placeOf } from './wander.ts';
 import { DELTA, branchFor, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /**
  * A player that knows nothing about the story: it talks to everything it can reach, walks through every door that
  * lets it, rests when it is hurt and presses A through every dialogue and battle (so it always takes the default
  * choice). The tests use it to prove that the game can be finished; the browser tests use `routeTo` to find keys.
- * Not part of the game itself.
+ * People who stroll may step into the way or walk off: a walk that did not land where it should is given up and
+ * planned again. Not part of the game itself.
  */
 
 const DIRS: Dir[] = ['up', 'down', 'left', 'right'];
@@ -46,9 +48,10 @@ function routeIn(
   grassOk = true,
 ): Dir[] | null {
   const reach = walks(world, state, mapId, from, grassOk);
+  const at = placeOf(object, state);
   let best: Dir[] | null = null;
   for (const dir of DIRS) {
-    const path = reach.get(`${object.x - DELTA[dir].dx},${object.y - DELTA[dir].dy}`);
+    const path = reach.get(`${at.x - DELTA[dir].dx},${at.y - DELTA[dir].dy}`);
     if (path && (!best || path.length + 1 < best.length)) best = [...path, dir];
   }
   return best;
@@ -85,14 +88,22 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
     presses++;
   };
   const busy = () => state.scene !== 'world' || !!state.dialogue || !!state.battle || !!state.menu;
-  /** Walks a route; stops early when something interrupts (a wild enemy). True when it got to the end. */
+  /**
+   * Walks a route; stops early when something interrupts (a wild enemy) or when a step did not land (someone
+   * strolled into the way). True when it got to the end.
+   */
   const walk = (route: Dir[]) => {
     for (const [i, dir] of route.entries()) {
+      const last = i === route.length - 1;
+      const want = { map: state.map, x: state.x + DELTA[dir].dx, y: state.y + DELTA[dir].dy };
       press({ dir, pressed: dir });
-      if (busy() && i < route.length - 1) return false;
+      if (last) break;
+      if (busy() || state.map !== want.map || state.x !== want.x || state.y !== want.y) return false;
     }
     return true;
   };
+  /** The thing the player faces right now. */
+  const faced = () => objectAt(world.maps[state.map]!, state.x + DELTA[state.dir].dx, state.y + DELTA[state.dir].dy, state);
 
   while (!state.finished && presses < maxPresses) {
     if (state.menu) {
@@ -105,7 +116,10 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
     }
 
     const here = world.maps[state.map]!;
-    const visible = (object: GameObject) => objectAt(here, object.x, object.y, state) === object;
+    const visible = (object: GameObject) => {
+      const at = placeOf(object, state);
+      return objectAt(here, at.x, at.y, state) === object;
+    };
 
     // Hurt, and a coffee machine is in reach: rest first, as a careful player would.
     if (state.hp < state.maxHp) {
@@ -128,7 +142,8 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
       seen.add(`${node.map}:${node.at.x},${node.at.y}`);
       const map = world.maps[node.map]!;
       for (const object of map.objects) {
-        if (object.branches.length === 0 || objectAt(map, object.x, object.y, state) !== object) continue;
+        const at = placeOf(object, state);
+        if (object.branches.length === 0 || objectAt(map, at.x, at.y, state) !== object) continue;
         const route = routeIn(world, state, node.map, node.at, object);
         if (!route) continue;
         if (object.trigger === 'interact') {
@@ -145,7 +160,7 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
         } else {
           // A door inside a map: carry on from the cell behind it.
           const dir = route.at(-1)!;
-          queue.push({ map: node.map, at: { x: object.x + DELTA[dir].dx, y: object.y + DELTA[dir].dy }, first: node.first ?? [...route, dir] });
+          queue.push({ map: node.map, at: { x: at.x + DELTA[dir].dx, y: at.y + DELTA[dir].dy }, first: node.first ?? [...route, dir] });
         }
       }
     }
@@ -154,7 +169,8 @@ export function playthrough(world: World, seed = 1, maxPresses = 20_000): BotRun
       stuck = true;
       break;
     }
-    if (walk(plan.route) && plan.talk) {
+    // Only what is really faced counts as tried: a stroller may have walked off in the meantime.
+    if (walk(plan.route) && plan.talk && !busy() && faced() === plan.talk) {
       tried.add(`${plan.talk.id}|${key}`);
       press({ a: true });
     }

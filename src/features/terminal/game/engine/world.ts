@@ -1,4 +1,5 @@
 import type { Branch, Cond, Dir, GameMap, GameObject, GameState, Spot, TileDef, World } from './types.ts';
+import { placeOf } from './wander.ts';
 
 /** A map as the content modules write it: a text grid, and what each non-legend character is. */
 export type MapSpec = {
@@ -56,17 +57,24 @@ export function holds(cond: Cond | undefined, state: GameState): boolean {
   if (cond.item !== undefined && !(state.items[cond.item]! > 0)) return false;
   if (cond.noItem !== undefined && state.items[cond.noItem]! > 0) return false;
   if (cond.badges !== undefined && state.badges.length < cond.badges) return false;
+  if (cond.count !== undefined && !(state.items[cond.count.item]! >= cond.count.min)) return false;
   return true;
 }
+
+/** Whether an object is off the map by now (a beaten boss, a star that was picked up). */
+export const gone = (object: GameObject, state: GameState) => !!object.hideWhen && holds(object.hideWhen, state);
 
 export function tileAt(world: World, map: GameMap, x: number, y: number): TileDef {
   const char = map.cells[y]?.[x];
   return (char !== undefined && world.tiles[char]) || VOID;
 }
 
-/** The object on a cell, unless it is hidden by now. */
+/** The object on a cell, unless it is hidden by now. People who stroll are found where they are, not where the map put them. */
 export function objectAt(map: GameMap, x: number, y: number, state: GameState): GameObject | undefined {
-  return map.objects.find((o) => o.x === x && o.y === y && !(o.hideWhen && holds(o.hideWhen, state)));
+  return map.objects.find((o) => {
+    const at = placeOf(o, state);
+    return at.x === x && at.y === y && !gone(o, state);
+  });
 }
 
 export function branchFor(object: GameObject, state: GameState): Branch | undefined {
