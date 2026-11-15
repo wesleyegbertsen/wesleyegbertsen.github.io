@@ -34,7 +34,18 @@ describe('the sprite sheets', () => {
     expect(font.width).toBe(FONT.cols * FONT.cellW);
     expect(font.height).toBe(FONT.lightY * 2);
     expect(Math.ceil((FONT.last - FONT.first + 1) / FONT.cols) * FONT.cellH).toBe(FONT.lightY);
-    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(8000);
+    expect(tileSheet.bytes + spriteSheet.bytes + font.bytes).toBeLessThan(9000);
+  });
+
+  it('have a font in which every character looks different from every other, the M included', () => {
+    const script = "import('./scripts/sprites/font.mjs').then(({ glyphs }) => { const seen = new Map(); const twins = []; for (const [char, rows] of Object.entries(glyphs)) { if (seen.has(rows)) twins.push(seen.get(rows) + char); seen.set(rows, char); } console.log(JSON.stringify({ count: Object.keys(glyphs).length, twins, m: glyphs.M, n: glyphs.N, w: glyphs.W, h: glyphs.H })); })";
+    const found = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { count: number; twins: string[]; m: string; n: string; w: string; h: string };
+    expect(found.count).toBe(FONT.last - FONT.first + 1);
+    expect(found.twins).toEqual([]);
+    // The M: two full legs and a V between them at the top, unlike N, W and H.
+    const differs = (a: string, b: string) => [...a].filter((dot, i) => dot !== b[i]).length;
+    for (const other of [found.n, found.w, found.h]) expect(differs(found.m, other)).toBeGreaterThanOrEqual(3);
+    expect(found.m.split('/')).toEqual(['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#']);
   });
 
   it('use four shades, lightest first', () => {

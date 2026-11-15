@@ -160,8 +160,10 @@ function buildSprites() {
   const cols = 8;
   const names = Object.keys(people);
   const peopleRows = Math.ceil(names.length / cols);
-  const width = Math.max(cols * TILE, big.length * ENEMY);
-  const sheet = canvas(width, peopleRows * TILE + ENEMY);
+  // The enemies wrap too, so the sheet stays narrow however many there are.
+  const bigCols = 5;
+  const width = Math.max(cols * TILE, Math.min(big.length, bigCols) * ENEMY);
+  const sheet = canvas(width, peopleRows * TILE + Math.ceil(big.length / bigCols) * ENEMY);
   const atlas = {};
   names.forEach((name, i) => {
     const x = (i % cols) * TILE;
@@ -170,8 +172,10 @@ function buildSprites() {
     atlas[name] = [x, y, TILE, TILE];
   });
   big.forEach(([name, pixels], i) => {
-    blit(sheet, pixels, i * ENEMY, peopleRows * TILE);
-    atlas[name] = [i * ENEMY, peopleRows * TILE, ENEMY, ENEMY];
+    const x = (i % bigCols) * ENEMY;
+    const y = peopleRows * TILE + Math.floor(i / bigCols) * ENEMY;
+    blit(sheet, pixels, x, y);
+    atlas[name] = [x, y, ENEMY, ENEMY];
   });
   return { sheet, atlas };
 }
