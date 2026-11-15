@@ -42,7 +42,7 @@ const keys = (muted: boolean, volume: number) =>
     ['Walk', 'Arrows or WASD'],
     ['A: talk, confirm', 'Z, Enter or Space'],
     ['B: back', 'X or Backspace'],
-    ['Start: bag, volume / Select: hint', 'P / H'],
+    ['Start: bag / Select: hint', 'P / H'],
     [`Sound: ${muted ? 'off' : 'on'}, ${volume * 10}%`, 'M'],
     ['Leave', 'Esc or Q'],
   ] as const;

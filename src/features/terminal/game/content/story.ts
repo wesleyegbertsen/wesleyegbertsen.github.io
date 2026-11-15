@@ -113,11 +113,12 @@ const wayOut = (to: Spot): ObjectSpec => ({ solid: false, trigger: 'step', under
  * A stop of the stamp rally in Hobby Hills: look at it to read about the hobby; the first time it also stamps the
  * card. `id` must be unique (it is the flag that remembers the stamp).
  */
-const hobby = (id: string, sprite: string, lines: string[], animated?: boolean): ObjectSpec => ({
+const hobby = (id: string, sprite: string, lines: string[], animated?: boolean, under?: string): ObjectSpec => ({
   sprite,
   animated,
   solid: true,
   trigger: 'interact',
+  under,
   branches: [
     { when: { notFlag: `hobby:${id}` }, do: [{ say: lines }, { flag: `hobby:${id}` }, { give: STAMP, quiet: true }] },
     { do: [{ say: lines }] },
@@ -594,7 +595,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
     ground: '.',
     objects: {
       '(': wayOut({ map: 'east', at: ')', dx: -1, dir: 'left' }),
-      ...Object.fromEntries(HOBBIES.map((stop) => [stop.at, hobby(stop.id, stop.sprite, stop.lines, stop.animated)])),
+      // The cat and the rabbit sit in the grass; the other stops stand on a few cobbles.
+      ...Object.fromEntries(HOBBIES.map((stop) => [stop.at, hobby(stop.id, stop.sprite, stop.lines, stop.animated, ['cats', 'animals'].includes(stop.id) ? undefined : '#')])),
       s: sign(
         `HOBBY HILLS. What ${who} does when the laptop is closed.`,
         `${stamps} stops, ${stamps} stamps. Look at each one, then see the rally keeper by the pond.`,
