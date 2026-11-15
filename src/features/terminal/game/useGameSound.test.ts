@@ -5,7 +5,7 @@ import { EFFECTS, TRACKS } from './content/music.ts';
 import { initialGame } from './engine/engine.ts';
 import { play, testWorld } from './engine/testWorld.ts';
 import type { World } from './engine/types.ts';
-import { createSoundStore } from './soundStore.ts';
+import { createSettingsStore } from './settingsStore.ts';
 import { MAX_GAIN, VOLUME, gainFor, useGameSound } from './useGameSound.ts';
 
 const world: World = {
@@ -15,7 +15,7 @@ const world: World = {
 
 function setup(fake: FakeOptions | null = {}, muted = false) {
   const made: FakeAudio[] = [];
-  const store = createSoundStore(muted);
+  const store = createSettingsStore(muted);
   const context = () => {
     if (!fake) return null;
     made.push(new FakeAudio(fake));
@@ -179,7 +179,7 @@ describe('useGameSound', () => {
       }
     }
     vi.stubGlobal('webkitAudioContext', Stub);
-    const store = createSoundStore();
+    const store = createSettingsStore();
     const old = renderHook(() => useGameSound({ world, store }));
     expect(made).toHaveLength(1);
     old.unmount();
@@ -232,7 +232,7 @@ describe('useGameSound', () => {
     expect(audio().master.gain.value).toBeCloseTo(0.2, 6);
 
     const made: FakeAudio[] = [];
-    const remembered = createSoundStore(false, 2);
+    const remembered = createSettingsStore(false, 2);
     renderHook(() =>
       useGameSound({
         world,

@@ -36,7 +36,7 @@ export function Terminal() {
   const touch = useMediaQuery(TOUCH);
 
   // The scrollback, folder and history live above the routes, so they outlast a visit to another page.
-  const { entries, setEntries, shell, setShell, mode, setMode, game: progressRef, sound: soundStore, nextId } = useTerminalSession();
+  const { entries, setEntries, shell, setShell, mode, setMode, game: progressRef, settings: settingsStore, nextId } = useTerminalSession();
   const [input, setInput] = useState('');
   // Where the Up/Down arrows are in the history (null: not browsing), and the line typed before browsing.
   const [cursor, setCursor] = useState<number | null>(null);
@@ -197,7 +197,7 @@ export function Terminal() {
           focusRef={gameRef}
           world={world}
           storeRef={progressRef}
-          soundStore={soundStore}
+          settingsStore={settingsStore}
           reducedMotion={reducedMotion}
           touch={touch}
           contact={contactLines(data.profile)}

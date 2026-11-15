@@ -66,7 +66,7 @@ describe('the command logic is pure', () => {
     'game/engine/engine', 'game/engine/battle', 'game/engine/world', 'game/engine/text', 'game/engine/rng',
     'game/engine/types', 'game/engine/bot', 'game/content/maps', 'game/content/battles', 'game/content/story',
     'game/content/world', 'game/content/music', 'game/engine/wander', 'game/audio/score', 'game/audio/director', 'game/audio/player',
-    'game/soundStore',
+    'game/settingsStore',
   ])(
     '%s.ts imports nothing from React or the DOM',
     (name) => {

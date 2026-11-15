@@ -6,20 +6,20 @@ import { initialGame } from './engine/engine.ts';
 import { play, testWorld as world } from './engine/testWorld.ts';
 import type { GameState } from './engine/types.ts';
 import { Game } from './Game.tsx';
-import { createSoundStore } from './soundStore.ts';
+import { createSettingsStore } from './settingsStore.ts';
 
 /** The game on the small test world, with reduced motion: one press is one move. */
 function setup(state: GameState | null, touch = false, muted = false) {
   const store: { current: GameState | null } = { current: state };
   const onLeave = vi.fn();
   const onSkip = vi.fn();
-  const sound = createSoundStore(muted);
+  const sound = createSettingsStore(muted);
   const view = render(
     <Game
       focusRef={createRef<HTMLDivElement>()}
       world={world}
       storeRef={store}
-      soundStore={sound}
+      settingsStore={sound}
       reducedMotion
       touch={touch}
       contact={['Email: someone@example.com']}

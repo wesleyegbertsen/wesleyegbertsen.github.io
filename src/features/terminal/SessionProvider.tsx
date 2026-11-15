@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { MAX_ENTRIES, SessionContext, type Entry } from './SessionContext.ts';
 import type { GameState } from './game/engine/types.ts';
-import { createSoundStore } from './game/soundStore.ts';
+import { createSettingsStore } from './game/settingsStore.ts';
 import { initialState } from './shell.ts';
 
 const WELCOME: Entry = { id: 0, kind: 'output', text: "Welcome. Type 'help' to see the commands." };
@@ -15,7 +15,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [shell, setShell] = useState(initialState);
   const [mode, setMode] = useState<'shell' | 'game'>('shell');
   const game = useRef<GameState | null>(null);
-  const [sound] = useState(createSoundStore);
+  const [settings] = useState(createSettingsStore);
   const counter = useRef(1);
   const nextId = useCallback(() => counter.current++, []);
 
@@ -28,7 +28,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ entries, setEntries, shell, setShell, mode, setMode, game, sound, nextId }}>
+    <SessionContext.Provider value={{ entries, setEntries, shell, setShell, mode, setMode, game, settings, nextId }}>
       {children}
     </SessionContext.Provider>
   );

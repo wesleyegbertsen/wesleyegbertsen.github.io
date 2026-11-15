@@ -5,7 +5,7 @@ import styles from './Game.module.css';
 import { SCREEN_H, SCREEN_W, drawGame } from './render.ts';
 import { layout } from './scale.ts';
 import { useGameLoop, type Button } from './useGameLoop.ts';
-import type { SoundStore } from './soundStore.ts';
+import type { SettingsStore } from './settingsStore.ts';
 import { useGameSound } from './useGameSound.ts';
 import { useSheets } from './useSheets.ts';
 
@@ -54,7 +54,7 @@ type Props = {
   world: World;
   storeRef: RefObject<GameState | null>;
   /** Whether the sound is off: kept by the session, so it outlasts the game. */
-  soundStore: SoundStore;
+  settingsStore: SettingsStore;
   reducedMotion: boolean;
   /** Show the on-screen buttons: touch devices only. */
   touch: boolean;
@@ -71,7 +71,7 @@ type Props = {
  * happens, and the buttons. The canvas is hidden from assistive technology on purpose; the live region carries
  * the story, and Skip to text and `play skip` print the career as plain text.
  */
-export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, touch, contact, prompt, onLeave, onSkip }: Props) {
+export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, touch, contact, prompt, onLeave, onSkip }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const sheets = useSheets();
@@ -79,15 +79,15 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
   const [finished, setFinished] = useState(false);
   const [focused, setFocused] = useState(false);
   const [fit, setFit] = useState({ wide: false, scale: 1 });
-  const sound = useGameSound({ world, store: soundStore });
-  const lcd = useSyncExternalStore(soundStore.subscribe, soundStore.lcd);
+  const sound = useGameSound({ world, store: settingsStore });
+  const lcd = useSyncExternalStore(settingsStore.subscribe, settingsStore.lcd);
   /** What the data attributes were last set from, so a frame that changes none of them writes nothing. */
   const shown = useRef('');
   const cueCount = useRef(0);
 
-  const paint = (state: GameState, muted = soundStore.muted(), volume = soundStore.volume()) => {
+  const paint = (state: GameState, muted = settingsStore.muted(), volume = settingsStore.volume()) => {
     const ctx = sheets && canvasRef.current?.getContext('2d');
-    if (ctx) drawGame(ctx, sheets, state, world, { muted, volume, lcd: soundStore.lcd() });
+    if (ctx) drawGame(ctx, sheets, state, world, { muted, volume, lcd: settingsStore.lcd() });
   };
   const onFrame = (state: GameState) => {
     paint(state);
@@ -142,11 +142,11 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
       if (cue === 'quieter' || cue === 'louder') {
         const volume = sound.turn(cue === 'louder' ? 1 : -1);
         onEvents([{ kind: 'menu', text: `Volume ${volume * 10}%` }]);
-        if (storeRef.current) paint(storeRef.current, soundStore.muted(), volume);
+        if (storeRef.current) paint(storeRef.current, settingsStore.muted(), volume);
       } else if (cue === 'sound') toggleSound();
       else if (cue === 'screen') {
-        soundStore.setLcd(!soundStore.lcd());
-        onEvents([{ kind: 'menu', text: soundStore.lcd() ? 'LCD look on' : 'LCD look off' }]);
+        settingsStore.setLcd(!settingsStore.lcd());
+        onEvents([{ kind: 'menu', text: settingsStore.lcd() ? 'LCD look on' : 'LCD look off' }]);
         if (storeRef.current) paint(storeRef.current);
       }
     }

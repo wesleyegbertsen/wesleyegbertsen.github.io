@@ -3,7 +3,7 @@
  * the game's progress: in memory only, so the choices outlast leaving the game and visiting another page, and a
  * reload starts with the sound on at half volume again. Nothing is written to storage.
  */
-export type SoundStore = {
+export type SettingsStore = {
   /** True when the sound is off. */
   muted(): boolean;
   setMuted(muted: boolean): void;
@@ -22,7 +22,7 @@ export type SoundStore = {
 export const VOLUME_MAX = 10;
 export const VOLUME_START = 5;
 
-export function createSoundStore(muted = false, volume = VOLUME_START): SoundStore {
+export function createSettingsStore(muted = false, volume = VOLUME_START): SettingsStore {
   let off = muted;
   let step = volume;
   let grid = true;

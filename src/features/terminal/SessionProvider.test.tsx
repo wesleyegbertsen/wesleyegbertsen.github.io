@@ -50,7 +50,7 @@ describe('SessionProvider', () => {
 
   it('starts with the sound on, and keeps the choice for as long as the session lives', () => {
     const { result, rerender } = renderHook(() => useTerminalSession(), { wrapper });
-    const store = result.current.sound;
+    const store = result.current.settings;
     expect(store.muted()).toBe(false);
     const heard = vi.fn();
     const stop = store.subscribe(heard);
@@ -58,8 +58,8 @@ describe('SessionProvider', () => {
     store.setMuted(true);
     expect(heard).toHaveBeenCalledTimes(1);
     rerender();
-    expect(result.current.sound).toBe(store);
-    expect(result.current.sound.muted()).toBe(true);
+    expect(result.current.settings).toBe(store);
+    expect(result.current.settings.muted()).toBe(true);
     stop();
     store.setMuted(false);
     expect(heard).toHaveBeenCalledTimes(1);

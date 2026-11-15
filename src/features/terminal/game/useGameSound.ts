@@ -3,7 +3,7 @@ import { trackFor } from './audio/director.ts';
 import { createSound, type AudioLike, type Sound } from './audio/player.ts';
 import { EFFECTS, JINGLES, TRACKS } from './content/music.ts';
 import type { Cue, GameState, World } from './engine/types.ts';
-import { VOLUME_MAX, VOLUME_START, type SoundStore } from './soundStore.ts';
+import { VOLUME_MAX, VOLUME_START, type SettingsStore } from './settingsStore.ts';
 
 /** The master gain with the wheel all the way up: modest, the game is a guest on the page. It starts half way. */
 export const MAX_GAIN = 0.25;
@@ -21,8 +21,8 @@ function browserContext(): AudioLike | null {
 
 type Options = {
   world: World;
-  /** Whether the sound is off: the session's store, which outlasts the game. */
-  store: SoundStore;
+  /** The settings (sound off, volume): the session's store, which outlasts the game. */
+  store: SettingsStore;
   /** For tests: where the context comes from. */
   context?: () => AudioLike | null;
 };
