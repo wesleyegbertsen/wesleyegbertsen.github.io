@@ -278,6 +278,25 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /** The last fight, against what Wesley sends out: the boss tune's bigger sibling, in a minor key, with a hook. */
+  final: {
+    bpm: 168,
+    loop: true,
+    voices: [
+      lead([
+        'A5:2 A5:2 E5:2 A5:2 C6:4 B5:2 A5:2',
+        'G5:2 G5:2 D5:2 G5:2 B5:4 A5:2 G5:2',
+        'F5:2 A5:2 C6:2 F6:2 E6:4 C6:4',
+        'E6:2 D6:2 C6:2 B5:2 G#5:2 B5:2 E6:4',
+        'A5:4 C6:2 E6:2 A6:4 G6:2 E6:2',
+        'G6:4 D6:2 B5:2 G5:4 B5:2 D6:2',
+        'F6:2 E6:2 D6:2 C6:2 A5:2 C6:2 F6:4',
+        'E6:6 G#5:2 B5:4 E6:4',
+      ]),
+      ...backing('Am G F E Am G F E', { bass: 'pump', chords: 'fast', drums: DRIVING }),
+    ],
+  },
+
   /** A new level: one rising bar over the music. */
   levelup: {
     bpm: 150,
@@ -343,6 +362,12 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   faint: { tones: [beep(620, 0.5, 0.3, 0, 70), hiss(0.2, 0.3, 0.2, 0.3, 0.05)] },
   low: { tones: [beep(1000, 0.07, 0.2, 0.25), beep(1000, 0.07, 0.2, 0.42)] },
   run: { tones: [beep(400, 0.05, 0.25), beep(600, 0.05, 0.25, 0.05), beep(800, 0.05, 0.25, 0.1), beep(1200, 0.08, 0.25, 0.15)] },
+  // Walking on to the next map: two soft steps. Into or out of the cave: a low, hollow breath.
+  path: { tones: [hiss(0.5, 0.05, 0.22, 0, 0.3), hiss(0.5, 0.05, 0.22, 0.13, 0.3)] },
+  cave: { tones: [hiss(0.15, 0.4, 0.3, 0, 0.05), beep(110, 0.35, 0.25, 0.02, 70, 'triangle')] },
+  // The settings: the sound switch (heard when it goes on) and the screen switch.
+  sound: { tones: [beep(660, 0.04, 0.22), beep(990, 0.06, 0.22, 0.04)] },
+  screen: { tones: [beep(520, 0.03, 0.2), beep(780, 0.05, 0.2, 0.03)] },
   // The volume wheel: one step down, one step up. They sound at the new volume, so the step can be heard.
   quieter: { tones: [beep(740, 0.05, 0.25), beep(587, 0.07, 0.25, 0.05)] },
   louder: { tones: [beep(740, 0.05, 0.25), beep(988, 0.07, 0.25, 0.05)] },

@@ -189,12 +189,12 @@ describe('useGameSound', () => {
     expect(made).toHaveLength(1);
   });
 
-  it('maps the volume wheel to the master: half way is the old loudness, the top is twice that, the bottom is silence', () => {
-    expect(gainFor(5)).toBe(0.25);
-    expect(gainFor(10)).toBe(0.5);
+  it('maps the volume wheel to the master: the top is a modest 0.25, half way (the start) is half of that, the bottom is silence', () => {
+    expect(gainFor(5)).toBe(0.125);
+    expect(gainFor(10)).toBe(0.25);
     expect(gainFor(0)).toBe(0);
     expect(gainFor(99)).toBe(MAX_GAIN);
-    expect(VOLUME).toBe(0.25);
+    expect(VOLUME).toBe(0.125);
     for (let step = 1; step <= 10; step++) expect(gainFor(step)).toBeGreaterThan(gainFor(step - 1));
   });
 
@@ -208,12 +208,12 @@ describe('useGameSound', () => {
     expect(now).toBe(6);
     expect(result.current.volume).toBe(6);
     expect(store.volume()).toBe(6);
-    expect(audio().master.gain.value).toBeCloseTo(0.3, 6);
+    expect(audio().master.gain.value).toBeCloseTo(0.15, 6);
     act(() => {
       for (let i = 0; i < 9; i++) now = result.current.turn(1);
     });
     expect(now).toBe(10);
-    expect(audio().master.gain.value).toBe(0.5);
+    expect(audio().master.gain.value).toBe(0.25);
     act(() => {
       for (let i = 0; i < 14; i++) now = result.current.turn(-1);
     });
@@ -229,7 +229,7 @@ describe('useGameSound', () => {
     expect(store.muted()).toBe(true);
     expect(audio().master.gain.value).toBe(0);
     act(() => void result.current.toggle());
-    expect(audio().master.gain.value).toBeCloseTo(0.4, 6);
+    expect(audio().master.gain.value).toBeCloseTo(0.2, 6);
 
     const made: FakeAudio[] = [];
     const remembered = createSoundStore(false, 2);
@@ -243,7 +243,7 @@ describe('useGameSound', () => {
         },
       }),
     );
-    expect(made[0]!.master.gain.value).toBeCloseTo(0.1, 6);
+    expect(made[0]!.master.gain.value).toBeCloseTo(0.05, 6);
   });
 
   it('plays the level-up jingle and a blip for a turn of the wheel', () => {

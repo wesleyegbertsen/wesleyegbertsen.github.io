@@ -5,9 +5,9 @@ import { EFFECTS, JINGLES, TRACKS } from './content/music.ts';
 import type { Cue, GameState, World } from './engine/types.ts';
 import { VOLUME_MAX, VOLUME_START, type SoundStore } from './soundStore.ts';
 
-/** The master gain with the wheel all the way up. Half way (where it starts) is modest: the game is a guest on the page. */
-export const MAX_GAIN = 0.5;
-/** The master gain for a step of the volume wheel: 0 is silent, the middle is 0.25, the top is 0.5. */
+/** The master gain with the wheel all the way up: modest, the game is a guest on the page. It starts half way. */
+export const MAX_GAIN = 0.25;
+/** The master gain for a step of the volume wheel: 0 is silent, the middle is 0.125, the top is 0.25. */
 export const gainFor = (step: number) => (Math.max(0, Math.min(VOLUME_MAX, step)) / VOLUME_MAX) * MAX_GAIN;
 /** The master volume the game starts at. */
 export const VOLUME = gainFor(VOLUME_START);

@@ -1,5 +1,5 @@
 /**
- * Whether the game's sound is off, and how loud it is. A tiny store that lives in the terminal's session, beside
+ * The settings of the game: whether its sound is off, how loud it is, and whether the screen has its LCD look. A tiny store that lives in the terminal's session, beside
  * the game's progress: in memory only, so the choices outlast leaving the game and visiting another page, and a
  * reload starts with the sound on at half volume again. Nothing is written to storage.
  */
@@ -11,6 +11,9 @@ export type SoundStore = {
   volume(): number;
   /** Sets the wheel, kept within its range. */
   setVolume(step: number): void;
+  /** Whether the screen has its LCD look (a pixel grid over the picture). On at the start. */
+  lcd(): boolean;
+  setLcd(on: boolean): void;
   /** Calls `listener` after every change; returns how to stop. */
   subscribe(listener: () => void): () => void;
 };
@@ -22,6 +25,7 @@ export const VOLUME_START = 5;
 export function createSoundStore(muted = false, volume = VOLUME_START): SoundStore {
   let off = muted;
   let step = volume;
+  let grid = true;
   const listeners = new Set<() => void>();
   const tell = () => listeners.forEach((listener) => listener());
   return {
@@ -36,6 +40,12 @@ export function createSoundStore(muted = false, volume = VOLUME_START): SoundSto
       const within = Math.max(0, Math.min(VOLUME_MAX, Math.round(next)));
       if (within === step) return;
       step = within;
+      tell();
+    },
+    lcd: () => grid,
+    setLcd(next) {
+      if (next === grid) return;
+      grid = next;
       tell();
     },
     subscribe(listener) {

@@ -61,4 +61,16 @@ describe('the sound store', () => {
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
   });
+
+  it('has the LCD look on at the start, and tells its listeners when it is switched', () => {
+    const store = createSoundStore();
+    expect(store.lcd()).toBe(true);
+    const heard = vi.fn();
+    store.subscribe(heard);
+    store.setLcd(true);
+    expect(heard).not.toHaveBeenCalled();
+    store.setLcd(false);
+    expect(store.lcd()).toBe(false);
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
-import type { Cue, Dir, GameEvent, GameState, World } from './engine/types.ts';
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
+import { SETTINGS, type Cue, type Dir, type GameEvent, type GameState, type World } from './engine/types.ts';
 import styles from './Game.module.css';
 import { SCREEN_H, SCREEN_W, drawGame } from './render.ts';
 import { layout } from './scale.ts';
@@ -79,20 +79,21 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
   const [focused, setFocused] = useState(false);
   const [fit, setFit] = useState({ wide: false, scale: 1 });
   const sound = useGameSound({ world, store: soundStore });
+  const lcd = useSyncExternalStore(soundStore.subscribe, soundStore.lcd);
   /** What the data attributes were last set from, so a frame that changes none of them writes nothing. */
   const shown = useRef('');
   const cueCount = useRef(0);
 
   const paint = (state: GameState, muted = soundStore.muted(), volume = soundStore.volume()) => {
     const ctx = sheets && canvasRef.current?.getContext('2d');
-    if (ctx) drawGame(ctx, sheets, state, world, { muted, volume });
+    if (ctx) drawGame(ctx, sheets, state, world, { muted, volume, lcd: soundStore.lcd() });
   };
   const onFrame = (state: GameState) => {
     paint(state);
     setFinished(state.finished);
     const music = sound.follow(state) ?? '';
     const root = focusRef.current;
-    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.row, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music].join('|');
+    const key = [state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.badges.length, state.hp, state.level, state.xp, state.finished, music].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -106,7 +107,7 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
         battle: state.battle?.enemy ?? '',
         foeLevel: state.battle ? String(state.battle.level) : '',
         menu: state.menu?.tab ?? '',
-        row: state.menu?.row ?? '',
+        row: state.menu?.tab === 'settings' ? (SETTINGS[state.menu.cursor] ?? '') : '',
         learn: state.learn?.move ?? '',
         level: String(state.level),
         xp: String(state.xp),
@@ -122,15 +123,27 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
     // a trailing no-break space makes it one.
     setStatus((old) => ({ text, again: old.text === text && !old.again }));
   };
+  /** The mute switch: the M key, the Sound button and SOUND in the settings. */
+  const toggleSound = () => {
+    const off = sound.toggle();
+    onEvents([{ kind: 'menu', text: off ? 'Sound off' : 'Sound on' }]);
+    if (storeRef.current) paint(storeRef.current, off);
+  };
   const onCues = (cues: Cue[]) => {
-    // The volume row of the Start menu: the game only says "quieter" or "louder"; the wheel is turned here.
+    // The settings of the Start menu: the game only says what was asked for; it is done here.
     for (const cue of cues) {
-      if (cue !== 'quieter' && cue !== 'louder') continue;
-      const volume = sound.turn(cue === 'louder' ? 1 : -1);
-      onEvents([{ kind: 'menu', text: `Volume ${volume * 10}%` }]);
-      if (storeRef.current) paint(storeRef.current, soundStore.muted(), volume);
+      if (cue === 'quieter' || cue === 'louder') {
+        const volume = sound.turn(cue === 'louder' ? 1 : -1);
+        onEvents([{ kind: 'menu', text: `Volume ${volume * 10}%` }]);
+        if (storeRef.current) paint(storeRef.current, soundStore.muted(), volume);
+      } else if (cue === 'sound') toggleSound();
+      else if (cue === 'screen') {
+        soundStore.setLcd(!soundStore.lcd());
+        onEvents([{ kind: 'menu', text: soundStore.lcd() ? 'LCD look on' : 'LCD look off' }]);
+        if (storeRef.current) paint(storeRef.current);
+      }
     }
-    sound.play(cues);
+    sound.play(cues.filter((cue) => cue !== 'sound'));
     // For the browser tests: which sound was asked for last, and how many so far.
     const root = focusRef.current;
     cueCount.current += cues.length;
@@ -138,13 +151,6 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
   };
 
   const loop = useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents, onCues });
-
-  /** The mute switch: the M key and the Sound button. */
-  const toggleSound = () => {
-    const off = sound.toggle();
-    onEvents([{ kind: 'menu', text: off ? 'Sound off' : 'Sound on' }]);
-    if (storeRef.current) paint(storeRef.current, off);
-  };
 
   // The sheets arrive after the first frame, and a still game does not draw again by itself.
   useEffect(() => {
@@ -229,10 +235,11 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a volume row under its list: left and right change it."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Settings tab for the sound, the volume and the look of the screen."
       tabIndex={0}
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}
+      data-lcd={lcd ? 'on' : 'off'}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
       onPointerDown={sound.unlock}
@@ -247,14 +254,18 @@ export function Game({ focusRef, world, storeRef, soundStore, reducedMotion, tou
       <div ref={areaRef} className={styles.area}>
         <div className={styles.console} data-wide={fit.wide} data-touch={touch}>
           <div className={styles.bezel}>
-            <canvas
-              ref={canvasRef}
-              className={styles.screen}
-              width={SCREEN_W}
-              height={SCREEN_H}
-              style={{ width: SCREEN_W * fit.scale, height: SCREEN_H * fit.scale }}
-              aria-hidden="true"
-            />
+            <div className={styles.glass}>
+              <canvas
+                ref={canvasRef}
+                className={styles.screen}
+                width={SCREEN_W}
+                height={SCREEN_H}
+                style={{ width: SCREEN_W * fit.scale, height: SCREEN_H * fit.scale }}
+                aria-hidden="true"
+              />
+              {/* The LCD look: a grid of one cell per game pixel and darker corners, laid over the picture, never drawn into it. */}
+              {lcd && <div className={styles.lcd} data-testid="lcd" aria-hidden="true" style={{ backgroundSize: `${fit.scale}px ${fit.scale}px, ${fit.scale}px ${fit.scale}px, 100% 100%` }} />}
+            </div>
             {!focused && !finished && (
               <div className={styles.hint} aria-hidden="true">
                 {touch ? 'Tap to play' : 'Click to play'}
