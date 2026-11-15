@@ -600,7 +600,8 @@ describe('the shop on the screen', () => {
     expect(open.shop).not.toBeNull();
     const draws = screen(open);
     expect(textAt(draws, 8)).toBe('KIOSK45COINS');
-    expect(textAt(draws, 24)).toBe('>COFFEEx010');
+    // The row under the cursor shows how many A buys, between arrows.
+    expect(textAt(draws, 24)).toBe('>COFFEEx0<1>10');
     expect(textAt(draws, 34)).toBe('GREENTEAx025');
     expect(textAt(draws, 44)).toBe('KEYx0100');
     expect(textAt(draws, 54)).toBe('LEAVE');
@@ -615,17 +616,35 @@ describe('the shop on the screen', () => {
     const bought = playIn(shopWorld, shopping(), 'a');
     const draws = screen(bought);
     expect(textAt(draws, 8)).toBe('KIOSK35COINS');
-    expect(textAt(draws, 24)).toBe('>COFFEEx110');
+    expect(textAt(draws, 24)).toBe('>COFFEEx1<1>10');
     expect(textAt(draws, 110)).toBe('YoubuyoneCOFFEEfor');
     expect(textAt(draws, 120)).toBe('10COINS.35COINSleft.');
     const dear = screen(playIn(shopWorld, bought, 'down', 'down', 'a'));
     expect(textAt(dear, 24)).toBe('COFFEEx110');
-    expect(textAt(dear, 44)).toBe('>KEYx0100');
+    expect(textAt(dear, 44)).toBe('>KEYx0<1>100');
     expect(textAt(dear, 110)).toBe('NotenoughCOINS:the');
     expect(textAt(dear, 120)).toBe('KEYis100,youhave35.');
     const leave = screen(playIn(shopWorld, bought, 'down', 'down', 'down'));
     expect(textAt(leave, 54)).toBe('>LEAVE');
-    expect(textAt(leave, 110)).toBe('A:buyone.B:leave.');
+    expect(textAt(leave, 110)).toBe('A:buy.B:leave.');
+  });
+
+  it('shows how many are picked and what they cost together, and nothing runs into anything at the widest', () => {
+    const three = screen(playIn(shopWorld, shopping(), 'right', 'right'));
+    expect(textAt(three, 24)).toBe('>COFFEEx0<3>30');
+    expect(textAt(three, 34)).toBe('GREENTEAx025');
+    expect(textAt(three, 110)).toBe('3COFFEEfor30COINS.');
+    // The widest row there can be: a name of 13 letters, 9 in the bag, 9 picked, a total of three digits.
+    const wide: World = { ...shopWorld, items: { ...shopWorld.items, coffee: { ...shopWorld.items.coffee!, name: 'ENERGY DRINKS' } }, economy: { ...shopWorld.economy, bagLimit: 18 }, shops: { kiosk: { ...shopWorld.shops.kiosk!, stock: [{ item: 'coffee', price: 60 }] } } };
+    let state: GameState = { ...shopping(), coins: 9999, items: { coffee: 9 } };
+    for (let i = 0; i < 8; i++) state = playIn(wide, state, 'right');
+    const row = drawn(state, undefined, wide).draws.filter((draw) => draw.sheet === 'font' && draw.y === 24).sort((a, b) => a.x - b.x);
+    expect(textAt(row, 24)).toBe('>ENERGYDRINKSx9<9>540');
+    // The cursor, the two words of the name, the count, the picker and the price: each starts at least two pixels after the one before it ends.
+    const starts = row.filter((draw, i) => i > 0 && draw.x - (row[i - 1]!.x + row[i - 1]!.w) > 0).map((draw) => draw.x - (row[row.indexOf(draw) - 1]!.x + row[row.indexOf(draw) - 1]!.w));
+    expect(starts).toHaveLength(5);
+    for (const gap of starts) expect(gap).toBeGreaterThanOrEqual(2);
+    expect(Math.max(...row.map((draw) => draw.x + draw.w))).toBe(SCREEN_W - 8);
   });
 
   it('is drawn in place of the map, under the text box of the goodbye', () => {

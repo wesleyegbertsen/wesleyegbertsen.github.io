@@ -247,8 +247,12 @@ export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
 export const SETTINGS = ['sound', 'volume', 'screen'] as const;
 /** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
 export type Learn = { move: string; cursor: number };
-/** An open shop: the cursor runs over its stock and a last entry that leaves. `note` is what the last press led to (bought, too dear, bag full). */
-export type Shopping = { id: string; cursor: number; note: string };
+/**
+ * An open shop: the cursor runs over its stock and a last entry that leaves. `amount` is how many of the item
+ * under the cursor A buys (left and right change it; 1 on every new row). `note` is what the last press led to
+ * (how many and for how much, bought, too dear, bag full).
+ */
+export type Shopping = { id: string; cursor: number; amount: number; note: string };
 
 /** One line of a battle. HP, XP and level values in it take effect when the line appears. */
 export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; coins?: number; cheer?: true; cue?: Cue };

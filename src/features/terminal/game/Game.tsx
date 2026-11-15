@@ -99,7 +99,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     // Where the things that can be pushed on this map are now (boulders), as "x,y x,y", in the order of the map.
     const pushed = (world.maps[state.map]?.objects ?? []).filter((object) => object.push).map((object) => placeOf(object, state)).map((at) => `${at.x},${at.y}`).join(' ');
     const root = focusRef.current;
-    const key = [pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -124,6 +124,8 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         coins: String(state.coins),
         shop: state.shop?.id ?? '',
         shopRow: state.shop ? (world.shops[state.shop.id]?.stock[state.shop.cursor]?.item ?? 'leave') : '',
+        // How many of that item A buys (left and right change it).
+        shopAmount: state.shop ? String(state.shop.amount) : '',
         level: String(state.level),
         xp: String(state.xp),
         badges: String(state.badges.length),

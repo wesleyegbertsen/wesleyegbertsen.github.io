@@ -305,7 +305,7 @@ test.describe('the cafe', () => {
     await pilot.read();
     await expect(game(page)).toHaveAttribute('data-shop', 'cafe');
     await expect(game(page)).toHaveAttribute('data-shop-row', 'stroopwafel');
-    await expect(status(page)).toHaveText('CAFE SHOP. You have 15 COINS. A buys one, B leaves. STROOPWAFEL, 5 COINS: Restores 10 energy. In your bag: 0.');
+    await expect(status(page)).toHaveText('CAFE SHOP. You have 15 COINS. A buys, left and right change how many, B leaves. STROOPWAFEL, 5 COINS: Restores 10 energy. In your bag: 0.');
     // The list is on the screen in place of the map: mostly the lightest shade, and no player walks about.
     const place = { x: await game(page).getAttribute('data-x'), y: await game(page).getAttribute('data-y') };
     await pilot.press('left');
@@ -347,6 +347,43 @@ test.describe('the cafe', () => {
     await expect(game(page)).toBeFocused();
     await page.keyboard.press('z');
     await expect(game(page)).toHaveAttribute('data-coins', '15');
+  });
+
+  test('the shop sells several at once: left and right pick how many, up to what the coins pay for', async ({ page }) => {
+    const { pilot } = await play(page);
+    await pilot.start();
+    await pilot.goTo('town:X');
+    await pilot.goTo('cafe:V');
+    await pilot.press('a');
+    await pilot.read();
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'stroopwafel');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '1');
+    // 15 COINS and a STROOPWAFEL is 5: two, three, and not four.
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '2');
+    await expect(status(page)).toHaveText('2 STROOPWAFEL for 10 COINS.');
+    await pilot.press('right');
+    await expect(status(page)).toHaveText('3 STROOPWAFEL for 15 COINS.');
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '3');
+    await expect(game(page)).toHaveAttribute('data-cue', 'bump');
+    await expect(status(page)).toHaveText('Not enough COINS for 4 STROOPWAFEL: that is 20, you have 15.');
+    await pilot.press('left');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '2');
+    await expect(game(page)).toHaveAttribute('data-coins', '15');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-coins', '5');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '1');
+    await expect(status(page)).toHaveText('You buy 2 STROOPWAFEL for 10 COINS. 5 COINS left.');
+    expect(pilot.state.items.stroopwafel).toBe(2);
+    // Another row starts at one again; the way out has no count.
+    await pilot.press('right');
+    await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-shop-row', 'coffee');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '1');
+    await pilot.press('b');
+    await expect(game(page)).toHaveAttribute('data-shop-amount', '');
+    await pilot.read();
   });
 
   test('the shop is bought from with the buttons on a touch device', async ({ page, isMobile }) => {

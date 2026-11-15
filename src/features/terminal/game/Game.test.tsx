@@ -334,10 +334,19 @@ describe('Game', () => {
     expect(game).toHaveAttribute('data-coins', '45');
     expect(game).toHaveAttribute('data-shop', '');
     expect(game).toHaveAttribute('data-shop-row', '');
+    expect(game).toHaveAttribute('data-shop-amount', '');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-shop', 'kiosk');
     expect(game).toHaveAttribute('data-shop-row', 'coffee');
-    expect(screen.getByRole('status')).toHaveTextContent('KIOSK. You have 45 COINS. A buys one, B leaves. COFFEE, 10 COINS: Restores 20 energy. In your bag: 0.');
+    expect(game).toHaveAttribute('data-shop-amount', '1');
+    expect(screen.getByRole('status')).toHaveTextContent('KIOSK. You have 45 COINS. A buys, left and right change how many, B leaves. COFFEE, 10 COINS: Restores 20 energy. In your bag: 0.');
+    // Right picks one more, left one fewer: the count is on the element and the total in the status region.
+    await user.keyboard('{ArrowRight}');
+    expect(game).toHaveAttribute('data-shop-amount', '2');
+    expect(screen.getByRole('status')).toHaveTextContent('2 COFFEE for 20 COINS.');
+    await user.keyboard('{ArrowLeft}');
+    expect(game).toHaveAttribute('data-shop-amount', '1');
+    expect(screen.getByRole('status')).toHaveTextContent('1 COFFEE for 10 COINS.');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-coins', '35');
     expect(screen.getByRole('status')).toHaveTextContent('You buy one COFFEE for 10 COINS. 35 COINS left.');

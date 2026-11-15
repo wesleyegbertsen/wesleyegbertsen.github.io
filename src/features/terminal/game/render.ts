@@ -362,7 +362,9 @@ function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World)
 
 /**
  * A shop: its name and the player's coins at the top, then what it sells (how many of it are in the bag, and the
- * price) and the way out. The foot says what the item under the cursor does, or what the last press led to.
+ * price) and the way out. The row under the cursor also shows how many A buys, between arrows (left and right
+ * change it), and its price is that of all of them. The foot says what the item under the cursor does, or what
+ * the last press led to.
  */
 function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   const open = state.shop!;
@@ -372,18 +374,21 @@ function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
   const purse = money(state.coins, world);
   drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 8);
   rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  const cursor = Math.min(open.cursor, shop.stock.length);
+  // A row: the name (13 letters at most) from 18, the count in the bag from 98, the picker from 114, the price up to 152.
   shop.stock.forEach((entry, i) => {
-    const price = String(entry.price);
+    const picked = i === cursor ? open.amount : 1;
+    const price = String(entry.price * picked);
     drawText(ctx, sheets, world.items[entry.item]!.name, 18, 24 + i * LINE);
-    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 104, 24 + i * LINE);
+    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 98, 24 + i * LINE);
+    if (i === cursor) drawText(ctx, sheets, `<${picked}>`, 114, 24 + i * LINE);
     drawText(ctx, sheets, price, rightAligned(price, SCREEN_W - 8), 24 + i * LINE);
   });
   drawText(ctx, sheets, 'LEAVE', 18, 24 + shop.stock.length * LINE);
-  const cursor = Math.min(open.cursor, shop.stock.length);
   drawText(ctx, sheets, '>', 10, 24 + cursor * LINE);
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   const entry = shop.stock[cursor];
-  const note = open.note || (entry ? world.items[entry.item]!.description : 'A: buy one. B: leave.');
+  const note = open.note || (entry ? world.items[entry.item]!.description : 'A: buy. B: leave.');
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
 }
 

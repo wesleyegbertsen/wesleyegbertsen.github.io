@@ -288,6 +288,24 @@ describe('the shop in the cafe', () => {
     expect(state.items[first.item]).toBe(9);
     expect(state.coins).toBe(9999 - 9 * first.price);
     expect(state.shop?.note).toBe(`Your bag holds no more than 9 ${ITEMS[first.item]!.name}.`);
+    // Picked all at once: right as often as it goes, then A.
+    let many = { ...shopping(), coins: 9999, items: { [first.item]: 2 } as Record<string, number> };
+    for (let i = 0; i < 20; i++) many = press(many, { dir: 'right', pressed: 'right' });
+    expect(many.shop?.amount).toBe(7);
+    many = press(many, { a: true });
+    expect(many.items[first.item]).toBe(9);
+    expect(many.coins).toBe(9999 - 7 * first.price);
+  });
+
+  it('never sells more than the purse can pay, however many are picked', () => {
+    const coffee = shop.stock.findIndex((entry) => entry.item === 'coffee');
+    let state = shopping();
+    for (let i = 0; i < coffee; i++) state = press(state, { dir: 'down', pressed: 'down' });
+    for (let i = 0; i < 20; i++) state = press(state, { dir: 'right', pressed: 'right' });
+    expect(state.shop?.amount).toBe(Math.floor(ECONOMY.start / shop.stock[coffee]!.price));
+    state = press(state, { a: true });
+    expect(state.coins).toBe(ECONOMY.start % shop.stock[coffee]!.price);
+    expect(state.coins).toBeGreaterThanOrEqual(0);
   });
 
   it('says everything in lines that fit the foot of the screen and the font', () => {
@@ -302,6 +320,9 @@ describe('the shop in the cafe', () => {
       expect(def.name.length, item).toBeLessThanOrEqual(13);
       fits(def.description);
       fits(`You buy one ${def.name} for ${money(price, world)}. ${money(9999, world)} left.`);
+      fits(`You buy ${ECONOMY.bagLimit} ${def.name} for ${money(price * ECONOMY.bagLimit, world)}. ${money(9999, world)} left.`);
+      fits(`${ECONOMY.bagLimit} ${def.name} for ${money(price * ECONOMY.bagLimit, world)}.`);
+      fits(`Not enough ${ECONOMY.currency} for ${ECONOMY.bagLimit} ${def.name}: that is ${price * ECONOMY.bagLimit}, you have ${price * ECONOMY.bagLimit - 1}.`);
       fits(`Not enough ${ECONOMY.currency}: the ${def.name} is ${price}, you have ${price - 1}.`);
       fits(`Your bag holds no more than ${ECONOMY.bagLimit} ${def.name}.`);
       fits(`You use the ${def.name}. Every move is fresh again!`);

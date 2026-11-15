@@ -6,7 +6,7 @@ import { NO_INPUT, type Cue, type GameEvent, type GameState, type Input } from '
 /**
  * Money and the shop, on shopWorld (see testWorld.ts): 45 COINS to start with, a wild RAT (level 2) drops 4, the
  * RAT that stands guard 20; a purse holds 7; the kiosk sells COFFEE for 10, GREEN TEA for 25 and a KEY for 100,
- * and the bag takes three of a kind.
+ * and the bag takes three of a kind. Left and right on an item change how many of it A buys.
  */
 
 type Told = { state: GameState; events: GameEvent[]; cues: Cue[] };
@@ -139,9 +139,9 @@ describe('the shop', () => {
     expect(talking.dialogue).not.toBeNull();
     expect(talking.shop).toBeNull();
     const opened = press(talking, { a: true });
-    expect(opened.state.shop).toEqual({ id: 'kiosk', cursor: 0, note: '' });
+    expect(opened.state.shop).toEqual({ id: 'kiosk', cursor: 0, amount: 1, note: '' });
     expect(opened.state.dialogue).toBeNull();
-    expect(opened.events.at(-1)).toEqual({ kind: 'menu', text: 'KIOSK. You have 45 COINS. A buys one, B leaves. COFFEE, 10 COINS: Restores 20 energy. In your bag: 0.' });
+    expect(opened.events.at(-1)).toEqual({ kind: 'menu', text: 'KIOSK. You have 45 COINS. A buys, left and right change how many, B leaves. COFFEE, 10 COINS: Restores 20 energy. In your bag: 0.' });
   });
 
   it('sells one of the item under the cursor per press of A: coins down, bag up, said and heard', () => {
@@ -155,7 +155,7 @@ describe('the shop', () => {
 
     // The second item, and the note of the last press is gone when the cursor moves.
     const moved = press(bought.state, { dir: 'down', pressed: 'down' });
-    expect(moved.state.shop).toEqual({ id: 'kiosk', cursor: 1, note: '' });
+    expect(moved.state.shop).toEqual({ id: 'kiosk', cursor: 1, amount: 1, note: '' });
     expect(moved.cues).toEqual(['cursor']);
     expect(moved.events).toEqual([{ kind: 'menu', text: 'GREEN TEA, 25 COINS: Restores the PP of every move. In your bag: 0.' }]);
     const tea = press(moved.state, { a: true });
@@ -170,7 +170,7 @@ describe('the shop', () => {
     expect(refused.state.coins).toBe(45);
     expect(refused.state.items.key).toBeUndefined();
     expect(refused.events).toEqual([{ kind: 'menu', text: 'Not enough COINS: the KEY is 100, you have 45.' }]);
-    expect(refused.state.shop).toEqual({ id: 'kiosk', cursor: 2, note: 'Not enough COINS: the KEY is 100, you have 45.' });
+    expect(refused.state.shop).toEqual({ id: 'kiosk', cursor: 2, amount: 1, note: 'Not enough COINS: the KEY is 100, you have 45.' });
     expect(refused.cues).toEqual(['bump']);
     expect({ ...refused.state, shop: null }).toEqual({ ...dear, shop: null });
   });
@@ -179,7 +179,7 @@ describe('the shop', () => {
     let state = shopping();
     const seen = new Set<number>();
     for (let i = 0; i < 60; i++) {
-      state = play(state, i % 7 === 3 ? 'down' : i % 11 === 5 ? 'up' : 'a');
+      state = play(state, i % 7 === 3 ? 'down' : i % 11 === 5 ? 'up' : i % 5 === 2 ? 'right' : i % 13 === 6 ? 'left' : 'a');
       if (!state.shop) state = shopping(state);
       expect(state.coins).toBeGreaterThanOrEqual(0);
       seen.add(state.coins);
@@ -227,11 +227,67 @@ describe('the shop', () => {
     const open = shopping();
     expect(play(open, 'up')).toBe(open);
     expect(play(open, 'down', 'down', 'down', 'down', 'down').shop?.cursor).toBe(3);
-    const pressed = play(open, 'left', 'right', 'start', 'select');
+    const pressed = play(open, 'left', 'start', 'select');
     expect(pressed).toBe(open);
     expect([pressed.x, pressed.y, pressed.menu]).toEqual([open.x, open.y, null]);
     // The clock stands still, as in a text box.
     expect(step(open, NO_INPUT, world).state).toBe(open);
+  });
+
+  it('buys several at once: left and right change how many, the total is said, and A buys that many', () => {
+    const two = press(shopping(), { dir: 'right', pressed: 'right' });
+    expect(two.state.shop).toEqual({ id: 'kiosk', cursor: 0, amount: 2, note: '2 COFFEE for 20 COINS.' });
+    expect(two.events).toEqual([{ kind: 'menu', text: '2 COFFEE for 20 COINS.' }]);
+    expect(two.cues).toEqual(['cursor']);
+    // Nothing is bought until A.
+    expect([two.state.coins, two.state.items.coffee]).toEqual([45, undefined]);
+    const three = press(two.state, { dir: 'right', pressed: 'right' });
+    expect(three.state.shop?.amount).toBe(3);
+    const back = press(three.state, { dir: 'left', pressed: 'left' });
+    expect(back.state.shop).toMatchObject({ amount: 2, note: '2 COFFEE for 20 COINS.' });
+    expect(back.cues).toEqual(['cursor']);
+    const bought = press(back.state, { a: true });
+    expect(bought.state.coins).toBe(25);
+    expect(bought.state.items.coffee).toBe(2);
+    expect(bought.events).toEqual([{ kind: 'item', text: 'You buy 2 COFFEE for 20 COINS. 25 COINS left.' }]);
+    expect(bought.cues).toEqual(['coin']);
+    // The next press of A is one again.
+    expect(bought.state.shop).toMatchObject({ cursor: 0, amount: 1 });
+    expect(press(bought.state, { a: true }).state.items.coffee).toBe(3);
+  });
+
+  it('never goes under one, and starts at one again on another row', () => {
+    const open = shopping();
+    expect(play(open, 'left')).toBe(open);
+    expect(press(open, { dir: 'left', pressed: 'left' }).cues).toEqual([]);
+    const moved = play(open, 'right', 'down');
+    expect(moved.shop).toEqual({ id: 'kiosk', cursor: 1, amount: 1, note: '' });
+    // The way out has nothing to count.
+    const leave = play(open, 'down', 'down', 'down');
+    expect(play(leave, 'right', 'left')).toBe(leave);
+  });
+
+  it('stops at what the purse can pay and at what the bag takes, and says which', () => {
+    // 45 COINS: one GREEN TEA at 25, not two.
+    const tea = play(shopping(), 'down');
+    const dear = press(tea, { dir: 'right', pressed: 'right' });
+    expect(dear.state.shop).toMatchObject({ cursor: 1, amount: 1, note: 'Not enough COINS for 2 GREEN TEA: that is 50, you have 45.' });
+    expect(dear.events).toEqual([{ kind: 'menu', text: 'Not enough COINS for 2 GREEN TEA: that is 50, you have 45.' }]);
+    expect(dear.cues).toEqual(['bump']);
+    // Rich: the bag takes three of a kind, and one is in it already.
+    const rich = shopping({ ...started(), coins: 999, items: { coffee: 1 } });
+    const full = play(rich, 'right', 'right', 'right', 'right');
+    expect(full.shop).toMatchObject({ amount: 2, note: 'Your bag holds no more than 3 COFFEE.' });
+    expect(press(play(rich, 'right'), { dir: 'right', pressed: 'right' }).cues).toEqual(['bump']);
+    const bought = press(full, { a: true });
+    expect(bought.state.items.coffee).toBe(3);
+    expect(bought.state.coins).toBe(979);
+    // Full of it: no more, and right says so too.
+    expect(press(bought.state, { dir: 'right', pressed: 'right' }).state.shop).toMatchObject({ amount: 1, note: 'Your bag holds no more than 3 COFFEE.' });
+    expect(press(bought.state, { a: true }).state.items.coffee).toBe(3);
+    // Too dear even for one: the same words as a press of A.
+    const key = play(shopping(), 'down', 'down');
+    expect(press(key, { dir: 'right', pressed: 'right' }).state.shop).toMatchObject({ amount: 1, note: 'Not enough COINS: the KEY is 100, you have 45.' });
   });
 
   it('does not open a shop the world does not know', () => {
