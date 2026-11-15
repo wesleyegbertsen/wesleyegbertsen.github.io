@@ -49,6 +49,32 @@ describe('the sprite sheets', () => {
     expect(found.m.split('/')).toEqual(['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#']);
   });
 
+  it('draw slick rock so that it is not taken for the cave floor: another shade, with slanting streaks of shine', () => {
+    const script = "import('./scripts/sprites/scenery.mjs').then(({ scenery }) => console.log(JSON.stringify({ ice: scenery.ice, floor: scenery.cavefloor })))";
+    const drawn = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { ice: string[]; floor: string[] };
+    // A tile is 16 rows of 16, or a pattern of 8 by 8 that is repeated.
+    const whole = (rows: string[]) => (rows.length === 8 ? [...rows, ...rows].map((row) => row + row) : rows);
+    const ice = whole(drawn.ice);
+    const floor = whole(drawn.floor);
+    const count = (rows: string[], shade: string) => rows.join('').split(shade).length - 1;
+    // The ground itself: the lightest shade where the floor has the light one. Nearly every pixel differs.
+    expect(count(ice, '0')).toBeGreaterThan(200);
+    expect(count(floor, '1')).toBeGreaterThan(200);
+    expect(ice.flatMap((row, y) => [...row].filter((dot, x) => dot !== floor[y]![x])).length).toBeGreaterThan(230);
+    // The shine: strokes in the dark shade (they still show under the dither of the dark) and in the light one.
+    expect(count(ice, '2')).toBeGreaterThanOrEqual(8);
+    expect(count(ice, '1')).toBeGreaterThanOrEqual(8);
+    expect(count(ice, '3')).toBe(0);
+    // Every stroke slants the same way: each of its pixels has a neighbour up to the right or down to the left.
+    const at = (x: number, y: number) => ice[(y + 16) % 16]![(x + 16) % 16]!;
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        if (at(x, y) === '0') continue;
+        expect(at(x + 1, y - 1) === at(x, y) || at(x - 1, y + 1) === at(x, y), `${x},${y}`).toBe(true);
+      }
+    }
+  });
+
   it('use four shades, lightest first', () => {
     expect(PALETTE).toHaveLength(4);
     const light = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);

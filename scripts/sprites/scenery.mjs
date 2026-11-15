@@ -987,8 +987,29 @@ const plate = [
   '................',
   '................',
 ];
-/** Slick, wet rock: whoever steps onto it slides on. Lighter than the floor, with a few glints. */
-const ice = ['00000000', '00000100', '00001000', '00010000', '00000000', '01000000', '10000010', '00000100'];
+/**
+ * Slick, wet rock: whoever steps onto it slides on. It must not be taken for the cave floor, lit or in the
+ * dither of the dark: the lightest shade where the floor is the light one, with streaks of shine across it (dark
+ * strokes and lighter ones, all slanting the same way), where the floor has a few dots.
+ */
+const ice = [
+  '0000000000000000',
+  '0000000000002000',
+  '0000010000020000',
+  '0000100000200000',
+  '0001000000000000',
+  '0010000000000010',
+  '0000000000000100',
+  '0000000020001000',
+  '0000000200000000',
+  '0000002000000000',
+  '0100000000000000',
+  '1000000000010000',
+  '0000000000100000',
+  '0000200001000000',
+  '0002000000000000',
+  '0020000000000000',
+];
 /** A fire bowl on a foot: it lights a puzzle room, and stands in the way. Two frames: the flame flickers. */
 const bowl = [
   '..333333333333..',
