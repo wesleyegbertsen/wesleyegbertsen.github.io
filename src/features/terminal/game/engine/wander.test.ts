@@ -184,3 +184,26 @@ describe('a find in passing', () => {
     expect(state.items.star).toBe(1);
   });
 });
+
+describe('the way a stroller looks', () => {
+  it('is the way of the last step, and the last step sideways is remembered when going up or down', () => {
+    const steps: Record<string, { dx: number; dy: number }> = { up: { dx: 0, dy: -1 }, down: { dx: 0, dy: 1 }, left: { dx: -1, dy: 0 }, right: { dx: 1, dy: 0 } };
+    let state = started();
+    const sides = new Map<string, string | undefined>();
+    let seen = 0;
+    for (let tick = 0; tick < 6000; tick++) {
+      const before = state.roam;
+      state = step(state, NO_INPUT, world).state;
+      for (const [id, now] of Object.entries(state.roam)) {
+        if (before[id] === now) continue;
+        seen++;
+        expect(now.dir).toBeDefined();
+        expect({ dx: now.x - now.fromX, dy: now.y - now.fromY }).toEqual(steps[now.dir!]);
+        if (now.dir === 'left' || now.dir === 'right') expect(now.side).toBe(now.dir);
+        else expect(now.side).toBe(sides.get(id));
+        sides.set(id, now.side);
+      }
+    }
+    expect(seen).toBeGreaterThan(5);
+  });
+});

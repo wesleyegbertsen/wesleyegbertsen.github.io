@@ -31,7 +31,8 @@ export type Action =
   | { badge: string }
   | { heal: true }
   | { battle: string; win: Action[] }
-  | { warp: Spot }
+  /** `cue`: what the way sounds like. A door by default; `path` for the edge of a map, `cave` for a cave mouth. */
+  | { warp: Spot; cue?: Cue }
   /** Max energy grows by this much, for good (the prize at the end of the cave). */
   | { boost: number }
   /** Offers a new move: the player picks one to replace, or keeps what they have. */
@@ -124,6 +125,8 @@ export type EnemyDef = {
   moves: MoveDef[];
   /** The line that ends a won battle. */
   defeat: string;
+  /** A tune of its own for the battle (a name in content/music.ts), in place of the usual boss tune. */
+  tune?: string;
 };
 
 export type ItemDef = { name: string; description: string; heal?: number };
@@ -181,8 +184,10 @@ export type Levels = {
 };
 
 export type Dialogue = { pages: string[][]; page: number; shown: number };
-/** The Start menu. `row` says the cursor is on the volume row under the list. */
-export type Menu = { tab: 'items' | 'badges'; cursor: number; row?: 'volume' };
+/** The Start menu: the bag, the badge case and the settings. */
+export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
+/** The rows of the settings tab, in order. */
+export const SETTINGS = ['sound', 'volume', 'screen'] as const;
 /** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
 export type Learn = { move: string; cursor: number };
 
@@ -233,6 +238,8 @@ export type GameState = {
   battle: Battle | null;
   menu: Menu | null;
   learn: Learn | null;
+  /** Who is being talked to, and which way they turned for it. They turn back when the talk is over. */
+  face: { id: string; dir: Dir } | null;
   /** Where a defeat sends the player back to. */
   heal: { map: string; x: number; y: number };
   seed: number;
@@ -245,7 +252,8 @@ export type GameState = {
   notice: { text: string; until: number } | null;
 };
 
-export type Roaming = { x: number; y: number; fromX: number; fromY: number; at: number };
+/** `dir` is the way of the last step; `side` the last step sideways (animals drawn from the side keep it going up or down). */
+export type Roaming = { x: number; y: number; fromX: number; fromY: number; at: number; dir?: Dir; side?: 'left' | 'right' };
 
 /** Something worth telling a screen reader. */
 export type GameEvent = {
@@ -288,8 +296,13 @@ export type Cue =
   | 'run'
   | 'encounter'
   | 'levelup'
-  /** The volume row of the Start menu: the game turns the sound down or up a step. */
+  /** Walking off the edge of a map onto the next one, and going into or out of a cave: not doors. */
+  | 'path'
+  | 'cave'
+  /** The settings of the Start menu: the game turns the sound down or up a step, switches it, or switches the LCD look. */
   | 'quieter'
-  | 'louder';
+  | 'louder'
+  | 'sound'
+  | 'screen';
 
 export type Result = { state: GameState; events: GameEvent[]; cues: Cue[] };

@@ -4,7 +4,7 @@ import { WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { dimness } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
-import type { GameState, MoveDef, World } from './engine/types.ts';
+import { SETTINGS, type Dir, type GameObject, type GameState, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
 
@@ -19,7 +19,7 @@ export type Sheets = { tiles: CanvasImageSource; sprites: CanvasImageSource; fon
 export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
 
 /** What is shown on top of the game that is not part of its state: whether the sound is off, and how loud it is (0 to 10). */
-export type Hud = { muted: boolean; volume: number };
+export type Hud = { muted: boolean; volume: number; lcd?: boolean };
 
 /** The volume wheel has this many steps. */
 export const VOLUME_STEPS = 10;
@@ -30,7 +30,7 @@ const BOX_Y = 104;
 /** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
 export const FRAME_TICKS = 30;
 /** How many items the bag shows at once; a longer list scrolls with the cursor. */
-const BAG_ROWS = 4;
+const BAG_ROWS = 5;
 /** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
 const SHADES = ['', 'shade-1', 'shade-2'] as const;
 
@@ -73,6 +73,23 @@ export function drawText(ctx: Painter, sheets: Sheets, text: string, x: number, 
 }
 
 const centred = (text: string, scale = 1) => Math.floor((SCREEN_W - text.length * FONT.cellW * scale) / 2);
+
+const drawable = (name: string) => Object.hasOwn(sprites, name) || Object.hasOwn(tiles, name);
+
+/**
+ * The picture of a thing that can look somewhere: turned to the player while it is talked to, else the way of
+ * its last step. People have a picture per side (the plain one looks at you); animals drawn from the side have
+ * a left and a right one and keep their side when they go up or down. Anything else has just the one picture.
+ */
+export function facingSprite(sprite: string, object: GameObject, state: GameState): string {
+  const roaming = state.roam[object.id];
+  const dir: Dir | undefined = state.face?.id === object.id ? state.face.dir : roaming?.dir;
+  if (!dir) return sprite;
+  if (drawable(`${sprite}-${dir}`)) return `${sprite}-${dir}`;
+  if (dir === 'down' && drawable(`${sprite}-up`)) return sprite;
+  const side = dir === 'left' || dir === 'right' ? dir : roaming?.side;
+  return side && drawable(`${sprite}-${side}`) ? `${sprite}-${side}` : sprite;
+}
 
 /** A tile or a sprite by name, whichever sheet it is on. Unknown names draw nothing. */
 function drawSprite(ctx: Painter, sheets: Sheets, name: string, x: number, y: number, scale = 1) {
@@ -151,7 +168,7 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     if (!sprite || gone(object, state)) continue;
     const roaming = state.roam[object.id];
     if (!roaming) {
-      drawSprite(ctx, sheets, frameOf(sprite, object.animated, state.clock), object.x * TILE - camX, object.y * TILE - camY);
+      drawSprite(ctx, sheets, frameOf(facingSprite(sprite, object, state), object.animated, state.clock), object.x * TILE - camX, object.y * TILE - camY);
       continue;
     }
     // Someone on a stroll: between two cells while the step lasts, with a little bob.
@@ -159,9 +176,11 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     const at = placeOf(object, state);
     const ox = Math.round((roaming.fromX + (at.x - roaming.fromX) * along) * TILE);
     const oy = Math.round((roaming.fromY + (at.y - roaming.fromY) * along) * TILE);
-    drawSprite(ctx, sheets, sprite, ox - camX, oy - camY - (along < 1 && Math.floor(along * 4) % 2 === 1 ? 1 : 0));
+    drawSprite(ctx, sheets, facingSprite(sprite, object, state), ox - camX, oy - camY - (along < 1 && Math.floor(along * 4) % 2 === 1 ? 1 : 0));
   }
-  const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? 1 : 0;
+  // Up and down the player steps with one foot, then the other: the cell tells which.
+  const foot = (state.dir === 'up' || state.dir === 'down') && (state.x + state.y) % 2 === 1 ? 2 : 1;
+  const frame = state.walk && state.walk.t >= WALK_TICKS / 2 ? foot : 0;
   drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY);
 
   // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
@@ -216,14 +235,32 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
   }
 }
 
+/** The settings tab: the sound, how loud it is, and the look of the screen. */
+function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): string {
+  const at = SETTINGS[Math.min(cursor, SETTINGS.length - 1)]!;
+  const row = (name: (typeof SETTINGS)[number]) => 46 + SETTINGS.indexOf(name) * 14;
+  drawText(ctx, sheets, '>', 10, row(at));
+  drawText(ctx, sheets, 'SOUND', 18, row('sound'));
+  drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
+  drawText(ctx, sheets, 'SCREEN', 18, row('screen'));
+  if (hud) {
+    drawText(ctx, sheets, hud.muted ? 'OFF' : 'ON', 64, row('sound'));
+    drawVolume(ctx, 64, row('volume') - 1, hud);
+    drawText(ctx, sheets, `${hud.volume * 10}%`, 110, row('volume'));
+    drawText(ctx, sheets, hud.lcd === false ? 'PLAIN' : 'LCD', 64, row('screen'));
+  }
+  if (at === 'sound') return 'A switches the sound off or on. So does the M key.';
+  if (at === 'volume') return 'Left and right change the volume.';
+  return 'A switches the LCD look of the screen: a pixel grid, as on the real thing.';
+}
+
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   const menu = state.menu!;
-  const onVolume = menu.row === 'volume';
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
-  drawText(ctx, sheets, 'BAG', 14, 6);
-  drawText(ctx, sheets, 'BADGES', 62, 6);
-  rect(ctx, menu.tab === 'items' ? 14 : 62, 15, (menu.tab === 'items' ? 3 : 6) * FONT.cellW - 1, 1, DARKEST);
-  drawText(ctx, sheets, '< >', 128, 6);
+  const tabs = { items: ['BAG', 10], badges: ['BADGES', 38], settings: ['SETTINGS', 84] } as const;
+  for (const [name, x] of Object.values(tabs)) drawText(ctx, sheets, name, x, 6);
+  rect(ctx, tabs[menu.tab][1], 15, tabs[menu.tab][0].length * FONT.cellW - 1, 1, DARKEST);
+  drawText(ctx, sheets, '<>', 140, 6);
 
   // Who you are by now: the level, the XP towards the next one, and the energy.
   const progress = xpProgress(state, world);
@@ -243,32 +280,26 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
     // A long bag scrolls: the cursor stays in view.
     const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, owned.length - BAG_ROWS));
     owned.slice(top, top + BAG_ROWS).forEach((id, i) => {
-      if (top + i === cursor && !onVolume) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
       drawText(ctx, sheets, `${world.items[id]!.name} x${state.items[id]}`, 18, 42 + i * LINE);
     });
     note = owned.length === 0 ? 'Your bag is empty.' : world.items[owned[cursor]!]!.description;
+  } else if (menu.tab === 'settings') {
+    note = drawSettings(ctx, sheets, menu.cursor, hud);
   } else {
     world.badges.slice(0, BAG_ROWS).forEach((badge, i) => {
       const earned = state.badges.includes(badge.id);
-      if (i === menu.cursor && !onVolume) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      if (i === menu.cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
       drawText(ctx, sheets, earned ? `* ${badge.name}` : '- ???', 18, 42 + i * LINE);
     });
     note = `${state.badges.length} of ${world.badges.length} badges.`;
   }
 
-  // The foot of the menu: what was found of the things to collect, and the volume wheel.
+  // The foot of the menu: what was found of the things to collect.
   (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
     const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
-    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), 83);
+    drawText(ctx, sheets, text, i === 0 ? 8 : rightAligned(text, SCREEN_W - 8), 92);
   });
-  if (hud) {
-    if (onVolume) drawText(ctx, sheets, '>', 8, 94);
-    drawText(ctx, sheets, 'VOLUME', 16, 94);
-    drawVolume(ctx, 56, 93, hud);
-    drawText(ctx, sheets, `${hud.volume * 10}%`, 100, 94);
-    if (hud.muted) drawText(ctx, sheets, 'OFF', 130, 94);
-    if (onVolume) note = hud.muted ? 'Left and right change the volume. The sound is off: M switches it on.' : 'Left and right change the volume. M switches the sound off.';
-  }
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
 }

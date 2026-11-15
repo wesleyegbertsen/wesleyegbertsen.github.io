@@ -68,7 +68,8 @@ export function stroll(
       return at.x === x && at.y === y;
     });
     if (taken) return;
-    const next: Roaming = { x, y, fromX: from.x, fromY: from.y, at: settled ? clock - STROLL_TICKS : clock };
+    const side = dir === 'left' || dir === 'right' ? dir : roam[object.id]?.side;
+    const next: Roaming = { x, y, fromX: from.x, fromY: from.y, at: settled ? clock - STROLL_TICKS : clock, dir, side };
     roam = { ...roam, [object.id]: next };
   });
   return { ...state, clock, roam };

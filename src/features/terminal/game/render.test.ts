@@ -4,7 +4,7 @@ import { levelWorld, play, playIn, testWorld as world } from './engine/testWorld
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
-import { FRAME_TICKS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, type Hud, type Painter, type Sheets } from './render.ts';
+import { FRAME_TICKS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, type Hud, type Painter, type Sheets } from './render.ts';
 import { fitScale, layout } from './scale.ts';
 
 type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: number; y: number; w: number; h: number };
@@ -236,65 +236,6 @@ describe('a living map', () => {
     expect(corner(drawn(initialGame(living), { muted: true, volume: 5 }, living).fills)).toHaveLength(on.length + 3);
   });
 
-  it('shows the find count and the volume at the foot of the Start menu', () => {
-    const bag = { ...there(), items: { a: 2 }, menu: { tab: 'items' as const, cursor: 0 } };
-    expect(textAt(drawn(bag, { muted: false, volume: 5 }, living).draws, 83)).toBe('AS2/3');
-    expect(textAt(drawn(bag, { muted: false, volume: 5 }, living).draws, 94)).toBe('VOLUME50%');
-    expect(textAt(drawn(bag, { muted: true, volume: 5 }, living).draws, 94)).toBe('VOLUME50%OFF');
-    expect(textAt(drawn(bag, undefined, living).draws, 94)).toBe('');
-    expect(textAt(drawn({ ...bag, items: {} }, undefined, living).draws, 83)).toBe('AS0/3');
-  });
-
-  it('counts a second thing to collect at the right of the same line', () => {
-    const two: World = { ...living, collect: [...living.collect!, { item: 'b', total: 10, label: 'BS', mark: '#' }] };
-    const bag = { ...there(), items: { a: 2, b: 7 }, menu: { tab: 'items' as const, cursor: 0 } };
-    expect(textAt(drawn(bag, undefined, two).draws, 83)).toBe('AS2/3BS7/10');
-  });
-
-  it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
-    const bag = { ...there(), menu: { tab: 'items' as const, cursor: 0 } };
-    const steps = (hud: Hud) => drawn(bag, hud, living).fills.filter((fill) => fill.w === 3 && fill.x >= 56 && fill.x < 96 && fill.y >= 93 && fill.y <= 101);
-    const half = steps({ muted: false, volume: 5 });
-    expect(half).toHaveLength(VOLUME_STEPS);
-    expect(half.filter((fill) => fill.shade === PALETTE[3])).toHaveLength(5);
-    expect(half.filter((fill) => fill.shade === PALETTE[3]).map((fill) => fill.x)).toEqual([56, 60, 64, 68, 72]);
-    // Each filled step is at least as tall as the one before, and they all stand on one line.
-    const heights = half.filter((fill) => fill.shade === PALETTE[3]).map((fill) => fill.h);
-    expect([...heights].sort((a, b) => a - b)).toEqual(heights);
-    expect(heights.at(-1)).toBeGreaterThan(heights[0]!);
-    expect(new Set(half.map((fill) => fill.y + fill.h)).size).toBe(1);
-    expect(steps({ muted: false, volume: 0 }).filter((fill) => fill.shade === PALETTE[3])).toHaveLength(0);
-    expect(steps({ muted: false, volume: 10 }).filter((fill) => fill.shade === PALETTE[3])).toHaveLength(10);
-    expect(textAt(drawn(bag, { muted: false, volume: 10 }, living).draws, 94)).toBe('VOLUME100%');
-    expect(textAt(drawn(bag, { muted: false, volume: 0 }, living).draws, 94)).toBe('VOLUME0%');
-    // Off: the wheel keeps its place but is drawn in the dimmer shade.
-    const off = steps({ muted: true, volume: 5 });
-    expect(off.filter((fill) => fill.shade === PALETTE[3])).toHaveLength(0);
-    expect(off.filter((fill) => fill.h > 1)).toHaveLength(5);
-  });
-
-  it('moves the cursor to the volume row and says what left and right do there', () => {
-    const bag = { ...there(), items: { a: 1 }, menu: { tab: 'items' as const, cursor: 0, row: 'volume' as const } };
-    const { draws } = drawn(bag, { muted: false, volume: 5 }, living);
-    expect(textAt(draws, 94)).toBe('>VOLUME50%');
-    expect(textAt(draws, 42)).toBe('Ax1');
-    expect(textAt(draws, 110)).toBe('Leftandrightchange');
-  });
-
-  it('scrolls a bag that is longer than the list, keeping the cursor in view', () => {
-    const items = Object.fromEntries(letters.map((id) => [id, 1]));
-    const at = (cursor: number) => drawn({ ...there(), items, menu: { tab: 'items' as const, cursor } }, undefined, living).draws;
-    expect(textAt(at(0), 42)).toBe('>Ax1');
-    expect(textAt(at(0), 72)).toBe('Dx1');
-    expect(textAt(at(0), 82)).toBe('');
-    expect(textAt(at(2), 42)).toBe('Ax1');
-    expect(textAt(at(2), 62)).toBe('>Cx1');
-    expect(textAt(at(3), 42)).toBe('Bx1');
-    expect(textAt(at(3), 62)).toBe('>Dx1');
-    expect(textAt(at(6), 42)).toBe('Dx1');
-    expect(textAt(at(6), 72)).toBe('>Gx1');
-    expect(textAt(at(6), 82)).toBe('');
-  });
 });
 
 describe('fitting the screen', () => {
@@ -313,6 +254,155 @@ describe('fitting the screen', () => {
     expect(SCREEN_W * phone.scale).toBeLessThanOrEqual(299 - 28);
     expect(SCREEN_H * phone.scale + 140 + 28).toBeLessThanOrEqual(407);
     expect(phone.scale).toBeGreaterThan(1.4);
+  });
+});
+
+describe('the Start menu', () => {
+  const letters = 'abcdefg'.split('');
+  const items = Object.fromEntries(letters.map((id) => [id, { name: id.toUpperCase(), description: `Item ${id}.` }]));
+  const shop: World = { ...world, items, collect: [{ item: 'a', total: 3, label: 'AS', mark: '*' }, { item: 'b', total: 10, label: 'BS', mark: '#' }] };
+  const there = (): GameState => ({ ...initialGame(shop), scene: 'world' });
+  const on: Hud = { muted: false, volume: 5, lcd: true };
+
+  it('names its three tabs and underlines the open one', () => {
+    const tab = (name: 'items' | 'badges' | 'settings') => drawn({ ...there(), menu: { tab: name, cursor: 0 } }, on, shop);
+    expect(textAt(tab('items').draws, 6)).toBe('BAGBADGESSETTINGS<>');
+    expect(tab('items').fills).toContainEqual({ shade: PALETTE[3], x: 10, y: 15, w: 17, h: 1 });
+    expect(tab('badges').fills).toContainEqual({ shade: PALETTE[3], x: 38, y: 15, w: 35, h: 1 });
+    expect(tab('settings').fills).toContainEqual({ shade: PALETTE[3], x: 84, y: 15, w: 47, h: 1 });
+  });
+
+  it('counts the things to collect at its foot, on the bag and the badges', () => {
+    const bag = { ...there(), items: { a: 2, b: 7 }, menu: { tab: 'items' as const, cursor: 0 } };
+    expect(textAt(drawn(bag, on, shop).draws, 92)).toBe('AS2/3BS7/10');
+    expect(textAt(drawn({ ...bag, items: {} }, undefined, shop).draws, 92)).toBe('AS0/3BS0/10');
+    // The volume is not on these tabs any more.
+    expect(drawn(bag, on, shop).draws.some((draw) => draw.sheet === 'font' && draw.y === 94)).toBe(false);
+  });
+
+  it('scrolls a bag that is longer than the list, keeping the cursor in view', () => {
+    const all = Object.fromEntries(letters.map((id) => [id, 1]));
+    const at = (cursor: number) => drawn({ ...there(), items: all, menu: { tab: 'items' as const, cursor } }, undefined, shop).draws;
+    expect(textAt(at(0), 42)).toBe('>Ax1');
+    expect(textAt(at(0), 82)).toBe('Ex1');
+    expect(textAt(at(3), 42)).toBe('Ax1');
+    expect(textAt(at(3), 72)).toBe('>Dx1');
+    expect(textAt(at(4), 42)).toBe('Bx1');
+    expect(textAt(at(4), 72)).toBe('>Ex1');
+    expect(textAt(at(6), 42)).toBe('Cx1');
+    expect(textAt(at(6), 82)).toBe('>Gx1');
+  });
+
+  it('shows the settings: the sound, the volume wheel and the look of the screen, with the cursor on one', () => {
+    const settings = (cursor: number, hud: Hud = on) => drawn({ ...there(), menu: { tab: 'settings' as const, cursor } }, hud, shop);
+    const first = settings(0);
+    expect(textAt(first.draws, 46)).toBe('>SOUNDON');
+    expect(textAt(first.draws, 60)).toBe('VOLUME50%');
+    expect(textAt(first.draws, 74)).toBe('SCREENLCD');
+    expect(textAt(first.draws, 110)).toBe('Aswitchesthesoundoff');
+    expect(textAt(settings(1).draws, 60)).toBe('>VOLUME50%');
+    expect(textAt(settings(1).draws, 110)).toBe('Leftandrightchange');
+    expect(textAt(settings(2).draws, 74)).toBe('>SCREENLCD');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 46)).toBe('>SOUNDOFF');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 74)).toBe('SCREENPLAIN');
+    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 60)).toBe('>VOLUME100%');
+    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 60)).toBe('>VOLUME0%');
+  });
+
+  it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
+    const steps = (hud: Hud) =>
+      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 59 && fill.y <= 67);
+    const half = steps({ muted: false, volume: 5 });
+    expect(half).toHaveLength(VOLUME_STEPS);
+    const filled = half.filter((fill) => fill.shade === PALETTE[3]);
+    expect(filled.map((fill) => fill.x)).toEqual([64, 68, 72, 76, 80]);
+    const heights = filled.map((fill) => fill.h);
+    expect([...heights].sort((a, b) => a - b)).toEqual(heights);
+    expect(heights.at(-1)).toBeGreaterThan(heights[0]!);
+    expect(new Set(half.map((fill) => fill.y + fill.h)).size).toBe(1);
+    expect(steps({ muted: false, volume: 0 }).filter((fill) => fill.shade === PALETTE[3])).toHaveLength(0);
+    expect(steps({ muted: false, volume: 10 }).filter((fill) => fill.shade === PALETTE[3])).toHaveLength(10);
+    const off = steps({ muted: true, volume: 5 });
+    expect(off.filter((fill) => fill.shade === PALETTE[3])).toHaveLength(0);
+    expect(off.filter((fill) => fill.h > 1)).toHaveLength(5);
+  });
+});
+
+describe('who looks where', () => {
+  const legend: Record<string, TileDef> = { '.': { sprite: 'grass', solid: false } };
+  const yard = parseMap(
+    {
+      id: 'yard',
+      name: 'Yard',
+      ground: '.',
+      rows: ['.....', '.t.d.', '..@..', '.....'],
+      objects: {
+        '@': { solid: false, trigger: 'interact', branches: [] },
+        t: { sprite: 'teacher', solid: true, trigger: 'interact', branches: [{ do: [{ say: ['Hello.'] }] }] },
+        d: { sprite: 'dog', solid: true, trigger: 'interact', branches: [{ do: [{ say: ['Woof.'] }] }], wander: { radius: 2, every: 60 } },
+      },
+    },
+    legend,
+  );
+  const park: World = { ...world, maps: { yard }, start: { map: 'yard', at: '@' } };
+  const there = (): GameState => ({ ...initialGame(park), scene: 'world' });
+  const teacher = yard.objects.find((object) => object.id === 'yard:t')!;
+  const dog = yard.objects.find((object) => object.id === 'yard:d')!;
+  const shown = (state: GameState, name: keyof typeof sprites) => spriteDraws(drawn(state, undefined, park).draws, name).length;
+
+  it('draws a person who is talked to turned to the player, and the plain picture otherwise', () => {
+    expect(shown(there(), 'teacher')).toBe(1);
+    for (const dir of ['up', 'left', 'right'] as const) {
+      const state = { ...there(), face: { id: 'yard:t', dir } };
+      expect(shown(state, `teacher-${dir}`), dir).toBe(1);
+      expect(shown(state, 'teacher'), dir).toBe(0);
+    }
+    // Turned down is the plain picture: it looks at you.
+    expect(shown({ ...there(), face: { id: 'yard:t', dir: 'down' } }, 'teacher')).toBe(1);
+    expect(facingSprite('teacher', teacher, { ...there(), face: { id: 'yard:d', dir: 'up' } })).toBe('teacher');
+  });
+
+  it('draws the dog looking the way it walks, and keeps its side when it goes up or down', () => {
+    const roam = (dir: 'up' | 'down' | 'left' | 'right', side?: 'left' | 'right') => ({ ...there(), clock: 500, roam: { 'yard:d': { x: 3, y: 1, fromX: 3, fromY: 1, at: 0, dir, side } } });
+    expect(facingSprite('dog', dog, there())).toBe('dog');
+    expect(facingSprite('dog', dog, roam('right', 'right'))).toBe('dog-right');
+    expect(facingSprite('dog', dog, roam('left', 'left'))).toBe('dog');
+    expect(facingSprite('dog', dog, roam('up', 'right'))).toBe('dog-right');
+    expect(facingSprite('dog', dog, roam('down', 'right'))).toBe('dog-right');
+    expect(facingSprite('dog', dog, roam('down', 'left'))).toBe('dog');
+    expect(shown(roam('right', 'right'), 'dog-right')).toBe(1);
+    expect(shown(roam('right', 'right'), 'dog')).toBe(0);
+    // Talked to from its right while it looked left: it turns round.
+    expect(facingSprite('dog', dog, { ...roam('left', 'left'), face: { id: 'yard:d', dir: 'right' } })).toBe('dog-right');
+  });
+
+  it('gives a person who strolls a picture per direction', () => {
+    const walker = { ...teacher, id: 'yard:w' };
+    const roam = (dir: 'up' | 'down' | 'left' | 'right') => ({ ...there(), roam: { 'yard:w': { x: 1, y: 1, fromX: 1, fromY: 1, at: 0, dir, side: 'left' as const } } });
+    expect(facingSprite('teacher', walker, roam('up'))).toBe('teacher-up');
+    expect(facingSprite('teacher', walker, roam('left'))).toBe('teacher-left');
+    expect(facingSprite('teacher', walker, roam('right'))).toBe('teacher-right');
+    expect(facingSprite('teacher', walker, roam('down'))).toBe('teacher');
+  });
+
+  it('leaves things without sides alone', () => {
+    const sign = { ...teacher, id: 'yard:s', sprite: 'sign' };
+    expect(facingSprite('sign', sign, { ...there(), face: { id: 'yard:s', dir: 'left' } })).toBe('sign');
+  });
+
+  it('walks up and down on both feet: one foot on one cell, the other on the next', () => {
+    const walking = (x: number, y: number, dir: 'up' | 'down' | 'left') => ({ ...there(), x, y, dir, walk: { fromX: x, fromY: y + (dir === 'up' ? 1 : dir === 'down' ? -1 : 0), t: WALK_TICKS / 2 } });
+    for (const dir of ['up', 'down'] as const) {
+      expect(shown(walking(2, 2, dir), `player-${dir}-1`), dir).toBe(1);
+      expect(shown(walking(2, 1, dir), `player-${dir}-2`), dir).toBe(1);
+      expect(shown(walking(2, 0, dir), `player-${dir}-1`), dir).toBe(1);
+      // The first half of a step is the standing picture.
+      expect(shown({ ...walking(2, 1, dir), walk: { fromX: 2, fromY: 1, t: 0 } }, `player-${dir}-0`), dir).toBe(1);
+    }
+    expect(shown(walking(2, 1, 'left'), 'player-left-1')).toBe(1);
+    // The two feet are each other's mirror image on the sheet: different pictures.
+    expect(sprites['player-up-1']).not.toEqual(sprites['player-up-2']);
+    expect(sprites['player-down-1']).not.toEqual(sprites['player-down-2']);
   });
 });
 

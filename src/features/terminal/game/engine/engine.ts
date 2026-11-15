@@ -2,7 +2,7 @@ import { fullPp, startBattle, stepBattle } from './battle.ts';
 import { maxHpOf } from './level.ts';
 import { random } from './rng.ts';
 import { pageLength, paginate } from './text.ts';
-import type { Action, Cue, Dir, GameEvent, GameState, Input, MoveDef, Result, World } from './types.ts';
+import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { stroll } from './wander.ts';
 import { DELTA, branchFor, gone, holds, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -47,6 +47,7 @@ export function initialGame(world: World, seed = 1): GameState {
     battle: null,
     menu: null,
     learn: null,
+    face: null,
     heal: start,
     seed,
     finished: false,
@@ -114,7 +115,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx);
   if ('warp' in action) {
     const spot = resolveSpot(world, action.warp);
-    ctx.cues.push('door');
+    ctx.cues.push(action.cue ?? 'door');
     ctx.events.push({ kind: 'place', text: world.maps[spot.map]!.name });
     return { ...state, ...spot, dir: action.warp.dir ?? state.dir, walk: null };
   }
@@ -149,6 +150,11 @@ function stepDialogue(state: GameState, input: Input, ctx: Ctx): GameState {
   }
   return runScript({ ...state, dialogue: null }, ctx);
 }
+
+/** The tabs of the Start menu, in order; left and right go round. */
+export const MENU_TABS = ['items', 'badges', 'settings'] as const;
+const TAB_NAMES = { items: 'Bag', badges: 'Badges', settings: 'Settings. Sound, volume and screen.' };
+const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.' };
 
 /** A move in a few words, for the offer of a new one: on the screen and in the status region. */
 export function describeMove(move: MoveDef): string {
@@ -192,34 +198,32 @@ function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
     ctx.cues.push('cancel');
     return { ...state, menu: null };
   }
-  // The volume row under the list: left and right turn the wheel. The game itself does not know how loud it is;
-  // it only says "quieter" or "louder", and whoever plays the sound acts on it.
-  if (menu.row === 'volume') {
-    if (input.pressed === 'left' || input.pressed === 'right') {
-      ctx.cues.push(input.pressed === 'left' ? 'quieter' : 'louder');
-      return state;
-    }
-    if (input.pressed !== 'up') return state;
-    ctx.cues.push('cursor');
-    return { ...state, menu: { tab: menu.tab, cursor: menu.cursor } };
+  // The settings. The game itself does not know how loud it is or what the screen looks like: it only says what
+  // was asked for ("quieter", "louder", "sound", "screen"), and whoever plays the sound and draws the screen acts.
+  const setting = menu.tab === 'settings' ? SETTINGS[menu.cursor] : undefined;
+  if (setting === 'volume' && (input.pressed === 'left' || input.pressed === 'right')) {
+    ctx.cues.push(input.pressed === 'left' ? 'quieter' : 'louder');
+    return state;
   }
   if (input.pressed === 'left' || input.pressed === 'right') {
+    const at = MENU_TABS.indexOf(menu.tab) + (input.pressed === 'left' ? -1 : 1);
+    const tab = MENU_TABS[(at + MENU_TABS.length) % MENU_TABS.length]!;
     ctx.cues.push('cursor');
-    return { ...state, menu: { tab: menu.tab === 'items' ? 'badges' : 'items', cursor: 0 } };
+    ctx.events.push({ kind: 'menu', text: TAB_NAMES[tab] });
+    return { ...state, menu: { tab, cursor: 0 } };
   }
   const owned = ownedItems(state, world);
-  const count = menu.tab === 'items' ? owned.length : world.badges.length;
+  const count = menu.tab === 'items' ? owned.length : menu.tab === 'badges' ? world.badges.length : SETTINGS.length;
   if (input.pressed === 'up' || input.pressed === 'down') {
     const cursor = Math.max(0, Math.min(count - 1, menu.cursor + (input.pressed === 'up' ? -1 : 1)));
-    if (cursor === menu.cursor) {
-      // Down from the last entry: on to the volume row.
-      if (input.pressed === 'up') return state;
-      ctx.cues.push('cursor');
-      ctx.events.push({ kind: 'menu', text: 'Volume. Left and right change it.' });
-      return { ...state, menu: { ...menu, row: 'volume' } };
-    }
+    if (cursor === menu.cursor) return state;
     ctx.cues.push('cursor');
+    if (menu.tab === 'settings') ctx.events.push({ kind: 'menu', text: SETTING_NAMES[SETTINGS[cursor]!] });
     return { ...state, menu: { ...menu, cursor } };
+  }
+  if (setting) {
+    if (input.a && setting !== 'volume') ctx.cues.push(setting);
+    return state;
   }
   if (!input.a || menu.tab !== 'items') return state;
   const id = owned[Math.min(menu.cursor, owned.length - 1)];
@@ -287,7 +291,9 @@ function interact(state: GameState, ctx: Ctx): GameState {
   const branch = branchFor(object, state);
   if (!branch) return state;
   ctx.cues.push('confirm');
-  return runScript({ ...state, script: [...branch.do] }, ctx);
+  // Whoever is spoken to turns to the player, for as long as the talk lasts.
+  const back: Record<Dir, Dir> = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  return runScript({ ...state, face: { id: object.id, dir: back[state.dir] }, script: [...branch.do] }, ctx);
 }
 
 const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && state.scene === 'world';
@@ -327,7 +333,12 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
  */
 export function step(state: GameState, input: Input, world: World, options: Options = {}): Result {
   const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false };
-  const done = (next: GameState): Result => ({ state: next, events: ctx.events, cues: ctx.cues });
+  // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back.
+  const done = (next: GameState): Result => ({
+    state: next.face && !next.dialogue && !next.battle && !next.learn ? { ...next, face: null } : next,
+    events: ctx.events,
+    cues: ctx.cues,
+  });
 
   if (state.scene === 'ending') return done(state);
   if (state.scene === 'title') {

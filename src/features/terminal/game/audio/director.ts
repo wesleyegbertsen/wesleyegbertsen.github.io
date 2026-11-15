@@ -12,7 +12,7 @@ export function trackFor(state: GameState, world: World): string | null {
   if (state.battle) {
     // The fanfare starts with the line that says the enemy is beaten, and lasts through the XP and the new level.
     if (state.battle.cheer) return music.victory;
-    return state.battle.wild ? music.wild : music.boss;
+    return state.battle.wild ? music.wild : (world.enemies[state.battle.enemy]?.tune ?? music.boss);
   }
   return music.maps[state.map] ?? music.indoors;
 }

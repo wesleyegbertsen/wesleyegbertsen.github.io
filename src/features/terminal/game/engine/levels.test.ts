@@ -1,7 +1,7 @@
 import { trackFor } from '../audio/director.ts';
 import { initialGame, learnRows, step } from './engine.ts';
 import { levelWorld, playIn, testWorld } from './testWorld.ts';
-import { NO_INPUT, type Cue, type GameEvent, type GameState, type Input, type World } from './types.ts';
+import { NO_INPUT, SETTINGS, type Cue, type GameEvent, type GameState, type Input, type World } from './types.ts';
 import { holds, parseMap } from './world.ts';
 
 /**
@@ -266,45 +266,112 @@ describe('a prize that lasts and a door that asks for a level', () => {
   });
 });
 
-describe('the volume row of the Start menu', () => {
+describe('the settings of the Start menu', () => {
   const bag = () => playIn(testWorld, { ...started(testWorld), items: { coffee: 1, key: 1 } }, 'start');
+  const settings = () => playIn(testWorld, bag(), 'right', 'right');
 
-  it('is reached by going down past the last entry, and left by going up', () => {
-    const last = press(testWorld, bag(), { pressed: 'down' });
-    expect(last.state.menu).toEqual({ tab: 'items', cursor: 1 });
-    const row = press(testWorld, last.state, { pressed: 'down' });
-    expect(row.state.menu).toEqual({ tab: 'items', cursor: 1, row: 'volume' });
-    expect(row.cues).toEqual(['cursor']);
-    expect(row.events).toEqual([{ kind: 'menu', text: 'Volume. Left and right change it.' }]);
-    expect(press(testWorld, row.state, { pressed: 'down' }).state).toBe(row.state);
-    const back = press(testWorld, row.state, { pressed: 'up' });
-    expect(back.state.menu).toEqual({ tab: 'items', cursor: 1 });
+  it('is the third tab: left and right go round the tabs, and say which one it is', () => {
+    const badges = press(testWorld, bag(), { pressed: 'right' });
+    expect(badges.state.menu).toEqual({ tab: 'badges', cursor: 0 });
+    expect(badges.events).toEqual([{ kind: 'menu', text: 'Badges' }]);
+    const third = press(testWorld, badges.state, { pressed: 'right' });
+    expect(third.state.menu).toEqual({ tab: 'settings', cursor: 0 });
+    expect(third.events).toEqual([{ kind: 'menu', text: 'Settings. Sound, volume and screen.' }]);
+    expect(third.cues).toEqual(['cursor']);
+    expect(press(testWorld, third.state, { pressed: 'right' }).state.menu).toEqual({ tab: 'items', cursor: 0 });
+    expect(press(testWorld, bag(), { pressed: 'left' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 
-  it('is reached from an empty bag and from the badge case too', () => {
-    const empty = playIn(testWorld, started(testWorld), 'start', 'down');
-    expect(empty.menu?.row).toBe('volume');
-    const badges = playIn(testWorld, started(testWorld), 'start', 'right', 'down');
-    expect(badges.menu).toEqual({ tab: 'badges', cursor: 0, row: 'volume' });
+  it('has three rows, sound, volume and screen, and reads them out as the cursor moves', () => {
+    expect(SETTINGS).toEqual(['sound', 'volume', 'screen']);
+    const volume = press(testWorld, settings(), { pressed: 'down' });
+    expect(volume.state.menu).toEqual({ tab: 'settings', cursor: 1 });
+    expect(volume.events).toEqual([{ kind: 'menu', text: 'Volume. Left and right change it.' }]);
+    const screen = press(testWorld, volume.state, { pressed: 'down' });
+    expect(screen.events).toEqual([{ kind: 'menu', text: 'Screen. A switches the LCD look.' }]);
+    expect(press(testWorld, screen.state, { pressed: 'down' }).state).toBe(screen.state);
+    expect(press(testWorld, settings(), { pressed: 'up' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 
-  it('asks for quieter and louder with left and right, and leaves the tab alone', () => {
-    const row = playIn(testWorld, bag(), 'down', 'down');
+  it('asks for quieter and louder with left and right on the volume row, and leaves the tab alone', () => {
+    const row = playIn(testWorld, settings(), 'down');
     const left = press(testWorld, row, { pressed: 'left' });
     expect(left.cues).toEqual(['quieter']);
     expect(left.state).toBe(row);
     const right = press(testWorld, row, { pressed: 'right' });
     expect(right.cues).toEqual(['louder']);
-    expect(right.state.menu?.tab).toBe('items');
-    // A does nothing there; B and Start still close the menu.
-    expect(press(testWorld, row, { a: true }).state).toBe(row);
-    expect(press(testWorld, row, { b: true }).state.menu).toBeNull();
-    expect(press(testWorld, row, { start: true }).state.menu).toBeNull();
+    expect(right.state.menu?.tab).toBe('settings');
+    expect(press(testWorld, row, { a: true }).cues).toEqual([]);
   });
 
-  it('still switches the tabs with left and right while the cursor is in the list', () => {
-    const next = press(testWorld, bag(), { pressed: 'right' });
-    expect(next.state.menu).toEqual({ tab: 'badges', cursor: 0 });
-    expect(next.cues).toEqual(['cursor']);
+  it('asks for the sound switch and the screen switch with A, and switches tabs with left and right there', () => {
+    const sound = press(testWorld, settings(), { a: true });
+    expect(sound.cues).toEqual(['sound']);
+    expect(sound.state.menu).toEqual({ tab: 'settings', cursor: 0 });
+    const screen = press(testWorld, playIn(testWorld, settings(), 'down', 'down'), { a: true });
+    expect(screen.cues).toEqual(['screen']);
+    expect(press(testWorld, settings(), { pressed: 'right' }).state.menu?.tab).toBe('items');
+    expect(press(testWorld, playIn(testWorld, settings(), 'down', 'down'), { pressed: 'left' }).state.menu?.tab).toBe('badges');
+    // B and Start still close the menu from there.
+    expect(press(testWorld, settings(), { b: true }).state.menu).toBeNull();
+    expect(press(testWorld, settings(), { start: true }).state.menu).toBeNull();
+  });
+
+  it('no longer has a volume row under the bag: down stops at the last entry', () => {
+    const last = playIn(testWorld, bag(), 'down');
+    expect(last.menu).toEqual({ tab: 'items', cursor: 1 });
+    expect(press(testWorld, last, { pressed: 'down' }).state).toBe(last);
+    expect(press(testWorld, last, { pressed: 'left' }).cues).toEqual(['cursor']);
+  });
+});
+
+describe('who looks where', () => {
+  it('turns whoever is talked to towards the player, and back when the talk is over', () => {
+    // The sign is above the cell to the right of the start: walk right, look up, talk.
+    const before = playIn(testWorld, started(testWorld), 'right', 'up');
+    expect(before.face).toBeNull();
+    const talking = press(testWorld, before, { a: true }).state;
+    expect(talking.dialogue).not.toBeNull();
+    expect(talking.face).toEqual({ id: 'main:s', dir: 'down' });
+    // Still turned on the second page.
+    const second = press(testWorld, talking, { a: true }).state;
+    expect(second.dialogue).not.toBeNull();
+    expect(second.face).toEqual({ id: 'main:s', dir: 'down' });
+    const over = press(testWorld, second, { a: true }).state;
+    expect(over.dialogue).toBeNull();
+    expect(over.face).toBeNull();
+  });
+
+  it('turns them to whichever side the player stands on', () => {
+    const base = started(testWorld);
+    const sign = testWorld.maps.main!.objects.find((object) => object.id === 'main:s')!;
+    const from = (dx: number, dy: number, dir: 'up' | 'down' | 'left' | 'right') =>
+      press(testWorld, { ...base, x: sign.x + dx, y: sign.y + dy, dir }, { a: true }).state.face?.dir;
+    expect(from(0, 1, 'up')).toBe('down');
+    expect(from(-1, 0, 'right')).toBe('left');
+    expect(from(1, 0, 'left')).toBe('right');
+  });
+
+  it('keeps them turned through a battle they start, and lets go after it', () => {
+    const fightStart = playIn(testWorld, started(testWorld), 'down', 'down', 'right', 'a');
+    expect(fightStart.face).toEqual({ id: 'main:n', dir: 'left' });
+    const inBattle = press(testWorld, fightStart, { a: true }).state;
+    expect(inBattle.battle).not.toBeNull();
+    expect(inBattle.face?.id).toBe('main:n');
+    let state = inBattle;
+    for (let i = 0; i < 200 && (state.battle || state.dialogue); i++) state = press(testWorld, state, { a: true }).state;
+    expect(state.face).toBeNull();
+  });
+});
+
+describe('the sound of a way', () => {
+  it('is a door by default, and what the way says otherwise', () => {
+    const at = { ...started(testWorld), dialogue: { pages: [['x']], page: 0, shown: 1 } };
+    const through = (cue?: Cue) => step({ ...at, script: [{ warp: { map: 'room', at: 'm', dy: -1 }, cue }] }, { ...NO_INPUT, a: true }, testWorld, { instant: true });
+    expect(through().cues).toContain('door');
+    expect(through('path').cues).toContain('path');
+    expect(through('path').cues).not.toContain('door');
+    expect(through('cave').cues).toContain('cave');
+    expect(through('cave').state.map).toBe('room');
   });
 });
