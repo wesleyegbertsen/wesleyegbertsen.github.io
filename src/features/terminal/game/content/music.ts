@@ -383,6 +383,12 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   bump: { tones: [beep(95, 0.07, 0.3, 0, 60, 'triangle')], gap: 0.28 },
   // A hop over a ledge: a quick whistle up, and a soft thud on landing.
   jump: { tones: [beep(330, 0.14, 0.2, 0, 700), hiss(0.3, 0.05, 0.2, 0.22, 0.1)] },
+  // The puzzles of the deep cave. A boulder grinds a cell on; a slide over slick rock; a plate or a lever clicks;
+  // a gate rolls open: a low rumble, then two notes up.
+  push: { tones: [hiss(0.18, 0.16, 0.3, 0, 0.1), beep(80, 0.16, 0.25, 0, 60, 'triangle')], gap: 0.1 },
+  slide: { tones: [hiss(0.9, 0.22, 0.14, 0, 0.5)], gap: 0.1 },
+  switch: { tones: [beep(1400, 0.02, 0.2, 0, undefined, 'thin'), beep(700, 0.04, 0.22, 0.03)] },
+  gate: { tones: [hiss(0.12, 0.45, 0.3, 0, 0.06), beep(70, 0.45, 0.28, 0, 50, 'triangle'), beep(523, 0.08, 0.25, 0.45), beep(784, 0.16, 0.25, 0.53)] },
   heal: { tones: [beep(523, 0.08, 0.25, 0, 784), beep(784, 0.08, 0.25, 0.08, 1047), beep(1047, 0.2, 0.25, 0.16, 1568)] },
   hit: { tones: [hiss(0.8, 0.09, 0.4, 0, 0.3), beep(260, 0.12, 0.3, 0, 90)] },
   hurt: { tones: [hiss(0.4, 0.16, 0.45, 0, 0.1), beep(160, 0.18, 0.3, 0, 55, 'triangle')] },

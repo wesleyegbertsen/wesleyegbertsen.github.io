@@ -4,6 +4,7 @@ import { random } from './rng.ts';
 import { coinsFor, money } from './shop.ts';
 import { fold } from './text.ts';
 import { introTicks } from './transition.ts';
+import { putBack } from './push.ts';
 import { home } from './world.ts';
 import type { Action, Battle, BattleStep, Cue, GameEvent, GameState, Input, MoveDef, World } from './types.ts';
 
@@ -176,6 +177,8 @@ function finish(state: GameState, ctx: Ctx): GameState {
     const back = home(ctx.world, state.map) ?? state.heal;
     return {
       ...state,
+      // Like any other way of arriving somewhere: what was pushed about there is back in its place.
+      roam: putBack(state, ctx.world, back.map, back),
       battle: null,
       ...back,
       heal: back,

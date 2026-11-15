@@ -13,6 +13,8 @@ export type MapSpec = {
   dark?: GameMap['dark'];
   areas?: Region[];
   respawn?: GameMap['respawn'];
+  /** The puzzle of the pressure plates of this map: the flag it sets and what happens then (see GameMap). */
+  plates?: Pick<NonNullable<GameMap['plates']>, 'flag' | 'do'>;
 };
 
 export type ObjectSpec = Omit<GameObject, 'id' | 'x' | 'y'> & { under?: string };
@@ -50,7 +52,28 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   for (const char of Object.keys(spec.objects)) {
     if (!seen.has(char)) throw new Error(`${spec.id}: object '${char}' is not on the map`);
   }
-  return { id: spec.id, name: spec.name, width, height: cells.length, cells, tiles: legend, objects, encounters: spec.encounters, dark: spec.dark, areas: spec.areas, respawn: spec.respawn };
+  // The plates and the lights are tiles: where they are is read off the grid once.
+  const where = <T>(pick: (tile: TileDef, x: number, y: number) => T | undefined): T[] =>
+    cells.flatMap((row, y) => row.flatMap((char, x) => pick(legend[char]!, x, y) ?? []));
+  const plateCells = where((tile, x, y) => (tile.plate ? { x, y } : undefined));
+  if (spec.plates && plateCells.length === 0) throw new Error(`${spec.id}: a plates puzzle without a plate`);
+  if (spec.plates && objects.filter((object) => object.push).length < plateCells.length) throw new Error(`${spec.id}: more plates than things to push onto them`);
+  const lights = where((tile, x, y) => (tile.light !== undefined ? { x, y, radius: tile.light } : undefined));
+  return {
+    id: spec.id,
+    name: spec.name,
+    width,
+    height: cells.length,
+    cells,
+    tiles: legend,
+    objects,
+    encounters: spec.encounters,
+    dark: spec.dark,
+    areas: spec.areas,
+    respawn: spec.respawn,
+    ...(spec.plates ? { plates: { ...spec.plates, cells: plateCells } } : {}),
+    ...(lights.length > 0 ? { lights } : {}),
+  };
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {
@@ -86,6 +109,24 @@ export function landing(map: GameMap, x: number, y: number, dir: Dir): { x: numb
     return { x: x + 2 * dx, y: y + 2 * dy, jump: true };
   }
   return next.solid ? null : { x: x + dx, y: y + dy, jump: false };
+}
+
+/**
+ * Where one press of a direction ends, slides included: a step (or a hop), and from slippery ground on in the
+ * same direction until the ground or something on it stops the slide. `taken` tells which cells something stands
+ * on. Null when the press does not move the player. The engine slides cell by cell (engine.ts, `glide`); this is
+ * the same walk in one go, for whoever plans a route.
+ */
+export function stopOf(map: GameMap, x: number, y: number, dir: Dir, taken: (x: number, y: number) => boolean): { x: number; y: number; jump: boolean } | null {
+  const first = landing(map, x, y, dir);
+  if (!first || taken(first.x, first.y)) return null;
+  let at = first;
+  for (let i = 0; i < map.width + map.height && tileAt(map, at.x, at.y).slide; i++) {
+    const next = landing(map, at.x, at.y, dir);
+    if (!next || next.jump || taken(next.x, next.y)) break;
+    at = { ...next, jump: first.jump };
+  }
+  return at;
 }
 
 /** The object on a cell, unless it is hidden by now. People who stroll are found where they are, not where the map put them. */

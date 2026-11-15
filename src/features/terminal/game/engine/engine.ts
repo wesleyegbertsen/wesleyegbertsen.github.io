@@ -1,11 +1,12 @@
 import { fullPp, startBattle, stepBattle } from './battle.ts';
 import { applyItem } from './items.ts';
 import { maxHpOf } from './level.ts';
+import { covered, loose, platesDown, putBack, roomFor } from './push.ts';
 import { random } from './rng.ts';
 import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
-import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
-import { stroll } from './wander.ts';
+import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
+import { placeOf, stroll } from './wander.ts';
 import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
 /** How many ticks one step from cell to cell takes (at 60 ticks a second). */
@@ -22,7 +23,7 @@ export type Options = {
   instant?: boolean;
 };
 
-type Ctx = { world: World; events: GameEvent[]; cues: Cue[]; instant: boolean };
+type Ctx = { world: World; events: GameEvent[]; cues: Cue[]; instant: boolean; /** A direction was pressed this tick, not just held. */ pressed?: boolean };
 
 /** The items the player carries, in the order the content lists them. */
 export function ownedItems(state: GameState, world: World): string[] {
@@ -95,6 +96,11 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     return { ...state, items: { ...state.items, [action.take]: Math.max(0, (state.items[action.take] ?? 0) - 1) } };
   }
   if ('flag' in action) return { ...state, flags: { ...state.flags, [action.flag]: true } };
+  if ('unflag' in action) return { ...state, flags: Object.fromEntries(Object.entries(state.flags).filter(([flag]) => !action.unflag.includes(flag))) };
+  if ('reset' in action) {
+    ctx.cues.push('switch');
+    return { ...state, roam: putBack(state, world, state.map) };
+  }
   if ('badge' in action) {
     if (state.badges.includes(action.badge)) return state;
     const badge = world.badges.find((b) => b.id === action.badge)!;
@@ -131,7 +137,8 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     const spot = resolveSpot(world, action.warp);
     ctx.cues.push(action.cue ?? 'door');
     ctx.events.push({ kind: 'place', text: world.maps[spot.map]!.name });
-    return { ...state, ...spot, dir: action.warp.dir ?? state.dir, walk: null };
+    // Arriving on a map puts what was pushed about there back in its place (unless its puzzle is solved).
+    return { ...state, ...spot, dir: action.warp.dir ?? state.dir, walk: null, roam: putBack(state, world, spot.map, spot) };
   }
   ctx.events.push({ kind: 'ending', text: world.ending.join(' ') });
   return { ...state, scene: 'ending', finished: true, script: [] };
@@ -255,6 +262,11 @@ function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
 function arrive(state: GameState, ctx: Ctx): GameState {
   const { world } = ctx;
   const map = world.maps[state.map]!;
+  // The last plate went down while the player stepped after the boulder: the puzzle of this map is solved, for good.
+  if (platesDown(map, state)) {
+    ctx.cues.push('gate');
+    return runScript({ ...state, flags: { ...state.flags, [map.plates!.flag]: true }, script: [...map.plates!.do, ...state.script] }, ctx);
+  }
   const object = objectAt(map, state.x, state.y, state);
   if (object?.trigger === 'step') {
     return runScript({ ...state, script: [...(branchFor(object, state)?.do ?? [])] }, ctx);
@@ -281,8 +293,58 @@ function arrive(state: GameState, ctx: Ctx): GameState {
 }
 
 /**
+ * Walking into something that can be pushed: it moves a cell on when there is room, and the player steps into its
+ * place. The status region is told what happened, plates included, so the puzzle can be followed without the picture.
+ */
+function shove(state: GameState, object: GameObject, dir: Dir, ctx: Ctx): GameState {
+  const map = ctx.world.maps[state.map]!;
+  const from = placeOf(object, state);
+  const to = { x: from.x + DELTA[dir].dx, y: from.y + DELTA[dir].dy };
+  if (!roomFor(map, to.x, to.y, state)) {
+    ctx.cues.push('bump');
+    // Said once per press, not sixty times a second while the direction is held.
+    if (ctx.pressed) ctx.events.push({ kind: 'say', text: `The ${object.push} does not move ${dir}: something is in the way.` });
+    return state;
+  }
+  ctx.cues.push('push');
+  // It goes at walking pace, just ahead of the player. With reduced motion it is there at once.
+  const roam = { ...state.roam, [object.id]: { ...to, fromX: from.x, fromY: from.y, at: ctx.instant ? state.clock - WALK_TICKS : state.clock, ticks: WALK_TICKS } };
+  const pushed = { ...state, roam };
+  let text = `You push the ${object.push} ${dir}.`;
+  if (tileAt(map, to.x, to.y).plate) {
+    ctx.cues.push('switch');
+    text += ` It settles on a pressure plate: ${covered(map, pushed)} of ${map.plates?.cells.length ?? 1} down.`;
+  } else if (tileAt(map, from.x, from.y).plate) {
+    text += ' It rolls off the pressure plate.';
+  }
+  ctx.events.push({ kind: 'say', text });
+  const walking = { ...pushed, x: from.x, y: from.y, walk: { fromX: state.x, fromY: state.y, t: 0 } };
+  return ctx.instant ? arrive({ ...walking, walk: null }, ctx) : walking;
+}
+
+/**
+ * Slippery ground: whoever arrives on it keeps going the same way, cell by cell, until the next cell is not free
+ * or the ground is firm again. Nobody steers a slide. With reduced motion the whole slide is one move.
+ */
+function glide(state: GameState, ctx: Ctx): GameState {
+  if (!idle(state)) return state;
+  const map = ctx.world.maps[state.map]!;
+  if (!tileAt(map, state.x, state.y).slide) return state;
+  const to = landing(map, state.x, state.y, state.dir);
+  const ahead = to ? objectAt(map, to.x, to.y, state) : undefined;
+  if (!to || to.jump || (ahead && !passable(ahead, state))) {
+    ctx.cues.push('bump');
+    ctx.events.push({ kind: 'say', text: `You slide ${state.dir} until something stops you.` });
+    return state;
+  }
+  if (!tileAt(map, to.x, to.y).slide) ctx.events.push({ kind: 'say', text: `You slide ${state.dir}, onto firm ground.` });
+  const walking = { ...state, x: to.x, y: to.y, walk: { fromX: state.x, fromY: state.y, t: 0, slide: true as const } };
+  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx) : walking;
+}
+
+/**
  * Turn to `dir` and take a step if the way is free. Walking into a locked door makes it say why. A ledge that is
- * jumped this way is hopped over: one move, two cells.
+ * jumped this way is hopped over: one move, two cells. A boulder in the way is pushed; slippery ground is slid over.
  */
 function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
   const { world } = ctx;
@@ -291,6 +353,7 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
   const x = state.x + DELTA[dir].dx;
   const y = state.y + DELTA[dir].dy;
   const object = objectAt(map, x, y, turned);
+  if (object && loose(object, map, turned)) return shove(turned, object, dir, ctx);
   if (object && !passable(object, turned)) {
     if (object.trigger !== 'step') {
       ctx.cues.push('bump');
@@ -306,9 +369,10 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
     return turned;
   }
   if (to.jump) ctx.cues.push('jump');
+  if (tileAt(map, to.x, to.y).slide) ctx.cues.push('slide');
   const walk = { fromX: state.x, fromY: state.y, t: 0, ...(to.jump ? { jump: true as const } : {}) };
   const walking = { ...turned, x: to.x, y: to.y, walk };
-  return ctx.instant ? arrive({ ...walking, walk: null }, ctx) : walking;
+  return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx) : walking;
 }
 
 function interact(state: GameState, ctx: Ctx): GameState {
@@ -362,6 +426,9 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
     const t = ctx.instant ? ticks : state.walk.t + 1;
     if (t < ticks) return { ...state, walk: { ...state.walk, t } };
     const arrived = arrive({ ...state, walk: null }, ctx);
+    // On slippery ground the slide goes on, whatever is held.
+    const sliding = glide(arrived, ctx);
+    if (sliding.walk) return sliding;
     // Still holding the direction: keep walking without a pause between the cells.
     return idle(arrived) && input.dir ? tryMove(arrived, input.dir, ctx) : arrived;
   }
@@ -390,7 +457,7 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
  * and the animated tiles.
  */
 export function step(state: GameState, input: Input, world: World, options: Options = {}): Result {
-  const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false };
+  const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false, pressed: input.pressed !== null };
   // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back, a moment later.
   const done = (next: GameState): Result => ({ state: letGo(arrived(next, state.map, ctx)), events: ctx.events, cues: ctx.cues });
 

@@ -1,7 +1,8 @@
 import { initialGame, step } from './engine.ts';
-import { NO_INPUT, type Dir, type GameEvent, type GameObject, type GameState, type Input, type World } from './types.ts';
+import { calm, quiet, solve, type Press } from './solve.ts';
+import { NO_INPUT, type Action, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type World } from './types.ts';
 import { placeOf } from './wander.ts';
-import { DELTA, branchFor, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
+import { DELTA, branchFor, objectAt, passable, resolveSpot, stopOf, tileAt } from './world.ts';
 
 /**
  * A player that knows nothing about the story: it talks to everything it can reach, walks through every door that
@@ -10,7 +11,11 @@ import { DELTA, branchFor, landing, objectAt, passable, resolveSpot, tileAt } fr
  * without spending a coin. The tests use it to prove that the game can be finished; the browser tests use `routeTo`
  * to find keys.
  * People who stroll may step into the way or walk off: a walk that did not land where it should is given up and
- * planned again. Not part of the game itself.
+ * planned again.
+ * A puzzle is more than walking and talking. A riddle that starts over after a wrong answer: the bot does not
+ * press what would only take progress back. Boulders to push: on a map with a puzzle, when nothing new is left to
+ * try there, the bot searches the game itself for presses that lead to something it has not seen yet
+ * (engine/solve.ts) and plays those. Not part of the game itself.
  */
 
 const DIRS: Dir[] = ['up', 'down', 'left', 'right'];
@@ -22,7 +27,8 @@ const GRASS_COST = 40;
 
 /**
  * The best walk from `from` to each cell it can reach on a map, never stepping on objects: the one through the
- * least tall grass, and the shortest of those. A ledge is one press that goes two cells, and only one way.
+ * least tall grass, and the shortest of those. A ledge is one press that goes two cells, and only one way; a
+ * press onto slippery ground goes as far as the slide does.
  */
 function walks(world: World, state: GameState, mapId: string, from: Cell, grassOk: boolean): Map<string, Dir[]> {
   const map = world.maps[mapId]!;
@@ -36,8 +42,8 @@ function walks(world: World, state: GameState, mapId: string, from: Cell, grassO
     const here = found.get(`${cell.x},${cell.y}`)!;
     if (cell.cost > here.cost) continue;
     for (const dir of DIRS) {
-      const to = landing(map, cell.x, cell.y, dir);
-      if (!to || objectAt(map, to.x, to.y, state)) continue;
+      const to = stopOf(map, cell.x, cell.y, dir, (x, y) => !!objectAt(map, x, y, state));
+      if (!to) continue;
       const { x, y } = to;
       const grass = !!tileAt(map, x, y).grass;
       if (!grassOk && grass) continue;
@@ -84,6 +90,16 @@ export function routeTo(world: World, state: GameState, objectId: string): Dir[]
 const progress = (state: GameState) =>
   JSON.stringify([Object.keys(state.flags).sort(), Object.keys(state.items).filter((id) => state.items[id]! > 0).sort(), state.badges, state.level]);
 
+/** Whether actions take progress back (a riddle that starts over): the bot does not press what can only undo. */
+const undoes = (actions: Action[]): boolean => actions.some((action) => 'unflag' in action || ('battle' in action && undoes(action.win)));
+
+/** Whether a map holds a puzzle that walking and talking alone do not solve: something to push, or a thing that takes progress back. */
+const PUZZLING = new WeakMap<GameMap, boolean>();
+function puzzling(map: GameMap): boolean {
+  if (!PUZZLING.has(map)) PUZZLING.set(map, map.objects.some((object) => !!object.push || object.branches.some((branch) => undoes(branch.do))));
+  return PUZZLING.get(map)!;
+}
+
 const heals = (object: GameObject, state: GameState) =>
   object.trigger === 'interact' && !!branchFor(object, state)?.do.some((action) => 'heal' in action);
 
@@ -111,8 +127,10 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
   const walk = (route: Dir[]) => {
     for (const [i, dir] of route.entries()) {
       const last = i === route.length - 1;
-      // Where the press should end: the next cell, or the one behind a ledge.
-      const to = landing(world.maps[state.map]!, state.x, state.y, dir) ?? state;
+      // Where the press should end: the next cell, the one behind a ledge, or the end of a slide.
+      const map = world.maps[state.map]!;
+      // Whatever stands in the way is not counted here: then the press ends somewhere else, and the walk is given up.
+      const to = stopOf(map, state.x, state.y, dir, () => false) ?? state;
       const want = { map: state.map, x: to.x, y: to.y };
       press({ dir, pressed: dir });
       if (last) break;
@@ -122,6 +140,16 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
   };
   /** The thing the player faces right now. */
   const faced = () => objectAt(world.maps[state.map]!, state.x + DELTA[state.dir].dx, state.y + DELTA[state.dir].dy, state);
+
+  /** Every bit of progress the bot has had, so a search knows what would be new. */
+  const known = new Set<string>();
+  /** Plays what a search found. Stops when something else comes up (a wild enemy on the way). */
+  const follow = (keys: Press[]) => {
+    for (const key of keys) {
+      if (key !== 'a' && !calm(state)) return;
+      press(key === 'a' ? { a: true } : { dir: key, pressed: key });
+    }
+  };
 
   while (!state.finished && presses < maxPresses) {
     // A menu is closed again, and so is a shop: the bot never buys, so the game is proven without spending a coin.
@@ -151,6 +179,7 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
 
     // Look for something not tried yet since the last bit of progress: here first, then through the doors.
     const key = progress(state);
+    known.add(key);
     const seen = new Set<string>();
     type Node = { map: string; at: Cell; first: Dir[] | null };
     const queue: Node[] = [{ map: state.map, at: state, first: null }];
@@ -168,6 +197,8 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
         if (!route) continue;
         if (object.trigger === 'interact') {
           if (tried.has(`${object.id}|${key}`)) continue;
+          // The wrong switch of a riddle would only put the others out again.
+          if (undoes(branchFor(object, state)?.do ?? [])) continue;
           plan = { route: node.first ?? route, talk: node.first ? null : object };
           break;
         }
@@ -182,6 +213,15 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
           const dir = route.at(-1)!;
           queue.push({ map: node.map, at: { x: at.x + DELTA[dir].dx, y: at.y + DELTA[dir].dy }, first: node.first ?? [...route, dir] });
         }
+      }
+    }
+
+    // Nothing new to walk to on this map, and it has a puzzle: look for presses that get somewhere new.
+    if (!plan?.talk && puzzling(here)) {
+      const keys = solve(quiet(world, here.id), state, (next) => calm(next) && !known.has(progress(next)));
+      if (keys) {
+        follow(keys);
+        continue;
       }
     }
 

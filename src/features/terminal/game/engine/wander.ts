@@ -75,7 +75,7 @@ export function stroll(
   return { ...state, clock, roam };
 }
 
-/** How far a stroller is along its step, 0 to 1, for the renderer. */
+/** How far a stroller (or a pushed thing) is along its step, 0 to 1, for the renderer. */
 export function strollProgress(roaming: Roaming, clock: number): number {
-  return Math.max(0, Math.min(1, (clock - roaming.at) / STROLL_TICKS));
+  return Math.max(0, Math.min(1, (clock - roaming.at) / (roaming.ticks ?? STROLL_TICKS)));
 }

@@ -28,6 +28,10 @@ export type Action =
   | { give: string; quiet?: true }
   | { take: string }
   | { flag: string }
+  /** Takes flags back (a riddle that starts over after a wrong answer). */
+  | { unflag: string[] }
+  /** Puts every pushed thing of this map back where the map put it (a reset lever). See engine/push.ts. */
+  | { reset: true }
   | { badge: string }
   | { heal: true }
   | { battle: string; win: Action[] }
@@ -73,6 +77,11 @@ export type GameObject = {
    * from where the map puts it, never onto a road. See wander.ts.
    */
   wander?: { radius: number; every: number };
+  /**
+   * Can be pushed: walking into it moves it one cell on when that cell is free, and the player steps after it.
+   * The text is what the status region calls it ("boulder"). See engine/push.ts.
+   */
+  push?: string;
 };
 
 export type TileDef = {
@@ -92,6 +101,12 @@ export type TileDef = {
    * onto it.
    */
   ledge?: Dir;
+  /** A pressure plate: a pushed thing can be left on it. Every plate of a map covered solves the map's `plates`. */
+  plate?: boolean;
+  /** Slippery: whoever steps onto it keeps going the same way until something stops them, or the ground does. */
+  slide?: boolean;
+  /** A light in a dark place: this many cells around it are lit, like around the player (a brazier). */
+  light?: number;
 };
 
 /** A named part of a map: a rectangle of cells. Walking into it shows its name, like walking onto another map does. */
@@ -118,6 +133,14 @@ export type GameMap = {
   dark?: number;
   /** Where a defeat on this map brings the player back to, whatever was the last place to rest (the cafe, for the town). */
   respawn?: Spot;
+  /**
+   * The puzzle of the pressure plates: once a pushed thing stands on every plate of the map, `flag` is set for
+   * good, `do` runs, and the pushed things stay where they are from then on. `cells` are the plates (parseMap
+   * finds them).
+   */
+  plates?: { flag: string; do: Action[]; cells: { x: number; y: number }[] };
+  /** The lights of a dark place (parseMap finds them: the tiles with `light`). */
+  lights?: { x: number; y: number; radius: number }[];
 };
 
 export type MoveDef = {
@@ -257,8 +280,9 @@ export type GameState = {
   /**
    * While walking: where the step started and how many ticks of it have passed. x and y are already the target.
    * `jump`: this step is a hop over a ledge, two cells long, and takes JUMP_TICKS instead of WALK_TICKS.
+   * `slide`: this step is part of a slide over slippery ground: nobody steered it, and the legs stand still.
    */
-  walk: { fromX: number; fromY: number; t: number; jump?: true } | null;
+  walk: { fromX: number; fromY: number; t: number; jump?: true; slide?: true } | null;
   hp: number;
   maxHp: number;
   /** 1 to `world.levels.max`, and the XP gathered so far. */
@@ -291,7 +315,10 @@ export type GameState = {
   finished: boolean;
   /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */
   clock: number;
-  /** Where the townsfolk who left their spot are now, by object id. `at` is the clock when the step began. */
+  /**
+   * Where the things that left their spot are now, by object id: the townsfolk who stroll, and what was pushed.
+   * `at` is the clock when the step began.
+   */
   roam: Record<string, Roaming>;
   /** A short note in the corner of the map (the star count after a find), shown until the clock reaches `until`. */
   notice: { text: string; until: number } | null;
@@ -304,8 +331,8 @@ export type GameState = {
   banner: { text: string; at: number; slide: boolean } | null;
 };
 
-/** `dir` is the way of the last step; `side` the last step sideways (animals drawn from the side keep it going up or down). */
-export type Roaming = { x: number; y: number; fromX: number; fromY: number; at: number; dir?: Dir; side?: 'left' | 'right' };
+/** `ticks` is how long the step takes when it is not a stroll (a push goes at walking pace). `dir` is the way of the last step; `side` the last step sideways (animals drawn from the side keep it going up or down). */
+export type Roaming = { x: number; y: number; fromX: number; fromY: number; at: number; dir?: Dir; side?: 'left' | 'right'; ticks?: number };
 
 /** Something worth telling a screen reader. */
 export type GameEvent = {
@@ -343,6 +370,11 @@ export type Cue =
   | 'bump'
   /** A hop over a ledge. */
   | 'jump'
+  /** A boulder is pushed a cell on; the player slides over slippery ground; a switch or a plate clicks; a gate opens. */
+  | 'push'
+  | 'slide'
+  | 'switch'
+  | 'gate'
   | 'heal'
   | 'hit'
   | 'hurt'
