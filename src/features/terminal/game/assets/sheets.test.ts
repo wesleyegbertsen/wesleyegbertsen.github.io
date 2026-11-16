@@ -107,6 +107,27 @@ describe('the sprite sheets', () => {
     expect(neck).toBeLessThanOrEqual(13);
   });
 
+  it('draw the rustle of the tall grass as the same tall grass, a little disturbed', () => {
+    const script = "import('./scripts/sprites/scenery.mjs').then(({ scenery }) => import('./scripts/sprites/tiles.mjs').then(({ tiles }) => console.log(JSON.stringify({ grass: tiles.tallgrass, a: scenery.rustle, b: scenery['rustle-b'] }))))";
+    const drawn = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { grass: string[]; a: string[]; b: string[] };
+    const whole = (rows: string[]) => (rows.length === 8 ? [...rows, ...rows].map((row) => row + row) : rows);
+    const grass = whole(drawn.grass).join('');
+    const shades = (pixels: string) => [...new Set(pixels)].sort().join('');
+    const count = (pixels: string, shade: string) => pixels.split(shade).length - 1;
+    for (const frame of [drawn.a, drawn.b]) {
+      const pixels = whole(frame).join('');
+      expect(pixels).toHaveLength(256);
+      // The same shades, no see-through holes, about the same number of dark blade pixels.
+      expect(shades(pixels)).toBe(shades(grass));
+      expect(Math.abs(count(pixels, '2') - count(grass, '2'))).toBeLessThanOrEqual(count(grass, '2') * 0.15);
+      // A few blades moved: some pixels differ, most do not.
+      const moved = [...pixels].filter((dot, i) => dot !== grass[i]).length;
+      expect(moved).toBeGreaterThanOrEqual(6);
+      expect(moved).toBeLessThanOrEqual(48);
+    }
+    expect(whole(drawn.a).join('')).not.toBe(whole(drawn.b).join(''));
+  });
+
   it('use four shades, lightest first', () => {
     expect(PALETTE).toHaveLength(4);
     const light = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);

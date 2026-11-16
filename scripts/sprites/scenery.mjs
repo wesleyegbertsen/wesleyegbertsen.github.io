@@ -540,45 +540,25 @@ const floatOver = (dy) => {
 };
 
 /**
- * Tall grass that was just walked through: over the tall grass, some blades bent flat (dark) and a few leaves
- * thrown up (light). The second picture: the leaves lower, settling. See-through elsewhere.
+ * Tall grass that was just walked through: the same tall grass, a little disturbed. The tips of the blades lean a
+ * pixel one way (the first picture) and then the other way (the second), and a pixel of leaf is thrown up over
+ * them, so it reads as the grass moving and not as another tile. Same shades, same blades.
  */
-const rustle = [
-  '................',
-  '...0........0...',
-  '..0.0......0.0..',
-  '................',
-  '.......0........',
-  '......0.0.......',
-  '................',
-  '..3333....3333..',
-  '.33..33..33..33.',
-  '................',
-  '................',
-  '...333....333...',
-  '..33..3..3..33..',
-  '................',
-  '................',
-  '................',
-];
-const rustleB = [
-  '................',
-  '................',
-  '................',
-  '....0........0..',
-  '...0.0......0.0.',
-  '................',
-  '........0.......',
-  '..3333.0.0.3333.',
-  '.33..33..33..33.',
-  '................',
-  '................',
-  '...333....333...',
-  '..33..3..3..33..',
-  '................',
-  '................',
-  '................',
-];
+const disturb = (dx, leaves) => {
+  const rows = full(tiles.tallgrass).map((row) => [...row]);
+  // The upper rows of each blade lean: each half of the tile is shifted by dx (it wraps round, like the pattern).
+  for (const y of [1, 2, 9, 10]) {
+    for (const half of [0, 8]) {
+      const part = rows[y].slice(half, half + 8);
+      const turned = part.map((_, x) => part[(x - dx + 8) % 8]);
+      rows[y].splice(half, 8, ...turned);
+    }
+  }
+  for (const [x, y] of leaves) rows[y][x] = '2';
+  return rows.map((row) => row.join(''));
+};
+const rustle = disturb(1, [[3, 0], [12, 8]]);
+const rustleB = disturb(-1, [[5, 0], [10, 8]]);
 
 /**
  * The rest at the cafe: a mug waiting on the tray (`mug`), and one poured and steaming (`mug-lit`); a sparkle
