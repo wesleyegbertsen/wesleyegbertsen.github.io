@@ -48,7 +48,7 @@ export const OUTDOORS: Record<string, TileDef> = {
   Y: { sprite: 'pine', solid: true },
   u: { sprite: 'bush', solid: true },
   h: { sprite: 'hedge', solid: true },
-  r: { sprite: 'rock', solid: true },
+  r: { sprite: 'rock', under: 'grass', solid: true },
   y: { sprite: 'boulder', under: 'shore', solid: true }, // a rock in the sand
   ';': { sprite: 'flowerbed', solid: true, animated: true },
   f: { sprite: 'fence', solid: true, join: true }, // joins its neighbours: runs across, up and down, corners and ends

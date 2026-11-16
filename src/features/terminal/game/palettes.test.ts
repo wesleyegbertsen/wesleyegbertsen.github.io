@@ -33,6 +33,12 @@ describe('the palettes of Game Boy Color mode', () => {
     expect(paletteOf('shade-2')).toBe('cave');
     expect(paletteOf('star')).toBe('gold');
     expect(paletteOf('fence-ns')).toBe('fence');
+    // Ledges and cliffs are brown earth, not grass; rocks are grey stone, not sand.
+    expect(paletteOf('ledge-left')).toBe('earth');
+    expect(paletteOf('ledge-right')).toBe('earth');
+    expect(paletteOf('cliff')).toBe('earth');
+    expect(paletteOf('rock')).toBe('stone');
+    expect(paletteOf('boulder')).toBe('stone');
     // Every palette is used by something.
     const used = new Set(SHEET_NAMES.map(paletteOf));
     for (const id of Object.keys(PALETTES)) if (id !== 'ui') expect(used, id).toContain(id);

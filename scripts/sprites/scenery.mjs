@@ -1340,7 +1340,8 @@ export const scenery = {
   bridge,
   pine,
   bush,
-  rock,
+  // Rocks and boulders are see-through around the stone: drawn on the ground of their cell (grass, sand, floor).
+  rock: cutOut(rock),
   boulder: cutOut(rock),
   ...fences,
   lamp,

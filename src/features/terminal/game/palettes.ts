@@ -13,11 +13,13 @@ import { PALETTE, sprites, tiles } from './assets/atlas.ts';
  *   checks the contrast).
  */
 
-export type PaletteId = 'fence' | 'grass' | 'flower' | 'water' | 'sand' | 'stone' | 'roof' | 'wood' | 'tech' | 'gold' | 'people' | 'cave' | 'foe' | 'ui';
+export type PaletteId = 'earth' | 'fence' | 'grass' | 'flower' | 'water' | 'sand' | 'stone' | 'roof' | 'wood' | 'tech' | 'gold' | 'people' | 'cave' | 'foe' | 'ui';
 export type Palette = readonly [string, string, string, string];
 
 export const PALETTES: Record<PaletteId, Palette> = {
   // A wooden fence standing in the grass: the light shade is the grass around it, the dark one the wood.
+  // A step in the ground or a rock face: a light lip, the grass around it (the light shade), brown earth, a dark foot.
+  earth: ['#f8ecc0', '#88d060', '#94582c', '#2a1408'],
   fence: ['#fff0d4', '#88d060', '#9a5a2c', '#24100a'],
   grass: ['#e8f8c8', '#88d060', '#307838', '#0c2410'],
   // Petals on grass: the light shade is the grass between them, the darkest the heart of a flower.
@@ -37,19 +39,22 @@ export const PALETTES: Record<PaletteId, Palette> = {
 
 /** Which palette a tile or sprite gets, by its name. The first rule that matches wins; see HOW TO EDIT. */
 export const RULES: [RegExp, PaletteId][] = [
+  // Ledges, cliffs and the mouth of the cave: brown earth in the green grass.
+  [/^(ledge-|cliff|cavemouth)/, 'earth'],
   // The dark of a cave and everything in it.
-  [/^shade-|^cave|^rubble|^stalagmite|^crack|^plate|^hole|^scratches|^notice|^cliff/, 'cave'],
+  [/^shade-|^cave|^rubble|^stalagmite|^crack|^plate|^hole|^scratches|^notice/, 'cave'],
+  // A rock or a boulder: grey stone, drawn see-through on whatever ground its cell has.
+  [/^(rock|boulder)$/, 'stone'],
   [/^(brazier|star|chest)/, 'gold'],
   [/^(ice|water|lily|duck|reeds|stones|jetty|float|fountain|well)/, 'water'],
   [/^fence/, 'fence'],
   [/^(flowers|flowerbed)/, 'flower'],
-  [/^(grass|tallgrass|tree|pine|bush|hedge|ledge-|plant)/, 'grass'],
-  [/^(shore|path|boulder|rock)$/, 'sand'],
+  [/^(grass|tallgrass|tree|pine|bush|hedge|plant)/, 'grass'],
+  [/^(shore|path)$/, 'sand'],
   [/^(roof|awning|canopy|shingle|slate|tin|flag|torii|mailbox)/, 'roof'],
   [/^(computer|server|cooler|coffee|crt|arcade|solder|telescope|kanji|flask|globe|lever|gate|lamp)/, 'tech'],
   [/^(planks|wood|desk|table|chair|sofa|workbench|crate|barrel|counter|bench|stall|bridge|rug|carpet|checker|floor|ladder|sign|mat|bookshelf|cupshelf|door-wood|plaque-workshop)/, 'wood'],
   [/^(wall|pane|door|brick|glass|column|stone|plaque|iwall|wallpane|poster|blackboard|clock|pegboard|whiteboard|void|cobble)/, 'stone'],
-  [/^(cavemouth)/, 'cave'],
   // The people and the animals: skin, hair, clothes.
   [/^(player|trainer|teacher|dev|maker|librarian|wesley|kid|elder|postman|gardener|barista|angler|dog|cat|bunny)/, 'people'],
   [/^boss$/, 'foe'],
