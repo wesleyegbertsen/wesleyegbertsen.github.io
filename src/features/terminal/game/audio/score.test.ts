@@ -136,8 +136,7 @@ describe('the scores of the game', () => {
     expect(lengths[0]).toBeGreaterThan(0);
     expect((track.loopFrom ?? 0) % 16).toBe(0);
     expect(track.loopFrom ?? 0).toBeLessThan(lengths[0]!);
-    // The piano's Moonlight Sonata is written one step per triplet eighth: its 42 is 56 quarter notes a minute.
-    expect(track.bpm).toBeGreaterThanOrEqual(_name === 'moonlight' ? 42 : 60);
+    expect(track.bpm).toBeGreaterThanOrEqual(60);
     expect(track.bpm).toBeLessThanOrEqual(200);
   });
 
