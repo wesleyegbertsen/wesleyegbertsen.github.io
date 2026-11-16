@@ -317,3 +317,34 @@ describe('the way a battle opens, heard', () => {
     }
   });
 });
+
+describe('the player piano, heard', () => {
+  it('replaces the tune of its room with the piece, and the tune comes back from its start when it stops', () => {
+    const pianoWorld: World = { ...world, music: { ...world.music!, piano: 'moonlight' } };
+    const made: FakeAudio[] = [];
+    const store = createSettingsStore(false);
+    const context = () => {
+      made.push(new FakeAudio({}));
+      return made.at(-1)!.as();
+    };
+    const { result } = renderHook(() => useGameSound({ world: pianoWorld, store, context }));
+    const audio = made.at(-1)!;
+    const pitches = (from: number) => audio.oscillators.slice(from).map((oscillator) => Math.round(oscillator.frequency.first ?? 0));
+    // The notes each voice starts with (a voice that starts with a rest has none at the start).
+    const firstOf = (track: string) =>
+      TRACKS[track]!.voices.map((voice) => voice.notes.trim().split(/\s+/)[0]!.split(':')[0]!).filter((token) => /^[A-G]/.test(token)).map((name) => Math.round(frequencyOf(name)));
+
+    act(() => void result.current.follow(inTown));
+    expect(pitches(0)).toEqual(expect.arrayContaining(firstOf('town')));
+    const town = audio.oscillators.slice();
+    // On: the piece, from its first notes; the town's tune is let go.
+    let from = audio.oscillators.length;
+    act(() => void expect(result.current.follow({ ...inTown, piano: { map: inTown.map, ticks: 100 } })).toBe('moonlight'));
+    expect(pitches(from)).toEqual(expect.arrayContaining(firstOf('moonlight')));
+    for (const oscillator of town) expect(oscillator.stopAt, 'the town tune stops').not.toBeNull();
+    // Off: the town's tune again, from its start.
+    from = audio.oscillators.length;
+    act(() => void expect(result.current.follow(inTown)).toBe('town'));
+    expect(pitches(from).slice(0, firstOf('town').length)).toEqual(expect.arrayContaining(firstOf('town')));
+  });
+});
