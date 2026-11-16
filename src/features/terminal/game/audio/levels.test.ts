@@ -1,4 +1,4 @@
-import { CRIES, EFFECTS, JINGLES, REST_TICKS, TRACKS } from '../content/music.ts';
+import { CRIES, EFFECTS, JINGLES, MUSIC, REST_TICKS, TRACKS } from '../content/music.ts';
 import { ENEMIES } from '../content/battles.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import { VOLUME_MAX } from '../settingsStore.ts';
@@ -44,9 +44,9 @@ function loudest(track: Track) {
 const ends = (tone: Tone) => (tone.at ?? 0) + tone.duration;
 const lengthOf = (effect: Effect) => Math.max(...effect.tones.map(ends));
 
-/** The most an effect adds up to at one moment: the tones that overlap, checked where each one starts. */
+/** The most an effect adds up to at one moment: the tones that overlap, checked where each one starts, times its gain. */
 function loudestOf(effect: Effect): number {
-  return Math.max(
+  return (effect.gain ?? 1) * Math.max(
     ...effect.tones.map((tone) => {
       const at = tone.at ?? 0;
       return effect.tones.filter((other) => (other.at ?? 0) <= at && at < ends(other)).reduce((sum, other) => sum + other.volume, 0);
@@ -85,9 +85,14 @@ describe('the level of every tune', () => {
 
   it('stays under full scale with the loudest tune and the two loudest effects all at once', () => {
     const tune = Math.max(...TRACK_ROWS.map((row) => row.peak));
-    const [first = 0, second = 0] = EFFECT_ROWS.map((row) => row.peak).sort((a, b) => b - a);
+    // A cry pauses the tune while it sounds (Effect.hush), so it never adds to a tune: it is counted with the two
+    // loudest other effects instead. Two cries never sound together: there is one enemy at a time.
+    const others = EFFECT_ROWS.filter((row) => !row.effect.hush).map((row) => row.peak).sort((a, b) => b - a);
+    const [first = 0, second = 0] = others;
     expect(first).toBeGreaterThan(0);
     expect((tune + first + second) * BUS * FULL).toBeLessThanOrEqual(1);
+    const cry = Math.max(...EFFECT_ROWS.filter((row) => row.effect.hush).map((row) => row.peak));
+    expect((cry + first + second) * BUS * FULL).toBeLessThanOrEqual(1);
   });
 });
 
@@ -241,5 +246,19 @@ describe('the cries of the monsters', () => {
       expect(seen.has(key), id).toBe(false);
       seen.add(key);
     }
+  });
+});
+
+describe('how loud a cry is', () => {
+  it('peaks at least as loud as the loudest battle tune, by a gain of its own; no other effect has one', () => {
+    const tunes = [MUSIC.wild, MUSIC.boss, ...Object.values(ENEMIES).flatMap((enemy) => (enemy.tune ? [enemy.tune] : []))];
+    const music = Math.max(...tunes.map((name) => loudest(TRACKS[name]!).peak));
+    for (const id of Object.keys(CRIES)) {
+      const cry = EFFECTS[`cry:${id}`]!;
+      expect(loudestOf(cry), id).toBeGreaterThanOrEqual(music);
+      // No louder than it needs to be: within a tenth of the music.
+      expect(loudestOf(cry), id).toBeLessThanOrEqual(music * 1.1);
+    }
+    for (const row of EFFECT_ROWS.filter((row) => !row.name.startsWith('cry:'))) expect(row.effect.gain, row.name).toBeUndefined();
   });
 });

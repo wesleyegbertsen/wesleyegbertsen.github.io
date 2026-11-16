@@ -40,8 +40,11 @@ export type AudioLike = {
 };
 
 export type Tone = { wave: Wave; at?: number; from: number; to?: number; duration: number; volume: number };
-/** `hush`: the tune pauses for so many seconds (a cry: its length), and carries on from where it was after it. */
-export type Effect = { tones: Tone[]; gap?: number; hush?: number };
+/**
+ * `hush`: the tune pauses for so many seconds (a cry: its length), and carries on from where it was after it.
+ * `gain`: every tone louder by this much (a cry, which stands up to the music); 1 when left out.
+ */
+export type Effect = { tones: Tone[]; gap?: number; hush?: number; gain?: number };
 
 export type Timer = { set(tick: () => void, ms: number): unknown; clear(id: unknown): void };
 
@@ -355,7 +358,7 @@ export function createSound(options: SoundOptions): Sound {
       if (last !== undefined && now - last < (effect.gap ?? 0)) return;
       lastPlayed.set(id, now);
       safely(() => {
-        for (const tone of effect.tones) sound(tone.wave, tone.from, tone.to, now + (tone.at ?? 0), tone.duration, tone.volume, effectBus!, false);
+        for (const tone of effect.tones) sound(tone.wave, tone.from, tone.to, now + (tone.at ?? 0), tone.duration, tone.volume * (effect.gain ?? 1), effectBus!, false);
       });
       if (effect.hush) hush(effect.hush);
     },

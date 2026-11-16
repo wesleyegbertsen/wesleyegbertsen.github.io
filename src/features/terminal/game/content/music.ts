@@ -491,6 +491,18 @@ export const CRIES: Record<string, Cry> = {
   outage: { wave: 'pulse', from: 200, to: 100, duration: 0.6, noise: 0.5 },
 };
 
+/**
+ * How loud a cry is at its peak: as loud as the loudest battle tune at its own (1.46, all its voices together), as
+ * a monster's cry is in Pokémon Gold. A tone is never written above half, so a cry gets there by a gain of its own.
+ * A test holds it between the battle tunes' peak and a tenth over it.
+ */
+const CRY_PEAK = 1.5;
+
+/** The most a list of tones adds up to at one moment: those that overlap, checked where each one starts. */
+function peakOf(tones: Tone[]): number {
+  return Math.max(...tones.map((tone) => tones.filter((other) => (other.at ?? 0) <= (tone.at ?? 0) && (tone.at ?? 0) < (other.at ?? 0) + other.duration).reduce((sum, other) => sum + other.volume, 0)));
+}
+
 /** A cry as an effect: the calls of the sweep (back and forth when it trills), the hiss under them, and the pause of the music. */
 function cryEffect(cry: Cry): Effect {
   const calls = cry.trill ?? 1;
@@ -501,7 +513,7 @@ function cryEffect(cry: Cry): Effect {
   });
   if (cry.noise !== undefined) tones.push({ wave: 'noise', at: 0, from: cry.noise, to: cry.noise, duration: cry.duration, volume: 0.15 });
   // The music pauses for the cry, as long as the cry is, and carries on after it.
-  return { tones, hush: cry.duration };
+  return { tones, hush: cry.duration, gain: CRY_PEAK / peakOf(tones) };
 }
 
 for (const [id, cry] of Object.entries(CRIES)) EFFECTS[`cry:${id}`] = cryEffect(cry);

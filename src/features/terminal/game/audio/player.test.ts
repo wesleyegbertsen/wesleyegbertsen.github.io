@@ -247,6 +247,16 @@ describe('the sound player', () => {
     expect(tune(audio.currentTime + 0.01)).toHaveLength(before);
   });
 
+  it("plays an effect's tones louder by its gain, and leaves an effect without one as it is written", () => {
+    const { audio, sound } = setup({}, { effects: { ...EFFECTS, loud: { tones: [{ wave: 'pulse', from: 600, duration: 0.2, volume: 0.25 }], gain: 3 } } });
+    sound.unlock();
+    sound.effect('loud');
+    sound.effect('beep');
+    const level = (pitch: number) => audio.oscillators.find((oscillator) => oscillator.frequency.first === pitch)!.out.gain.first;
+    expect(level(600)).toBeCloseTo(0.75, 9);
+    expect(level(880)).toBeCloseTo(0.2, 9);
+  });
+
   it('starts a tune asked for during a cry only when the cry is over, and pauses nothing while muted', () => {
     const { audio, sound } = setup();
     sound.unlock();
