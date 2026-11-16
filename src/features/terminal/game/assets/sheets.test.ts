@@ -142,7 +142,7 @@ describe('the sprite sheets', () => {
 
   it('swing the arms of the player with the walk: the walking frames differ from standing above the legs', () => {
     // The pixel rows of a character, mirrors included, straight from the definitions.
-    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, mirrored }) => { const rows = (name) => characters[name] ?? rows(mirrored[name]).map((row) => [...row].reverse().join('')); console.log(JSON.stringify(Object.fromEntries(['up', 'down', 'left', 'right'].flatMap((dir) => [0, 1, 2].map((frame) => ['player-' + dir + '-' + frame, rows('player-' + dir + '-' + frame)]).concat([1, 2].map((frame) => ['player-' + dir + '-' + frame + 's', rows('player-' + dir + '-' + frame + 's')])))))); })";
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, mirrored }) => { const rows = (name) => characters[name] ?? rows(mirrored[name]).map((row) => [...row].reverse().join('')); console.log(JSON.stringify(Object.fromEntries(['up', 'down', 'left', 'right'].flatMap((dir) => [0, 1, 2].map((frame) => ['player-' + dir + '-' + frame, rows('player-' + dir + '-' + frame)]).concat([1, 2].map((frame) => ['player-' + dir + '-' + frame + 's', characters['player-' + dir + '-' + frame + 's'] ?? (mirrored['player-' + dir + '-' + frame + 's'] ? 'mirrored' : undefined)])))))); })";
     const frames = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as Record<string, string[]>;
     // Rows 9 to 12 hold the shoulders, the arms and the hands; the legs are below.
     const arms = (name: string) => frames[name]!.slice(9, 13).join('/');
@@ -151,19 +151,12 @@ describe('the sprite sheets', () => {
       expect(arms(one), one).not.toBe(arms(standing));
       expect(arms(two), two).not.toBe(arms(standing));
       expect(arms(one), direction).not.toBe(arms(two));
-      // The head sways slowly, the same in every direction: in the walk pictures (-1, -2) the rows above the collar
-      // (0 to 7) are the standing head; in their twins (-1s, -2s), shown for two steps of four, the same head a pixel
-      // over, the same way in both, and everything from the collar down the same as the twin at rest. The head
-      // always touches the collar.
-      const shifted = (rows: string[], dx: number) => rows.slice(0, 8).map((row) => (dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
-      const sway = (name: string) => [-1, 0, 1].find((dx) => (dx === 0 ? frames[standing]!.slice(0, 8) : shifted(frames[standing]!, dx)).join('/') === frames[name]!.slice(0, 8).join('/'));
-      expect(sway(one), one).toBe(0);
-      expect(sway(two), two).toBe(0);
-      expect([-1, 1], `${one}s`).toContain(sway(`${one}s`));
-      expect(sway(`${two}s`), `${two}s`).toBe(sway(`${one}s`));
-      for (const name of [one, two]) expect(frames[`${name}s`]!.slice(8).join('/'), name).toBe(frames[name]!.slice(8).join('/'));
-      for (const name of [one, two, `${one}s`, `${two}s`]) {
-        expect(frames[name]![8], name).toBe(frames[standing]![8]);
+      // The head stays where it is in every walk picture, in every direction: the rows above the collar (0 to 8,
+      // the collar included) are the standing head, and the head touches the collar. No twins with a head moved over.
+      expect(frames[`${one}s`], one).toBeUndefined();
+      expect(frames[`${two}s`], two).toBeUndefined();
+      for (const name of [one, two]) {
+        expect(frames[name]!.slice(0, 9).join('/'), name).toBe(frames[standing]!.slice(0, 9).join('/'));
         const above = [...frames[name]![7]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
         const collar = [...frames[name]![8]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
         expect(above.some((x) => collar.includes(x)), `${name}: the head touches the collar`).toBe(true);
@@ -175,8 +168,7 @@ describe('the sprite sheets', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2'].map((name) => characters[name]))))";
     const [standing, forward, back] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[]];
     // The head and the torso stand still: down to the shoulders exactly the standing picture.
-    // The collar and the shoulders stay (the head sways: another test).
-    for (const frame of [forward, back]) expect(frame.slice(8, 10)).toEqual(standing.slice(8, 10));
+    for (const frame of [forward, back]) expect(frame.slice(0, 10)).toEqual(standing.slice(0, 10));
     const filled = (row: string) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [x]));
     const torso = { left: Math.min(...filled(standing[12]!)), right: Math.max(...filled(standing[12]!)) };
     // The arm: the light pixels in the torso rows. It overlaps the torso in both frames and reaches no further than
