@@ -398,6 +398,8 @@ export const PUZZLES: { name: string; from: Spot; needs: string[]; goal: { flag:
  * What Wesley says in the Contact Office, in his own voice. A DRAFT: rewrite it. `before` introduces each of the
  * three bosses (in the order of FINAL_BOSSES in battles.ts), `after` is said with the coffee once it is beaten.
  * `pay` is said after the third, right before he hands over REWARDS.finale coins (battles.ts); then `goodbye`.
+ * `again` is what he says when the player talks to him after the end (KEEP EXPLORING on the ending screen): then
+ * the contact details once more, and the ending screen again. No battle is fought twice.
  */
 export const FINALE = {
   welcome: (name: string, role: string) => [
@@ -417,6 +419,7 @@ export const FINALE = {
   ],
   pay: ['One more thing. Nobody works for free: here is your pay.'],
   goodbye: ['That is all of it. Thanks for walking through my career. Want to talk? This is how to reach me:'],
+  again: ['Still exploring? Take your time, the coffee is free. In case you lost my details:'],
 };
 
 /**
@@ -425,8 +428,11 @@ export const FINALE = {
  * the boss that won. The first battle of a talk gets the whole transition of a boss; the ones that follow it are
  * marked `quick` and get the short one.
  */
+/** Set when the game has ended once: from then on Wesley only says goodbye again. */
+export const FINALE_FLAG = 'finale';
+
 function lastFight(data: FsData): ObjectSpec['branches'] {
-  const goodbye: Action[] = [{ say: FINALE.pay }, { coins: REWARDS.finale }, { say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { ending: true }];
+  const goodbye: Action[] = [{ say: FINALE.pay }, { coins: REWARDS.finale }, { say: [...FINALE.goodbye, ...contactLines(data.profile)] }, { flag: FINALE_FLAG }, { ending: true }];
   const from = (round: number, quick = false): Action[] => {
     const enemy = FINAL_BOSSES[round];
     if (!enemy) return goodbye;
@@ -435,7 +441,9 @@ function lastFight(data: FsData): ObjectSpec['branches'] {
   };
   // The furthest round first: whoever is beaten stays beaten.
   const resumed = FINAL_BOSSES.map((enemy, round) => ({ when: { flag: `beat:${enemy}` }, do: [{ say: ['Back for more? Good.'] }, ...from(round + 1)] })).reverse();
-  return [...resumed, { do: [{ say: FINALE.welcome(data.profile.name, data.profile.role) }, ...from(0)] }];
+  // After the end: a line, the details again and the ending screen; never the fight again.
+  const after = { when: { flag: FINALE_FLAG }, do: [{ say: [...FINALE.again, ...contactLines(data.profile)] }, { ending: true }] satisfies Action[] };
+  return [after, ...resumed, { do: [{ say: FINALE.welcome(data.profile.name, data.profile.role) }, ...from(0)] }];
 }
 
 // --- the facts, as speech --------------------------------------------------------------------------------------

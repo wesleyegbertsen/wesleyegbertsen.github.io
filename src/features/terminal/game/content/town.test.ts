@@ -317,7 +317,8 @@ describe('the gold stars and the errands', () => {
 
   it('keeps the main path free of them: doors, bosses, badges and the ending only ask for main-path things', () => {
     const MAIN_ITEMS = ['coffee', 'diploma', 'keycard', 'librarycard'];
-    const mainFlag = (flag: string) => flag === 'keycard' || flag.startsWith('beat:') || flag.startsWith('chest:');
+    // `finale` is set by the end of the main path itself (Wesley says goodbye differently after it).
+    const mainFlag = (flag: string) => flag === 'keycard' || flag === 'finale' || flag.startsWith('beat:') || flag.startsWith('chest:');
     const fine = (cond: Cond | undefined) =>
       !cond ||
       ((cond.item === undefined || MAIN_ITEMS.includes(cond.item)) &&

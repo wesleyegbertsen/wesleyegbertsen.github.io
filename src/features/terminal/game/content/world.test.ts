@@ -258,6 +258,9 @@ describe('a whole playthrough', () => {
     // The DEX filled itself on the way (it gates nothing): every boss, and some of what lives in the grass.
     const seen = run.state.seen ?? [];
     for (const entry of world.dex!.filter((entry) => entry.boss)) expect(seen, entry.enemy).toContain(entry.enemy);
+    // ... the three of the last fight among them, met right before the ending: their pages can be opened after it.
+    for (const boss of ['interview', 'review', 'impostor']) expect(seen, boss).toContain(boss);
+    expect(run.state.flags.finale).toBe(true);
     expect(seen.length).toBeGreaterThan(world.dex!.filter((entry) => entry.boss).length);
   });
 
