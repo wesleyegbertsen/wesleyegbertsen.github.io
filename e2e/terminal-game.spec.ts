@@ -176,6 +176,8 @@ test.describe('the adventure in the terminal', () => {
   });
 
   test('can be played to the end, where the contact details are shown', async ({ page }) => {
+    // Two battles of the last fight are played with motion: every hit blinks for about a second (round eight).
+    test.setTimeout(120_000);
     const { pilot, errors } = await play(page);
     await pilot.start();
     const beat = async (boss: string) => {
