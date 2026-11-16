@@ -491,7 +491,7 @@ export const CRIES: Record<string, Cry> = {
   outage: { wave: 'pulse', from: 200, to: 100, duration: 0.6, noise: 0.5 },
 };
 
-/** A cry as an effect: the calls of the sweep (back and forth when it trills) and the hiss under them. */
+/** A cry as an effect: the calls of the sweep (back and forth when it trills), the hiss under them, and the pause of the music. */
 function cryEffect(cry: Cry): Effect {
   const calls = cry.trill ?? 1;
   const each = cry.duration / calls;
@@ -500,7 +500,8 @@ function cryEffect(cry: Cry): Effect {
     return { wave: cry.wave, at: i * each, from, to, duration: each * (calls > 1 ? 0.8 : 1), volume: cry.wave === 'triangle' ? 0.35 : 0.25 };
   });
   if (cry.noise !== undefined) tones.push({ wave: 'noise', at: 0, from: cry.noise, to: cry.noise, duration: cry.duration, volume: 0.15 });
-  return { tones };
+  // The music pauses for the cry, as long as the cry is, and carries on after it.
+  return { tones, hush: cry.duration };
 }
 
 for (const [id, cry] of Object.entries(CRIES)) EFFECTS[`cry:${id}`] = cryEffect(cry);

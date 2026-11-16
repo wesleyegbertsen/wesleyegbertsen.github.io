@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { FakeAudio, type FakeOptions } from './audio/fakeAudio.ts';
 import { frequencyOf } from './audio/score.ts';
-import { EFFECTS, TRACKS } from './content/music.ts';
+import { CRIES, EFFECTS, TRACKS } from './content/music.ts';
 import { initialGame } from './engine/engine.ts';
 import { play, testWorld } from './engine/testWorld.ts';
 import type { World } from './engine/types.ts';
@@ -254,5 +254,26 @@ describe('useGameSound', () => {
     const then = audio().sources.length;
     act(() => result.current.play(['levelup']));
     expect(audio().sources.length).toBeGreaterThan(then + 5);
+  });
+});
+
+describe('a cry in a battle', () => {
+  it('pauses the battle tune for the length of the cry (from its data), then the tune carries on', () => {
+    const { audio, result } = setup();
+    // In the tall grass: the battle tune starts with the battle, as it always did.
+    const battle = play(inTown, 'down', 'right');
+    expect(battle.battle).not.toBeNull();
+    act(() => void result.current.follow(battle));
+    const tune = (time: number) => audio().sounding(time).filter((source) => (source.bus as { to: unknown[] }).to.includes(audio().buses[0]));
+    expect(tune(0.1).length).toBeGreaterThan(0);
+    // A cry: as long as its entry in CRIES says, the tune is silent; then it sounds again.
+    audio().currentTime = 0.1;
+    // (The test world's rat has no cry of its own; the BUG's, from the game's CRIES, stands in.)
+    const length = CRIES.bug!.duration;
+    act(() => result.current.play(['cry:bug']));
+    for (let at = 0.1; at < 0.1 + length - 0.005; at += 0.02) expect(tune(at), `${at}`).toHaveLength(0);
+    expect(tune(0.1 + length + 0.01).length).toBeGreaterThan(0);
+    // And it is the same tune: nothing new was asked of the player.
+    expect(result.current.follow(battle)).toBe('battle');
   });
 });
