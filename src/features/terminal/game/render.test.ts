@@ -22,6 +22,8 @@ type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: 
 type Fill = { shade: string; x: number; y: number; w: number; h: number };
 
 const sheets = { tiles: 'tiles', sprites: 'sprites', font: 'font' } as unknown as Sheets;
+/** Where the text box of the screen starts (render.ts BOX_Y). */
+const BOX_Y_TEST = 104;
 
 /** A context that writes down what is drawn on it. */
 function recorder() {
@@ -1310,5 +1312,51 @@ describe('the trail on the ground where wild things hide', () => {
         }
       }
     }
+  });
+});
+
+describe('the DEX', () => {
+  const dexWorld: World = {
+    ...world,
+    enemies: { ...world.enemies, ghost: { ...world.enemies.rat!, name: 'GHOST' } },
+    dex: [
+      { enemy: 'rat', area: 'MEADOW', text: 'Nibbles the cables of the server room at night.' },
+      { enemy: 'ghost', area: 'MEADOW', text: 'Never seen.' },
+      { enemy: 'ogre', boss: true, text: 'Smashes.' },
+    ],
+  };
+  const there = (): GameState => ({ ...initialGame(dexWorld), scene: 'world', seen: ['rat'] });
+  const draw = (menu: NonNullable<GameState['menu']>, hud?: Hud) => drawn({ ...there(), menu }, hud, dexWorld);
+
+  it('lists every monster by number: the name once seen, ??? before; the cursor, and how many are seen', () => {
+    const { draws } = draw({ tab: 'dex', cursor: 1 });
+    expect([42, 52, 62].map((y) => textAt(draws, y))).toEqual(['1.RAT', '>2.???', '3.???']);
+    expect(textAt(draws, BOX_Y_TEST + 6)).toBe('SEEN1/3.Notseenyet.');
+    expect(textAt(draw({ tab: 'dex', cursor: 0 }).draws, BOX_Y_TEST + 6)).toBe('SEEN1/3.A:itspage.');
+  });
+
+  it('shows the page of a seen one: its battle picture, number and name, where it lives, the text, CRY and BACK', () => {
+    const page = draw({ tab: 'dex', cursor: 0, detail: { at: 0, focus: 0 } }).draws;
+    expect(spriteDraws(page, 'bug')).toEqual([expect.objectContaining({ x: 12, y: 24, w: 32, h: 32 })]);
+    expect(textAt(page, 8)).toBe('No.1RAT');
+    expect(textAt(page, 28)).toBe('MEADOW');
+    expect(textAt(page, 60)).toBe('Nibblesthecablesof');
+    expect(textAt(page, BOX_Y_TEST + 6)).toBe('>CRYBACK');
+    expect(textAt(draw({ tab: 'dex', cursor: 0, detail: { at: 0, focus: 1 } }).draws, BOX_Y_TEST + 6)).toBe('CRY>BACK');
+    // A boss says so instead of a place.
+    const boss = drawn({ ...there(), seen: ['rat', 'ogre'], menu: { tab: 'dex', cursor: 2, detail: { at: 2, focus: 0 } } }, undefined, dexWorld).draws;
+    expect(textAt(boss, 8)).toBe('No.3OGRE');
+    expect(textAt(boss, 28)).toBe('BOSS');
+    // Not the list behind it.
+    expect(textAt(page, 42)).not.toContain('???');
+  });
+
+  it('draws the page in colour in GBC: the picture in the enemies palette, the rest in the boxes colours', () => {
+    const ids = Object.keys(PALETTES) as PaletteId[];
+    const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;
+    const record = recorder();
+    drawGame(record.ctx, coloured, { ...there(), menu: { tab: 'dex', cursor: 0, detail: { at: 0, focus: 0 } } }, dexWorld, { muted: false, volume: 5, colour: true });
+    const [sx, sy] = sprites.bug;
+    expect(record.draws.find((draw) => draw.sx === sx && draw.sy === sy && draw.sheet.startsWith('sprites'))?.sheet).toBe(`sprites:${paletteOf('bug')}`);
   });
 });

@@ -354,8 +354,30 @@ function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): 
   return 'A switches between Game Boy and Game Boy Color.';
 }
 
+/**
+ * The page of a monster in the DEX: its number and name, its battle picture with where it lives (or BOSS) beside it,
+ * a few lines about it, and the two buttons, CRY and BACK, with the cursor on one.
+ */
+function drawDexPage(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const detail = state.menu!.detail!;
+  const entry = world.dex![detail.at]!;
+  const enemy = world.enemies[entry.enemy]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, `No.${detail.at + 1} ${enemy.name}`, 12, 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  drawSprite(ctx, sheets, enemy.sprite, 12, 24);
+  drawText(ctx, sheets, entry.area ?? 'BOSS', 52, 28);
+  drawLines(ctx, sheets, wrap(fold(entry.text), COLS).slice(0, 4), 8, 60);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  drawText(ctx, sheets, 'CRY', 18, BOX_Y + 6);
+  drawText(ctx, sheets, 'BACK', 66, BOX_Y + 6);
+  drawText(ctx, sheets, '>', detail.focus === 0 ? 10 : 58, BOX_Y + 6);
+  drawText(ctx, sheets, 'UP/DOWN: NEXT SEEN', 8, BOX_Y + 6 + LINE);
+}
+
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   const menu = state.menu!;
+  if (menu.detail && world.dex?.[menu.detail.at]) return drawDexPage(ctx, sheets, state, world);
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
   const tabs = { items: ['BAG', 8], badges: ['BADGES', 29], dex: ['DEX', 68], settings: ['SETTINGS', 89] } as const;
   for (const [name, x] of Object.values(tabs)) drawText(ctx, sheets, name, x, 6);
@@ -388,6 +410,19 @@ function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, 
     note = owned.length === 0 ? 'Your bag is empty.' : world.items[owned[cursor]!]!.description;
   } else if (menu.tab === 'settings') {
     note = drawSettings(ctx, sheets, menu.cursor, hud);
+  } else if (menu.tab === 'dex') {
+    // Every monster by its number: the name once seen, ??? before. A long list scrolls like the bag.
+    const dex = world.dex ?? [];
+    const seen = state.seen ?? [];
+    const cursor = Math.min(menu.cursor, dex.length - 1);
+    const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, dex.length - BAG_ROWS));
+    dex.slice(top, top + BAG_ROWS).forEach((entry, i) => {
+      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      drawText(ctx, sheets, `${top + i + 1}. ${seen.includes(entry.enemy) ? world.enemies[entry.enemy]!.name : '???'}`, 18, 42 + i * LINE);
+    });
+    const count = dex.filter((entry) => seen.includes(entry.enemy)).length;
+    const open = dex[cursor] && seen.includes(dex[cursor].enemy);
+    note = `SEEN ${count}/${dex.length}. ${open ? 'A: its page.' : 'Not seen yet.'}`;
   } else {
     world.badges.slice(0, BAG_ROWS).forEach((badge, i) => {
       const earned = state.badges.includes(badge.id);
