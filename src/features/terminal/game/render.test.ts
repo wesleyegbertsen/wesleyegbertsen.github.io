@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
-import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
+import { ENDING_HOLD, JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
 import { BLINK_TICKS, BREATH_TICKS, ENTER_TICKS, FAINT_TICKS, HIT_TICKS } from './engine/battle.ts';
@@ -1358,5 +1358,22 @@ describe('the DEX', () => {
     drawGame(record.ctx, coloured, { ...there(), menu: { tab: 'dex', cursor: 0, detail: { at: 0, focus: 0 } } }, dexWorld, { muted: false, volume: 5, colour: true });
     const [sx, sy] = sprites.bug;
     expect(record.draws.find((draw) => draw.sx === sx && draw.sy === sy && draw.sheet.startsWith('sprites'))?.sheet).toBe(`sprites:${paletteOf('bug')}`);
+  });
+});
+
+describe('the ending screen', () => {
+  it('shows KEEP EXPLORING once it has held, under the purse and above the scenery, in GB and GBC', () => {
+    const end = (ticks: number): GameState => ({ ...initialGame(world), scene: 'ending', finished: true, ending: { ticks } });
+    expect(textAt(drawn(end(ENDING_HOLD - 1)).draws, 102)).toBe('');
+    expect(textAt(drawn(end(ENDING_HOLD)).draws, 102)).toBe('>KEEPEXPLORING');
+    // An ending that needs all six lines gives up the sixth for it.
+    const long: World = { ...world, ending: ['THE END', ...Array.from({ length: 6 }, (_, i) => `Line ${i + 1}.`)] };
+    const full = drawn(end(ENDING_HOLD), undefined, long).draws;
+    expect([...new Set(full.filter((draw) => draw.sheet === 'font' && draw.y > 40).map((draw) => draw.y))]).toEqual([46, 56, 66, 76, 86, 102]);
+    const ids = Object.keys(PALETTES) as PaletteId[];
+    const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;
+    const record = recorder();
+    drawGame(record.ctx, coloured, end(ENDING_HOLD), world, { muted: false, volume: 5, colour: true });
+    expect(record.draws.filter((draw) => draw.y === 102 && draw.sheet.startsWith('font')).length).toBe('>KEEP EXPLORING'.replace(/ /g, '').length);
   });
 });

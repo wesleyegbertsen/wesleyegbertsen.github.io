@@ -160,7 +160,7 @@ export const ENDING_HOLD = 60;
 
 /** The ending screen: it holds, then A or Start is KEEP EXPLORING, back where the player stood with everything kept. */
 function stepEnding(state: GameState, input: Input, ctx: Ctx): GameState {
-  const ticks = state.ending?.ticks ?? ENDING_HOLD;
+  const ticks = state.ending?.ticks ?? 0;
   if (ticks < ENDING_HOLD) return { ...state, ending: { ticks: ticks + 1 } };
   if (!input.a && !input.start) return state;
   ctx.cues.push('confirm');

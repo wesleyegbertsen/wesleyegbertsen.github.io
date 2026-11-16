@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, enterOffset, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
-import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene, rustles } from './engine/engine.ts';
+import { ENDING_HOLD, JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene, rustles } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -694,10 +694,17 @@ function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World
   const [head = '', ...rest] = world.ending.map(fold);
   drawText(ctx, sheets, head, centred(head, 2), 14, false, 2);
   rect(ctx, 8, 36, SCREEN_W - 16, 2, DARK);
-  const lines = rest.flatMap((line) => wrap(line, COLS)).slice(0, 6);
+  // Once it has held for a moment, KEEP EXPLORING takes the place of a sixth line.
+  const keep = (state.ending?.ticks ?? 0) >= ENDING_HOLD;
+  const lines = rest.flatMap((line) => wrap(line, COLS)).slice(0, keep ? 5 : 6);
   lines.forEach((line, i) => drawText(ctx, sheets, line, centred(line), 46 + i * LINE));
   const purse = `Your purse: ${money(state.coins, world)}.`;
   if (Object.keys(world.shops).length > 0 && lines.length < 5) drawText(ctx, sheets, purse, centred(purse), 52 + lines.length * LINE);
+  // Once it has held for a moment: the way back into the world (A or Start), over the scenery.
+  if (keep) {
+    const keep = '> KEEP EXPLORING';
+    drawText(ctx, sheets, keep, centred(keep), 102);
+  }
   drawScenery(ctx, sheets, ['player-right-0', 'wesley', 'cat']);
 }
 
