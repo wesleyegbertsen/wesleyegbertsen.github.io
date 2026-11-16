@@ -98,6 +98,13 @@ describe('the music corner of the cafe', () => {
     expect([11, 12, 13, 14, 15].map((x) => cafe.tiles[cafe.cells[4]![x]!]!.sprite)).toEqual(['chair', 'chair', cafe.tiles[cafe.cells[4]![13]!]!.sprite, 'chair', 'chair']);
   });
 
+  it('has the plant of the old right wall against the bottom wall now, out of the way of the corner', () => {
+    expect(cafe.tiles[cafe.cells[7]![8]!]!.sprite).toBe('plant');
+    expect(cafe.tiles[cafe.cells[6]![8]!]!.solid).toBe(false);
+    // The opening into the corner, column 9 from row 3 to row 7, is free.
+    for (let y = 3; y <= 7; y++) expect(cafe.tiles[cafe.cells[y]![9]!]!.solid, `9,${y}`).toBe(false);
+  });
+
   it('has three people of music who talk, and nothing in the cafe is out of reach from the door', () => {
     const musicians = ['f', 'l', 'r'].map(object);
     expect(musicians.map((person) => [person.x, person.y])).toEqual([
