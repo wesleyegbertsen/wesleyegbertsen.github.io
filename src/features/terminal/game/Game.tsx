@@ -96,7 +96,8 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
   };
   const onFrame = (state: GameState) => {
     paint(state);
-    setFinished(state.finished);
+    // The contact lines show on the ending screen; KEEP EXPLORING brings the keys back (the game stays finished).
+    setFinished(state.scene === 'ending');
     const music = sound.follow(state) ?? '';
     const banner = bannerText(state);
     const transition = state.battle && state.battle.intro > 0 ? (state.battle.wild ? 'wild' : state.battle.quick ? 'quick' : 'boss') : '';
@@ -336,6 +337,12 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
                 {contact.map((line) => (
                   <div key={line}>{line}</div>
                 ))}
+                {/* No D-pad on the ending screen: this is its A, for KEEP EXPLORING. */}
+                {touch && (
+                  <button type="button" className={styles.keep} {...tap('a')}>
+                    Keep exploring
+                  </button>
+                )}
               </div>
             ) : touch ? (
               <div className={styles.controls}>

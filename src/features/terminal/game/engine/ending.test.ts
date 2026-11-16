@@ -1,4 +1,4 @@
-import { ENDING_HOLD, initialGame, step } from './engine.ts';
+import { ENDING_HOLD, initialGame, startsAgain, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState, type Input } from './types.ts';
 
@@ -44,5 +44,19 @@ describe('the ending screen', () => {
     // Talking to the host again ends it again, from the start of the hold.
     const again = play(kept, 'a', 'a');
     expect(again).toMatchObject({ scene: 'ending', ending: { ticks: 0 } });
+  });
+});
+
+describe('leaving and coming back', () => {
+  it('starts again only from the ending screen: a game that explores after the end is picked up like any other', () => {
+    expect(startsAgain(null)).toBe(true);
+    const end = ended();
+    expect(startsAgain(end)).toBe(true);
+    let state = end;
+    for (let i = 0; i < ENDING_HOLD; i++) state = tick(state).state;
+    const exploring = tick(state, { a: true }).state;
+    expect(exploring.finished).toBe(true);
+    expect(startsAgain(exploring)).toBe(false);
+    expect(startsAgain(play(initialGame(world), 'a', 'a'))).toBe(false);
   });
 });

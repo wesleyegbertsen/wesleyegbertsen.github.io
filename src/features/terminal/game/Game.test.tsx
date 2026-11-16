@@ -2,7 +2,7 @@ import { createRef } from 'react';
 import { FakeAudio } from './audio/fakeAudio.ts';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { initialGame } from './engine/engine.ts';
+import { ENDING_HOLD, initialGame } from './engine/engine.ts';
 import { play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import type { GameState, World } from './engine/types.ts';
 import { parseMap } from './engine/world.ts';
@@ -526,5 +526,31 @@ describe('Game', () => {
     expect(sound.colour()).toBe(false);
     expect(game).toHaveAttribute('data-mode', 'gb');
     expect(screen.getByRole('status')).toHaveTextContent('Game Boy mode');
+  });
+});
+
+describe('KEEP EXPLORING', () => {
+  /** On the ending screen in the test world, held long enough to take a press. */
+  const held = (): GameState => {
+    const talking = play(started(), 'right', 'right', 'right', 'a', 'a');
+    return { ...talking, ending: { ticks: ENDING_HOLD } };
+  };
+
+  it('goes back into the world with A: the keys come back in place of the contact lines', async () => {
+    const { game, user } = setup(held());
+    expect(game).toHaveAttribute('data-scene', 'ending');
+    expect(screen.getByText('Email: someone@example.com')).toBeInTheDocument();
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-scene', 'world');
+    expect(game).toHaveAttribute('data-finished', 'true');
+    expect(screen.queryByText('Email: someone@example.com')).toBeNull();
+    expect(screen.getByText('Walk')).toBeInTheDocument();
+  });
+
+  it('has a Keep exploring button under the contact lines on a touch screen, which does the same', async () => {
+    const { game, user } = setup(held(), true);
+    await user.click(screen.getByRole('button', { name: 'Keep exploring' }));
+    expect(game).toHaveAttribute('data-scene', 'world');
+    expect(screen.getByRole('button', { name: 'Up' })).toBeInTheDocument();
   });
 });

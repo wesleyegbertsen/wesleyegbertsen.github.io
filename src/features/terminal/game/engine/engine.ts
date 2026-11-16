@@ -158,6 +158,12 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
  */
 export const ENDING_HOLD = 60;
 
+/**
+ * Whether the command play starts a new game rather than picking this one up: when there is none, or it stands on the ending
+ * screen. A game that explores after the end (KEEP EXPLORING) is picked up like any other.
+ */
+export const startsAgain = (state: GameState | null | undefined): boolean => !state || state.scene === 'ending';
+
 /** The ending screen: it holds, then A or Start is KEEP EXPLORING, back where the player stood with everything kept. */
 function stepEnding(state: GameState, input: Input, ctx: Ctx): GameState {
   const ticks = state.ending?.ticks ?? 0;

@@ -13,7 +13,7 @@ import { careerLines, contactLines } from './content.ts';
 import type { Effect } from './commands.ts';
 import { buildFileSystem, displayPath } from './fs.ts';
 import { buildWorld } from './game/content/world.ts';
-import { initialGame } from './game/engine/engine.ts';
+import { initialGame, startsAgain } from './game/engine/engine.ts';
 import { Game } from './game/Game.tsx';
 import { useTerminalSession, type Entry } from './SessionContext.ts';
 import { execute, type Env } from './shell.ts';
@@ -102,7 +102,7 @@ export function Terminal() {
         matrix.cancel();
         // A finished game starts again; an unfinished one is picked up where it was left. The seed makes the
         // battles differ from visit to visit.
-        if (!progressRef.current || progressRef.current.finished) {
+        if (startsAgain(progressRef.current)) {
           progressRef.current = initialGame(world, Math.floor(Math.random() * 0x7fffffff));
         }
         setMode('game');
@@ -139,7 +139,7 @@ export function Terminal() {
   };
   // After the ending 'play' starts again from the title, so the line must not promise a continuation.
   const leave = () =>
-    leaveGame([progressRef.current?.finished ? "Left the game. Type 'play' to play again." : "Left the game. Type 'play' to carry on."]);
+    leaveGame([progressRef.current && startsAgain(progressRef.current) ? "Left the game. Type 'play' to play again." : "Left the game. Type 'play' to carry on."]);
   const skip = () => leaveGame(careerLines(data));
 
   const recall = (direction: 'up' | 'down') => {
