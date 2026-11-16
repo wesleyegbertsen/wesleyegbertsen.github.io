@@ -2,6 +2,7 @@ import type { FsData } from '../../fs.ts';
 import type { World } from '../engine/types.ts';
 import { parseMap } from '../engine/world.ts';
 import { BADGES, BASE_HP, COLLECT, ECONOMY, ENEMIES, FALLBACK_MOVE, HP_PER_BADGE, ITEMS, LEARN, LEVELS, MOVES, PLAYER_MOVES, SHOPS, STAMP, START_ITEMS } from './battles.ts';
+import { DEX } from './dex.ts';
 import { MUSIC } from './music.ts';
 import { HINTS, buildMaps, countCollectibles, ending, intro } from './story.ts';
 
@@ -36,6 +37,7 @@ export function buildWorld(data: FsData): World {
       { item: COLLECT, total: countCollectibles(specs, COLLECT), label: 'STARS', mark: '*', icon: 'star-mini' },
       { item: STAMP, total: countCollectibles(specs, STAMP), label: 'STAMPS', mark: '#' },
     ],
+    dex: DEX,
     music: MUSIC,
   };
 }

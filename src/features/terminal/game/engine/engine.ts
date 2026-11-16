@@ -194,8 +194,55 @@ export function restScene(state: GameState): { mugs: number; sparkle: boolean; h
 }
 
 /** The tabs of the Start menu, in order; left and right go round. */
-export const MENU_TABS = ['items', 'badges', 'settings'] as const;
-const TAB_NAMES = { items: 'Bag', badges: 'Badges', settings: 'Settings. Sound, volume, screen and mode.' };
+export const MENU_TABS = ['items', 'badges', 'dex', 'settings'] as const;
+const TAB_NAMES = { items: 'Bag', badges: 'Badges', dex: 'Dex', settings: 'Settings. Sound, volume, screen and mode.' };
+
+/** A row of the DEX as the status region says it: the number, and the name once seen. */
+export function dexRow(state: GameState, world: World, at: number): string {
+  const entry = world.dex?.[at];
+  if (!entry) return '';
+  const seen = state.seen?.includes(entry.enemy);
+  return `${at + 1}. ${seen ? world.enemies[entry.enemy]!.name : 'Not seen yet'}`;
+}
+
+/** The page of a monster in the DEX as the status region says it. */
+function dexPage(world: World, at: number): string {
+  const entry = world.dex![at]!;
+  return `No. ${at + 1} ${world.enemies[entry.enemy]!.name}. ${entry.area ?? 'BOSS'}. ${entry.text} Left and right: CRY or BACK. Up and down: the next one.`;
+}
+
+/** The page of a monster open in the DEX: its two buttons, the next one seen up or down, and back to the list. */
+function stepDexPage(state: GameState, input: Input, ctx: Ctx): GameState {
+  const menu = state.menu!;
+  const detail = menu.detail!;
+  const dex = ctx.world.dex ?? [];
+  if (input.b || (input.a && detail.focus === 1)) {
+    ctx.cues.push('cancel');
+    ctx.events.push({ kind: 'menu', text: dexRow(state, ctx.world, detail.at) });
+    return { ...state, menu: { tab: 'dex', cursor: detail.at } };
+  }
+  if (input.a) {
+    ctx.cues.push(`cry:${dex[detail.at]!.enemy}`);
+    return state;
+  }
+  if (input.pressed === 'left' || input.pressed === 'right') {
+    const focus = input.pressed === 'left' ? 0 : 1;
+    if (focus === detail.focus) return state;
+    ctx.cues.push('cursor');
+    ctx.events.push({ kind: 'menu', text: focus === 0 ? 'Cry' : 'Back' });
+    return { ...state, menu: { ...menu, detail: { ...detail, focus } } };
+  }
+  if (input.pressed === 'up' || input.pressed === 'down') {
+    const way = input.pressed === 'up' ? -1 : 1;
+    let at = detail.at + way;
+    while (at >= 0 && at < dex.length && !state.seen?.includes(dex[at]!.enemy)) at += way;
+    if (at < 0 || at >= dex.length) return state;
+    ctx.cues.push('cursor');
+    ctx.events.push({ kind: 'menu', text: dexPage(ctx.world, at) });
+    return { ...state, menu: { tab: 'dex', cursor: at, detail: { at, focus: 0 } } };
+  }
+  return state;
+}
 const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.', mode: 'Mode. A switches between Game Boy and Game Boy Color.' };
 
 /** A move in a few words, for the offer of a new one: on the screen and in the status region. */
@@ -258,10 +305,11 @@ function stepLearn(state: GameState, input: Input, ctx: Ctx): GameState {
 function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
   const { world } = ctx;
   const menu = state.menu!;
-  if (input.b || input.start) {
+  if (input.start || (input.b && !menu.detail)) {
     ctx.cues.push('cancel');
     return { ...state, menu: null };
   }
+  if (menu.detail) return stepDexPage(state, input, ctx);
   // The settings. The game itself does not know how loud it is or what the screen looks like: it only says what
   // was asked for ("quieter", "louder", "sound", "screen"), and whoever plays the sound and draws the screen acts.
   const setting = menu.tab === 'settings' ? SETTINGS[menu.cursor] : undefined;
@@ -277,13 +325,26 @@ function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
     return { ...state, menu: { tab, cursor: 0 } };
   }
   const owned = ownedItems(state, world);
-  const count = menu.tab === 'items' ? owned.length : menu.tab === 'badges' ? world.badges.length : SETTINGS.length;
+  const count = menu.tab === 'items' ? owned.length : menu.tab === 'badges' ? world.badges.length : menu.tab === 'dex' ? (world.dex?.length ?? 0) : SETTINGS.length;
   if (input.pressed === 'up' || input.pressed === 'down') {
     const cursor = Math.max(0, Math.min(count - 1, menu.cursor + (input.pressed === 'up' ? -1 : 1)));
     if (cursor === menu.cursor) return state;
     ctx.cues.push('cursor');
     if (menu.tab === 'settings') ctx.events.push({ kind: 'menu', text: SETTING_NAMES[SETTINGS[cursor]!] });
+    if (menu.tab === 'dex') ctx.events.push({ kind: 'menu', text: dexRow(state, world, cursor) });
     return { ...state, menu: { ...menu, cursor } };
+  }
+  // A in the DEX: the page of a monster seen, a bump on one not seen yet.
+  if (menu.tab === 'dex') {
+    const entry = world.dex?.[menu.cursor];
+    if (!input.a || !entry) return state;
+    if (!state.seen?.includes(entry.enemy)) {
+      ctx.cues.push('bump');
+      return state;
+    }
+    ctx.cues.push('confirm');
+    ctx.events.push({ kind: 'menu', text: dexPage(world, menu.cursor) });
+    return { ...state, menu: { ...menu, detail: { at: menu.cursor, focus: 0 } } };
   }
   if (setting) {
     if (input.a && setting !== 'volume') ctx.cues.push(setting);

@@ -357,7 +357,7 @@ function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): 
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   const menu = state.menu!;
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
-  const tabs = { items: ['BAG', 10], badges: ['BADGES', 38], settings: ['SETTINGS', 84] } as const;
+  const tabs = { items: ['BAG', 8], badges: ['BADGES', 29], dex: ['DEX', 68], settings: ['SETTINGS', 89] } as const;
   for (const [name, x] of Object.values(tabs)) drawText(ctx, sheets, name, x, 6);
   rect(ctx, tabs[menu.tab][1], 15, tabs[menu.tab][0].length * FONT.cellW - 1, 1, DARKEST);
   drawText(ctx, sheets, '<>', 140, 6);

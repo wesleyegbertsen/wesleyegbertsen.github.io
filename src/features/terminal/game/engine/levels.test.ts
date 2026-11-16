@@ -295,13 +295,16 @@ describe('a prize that lasts and a door that asks for a level', () => {
 
 describe('the settings of the Start menu', () => {
   const bag = () => playIn(testWorld, { ...started(testWorld), items: { coffee: 1, key: 1 } }, 'start');
-  const settings = () => playIn(testWorld, bag(), 'right', 'right');
+  const settings = () => playIn(testWorld, bag(), 'left');
 
-  it('is the third tab: left and right go round the tabs, and say which one it is', () => {
+  it('is the last tab, after the DEX: left and right go round the tabs, and say which one it is', () => {
     const badges = press(testWorld, bag(), { pressed: 'right' });
     expect(badges.state.menu).toEqual({ tab: 'badges', cursor: 0 });
     expect(badges.events).toEqual([{ kind: 'menu', text: 'Badges' }]);
-    const third = press(testWorld, badges.state, { pressed: 'right' });
+    const dex = press(testWorld, badges.state, { pressed: 'right' });
+    expect(dex.state.menu).toEqual({ tab: 'dex', cursor: 0 });
+    expect(dex.events).toEqual([{ kind: 'menu', text: 'Dex' }]);
+    const third = press(testWorld, dex.state, { pressed: 'right' });
     expect(third.state.menu).toEqual({ tab: 'settings', cursor: 0 });
     expect(third.events).toEqual([{ kind: 'menu', text: 'Settings. Sound, volume, screen and mode.' }]);
     expect(third.cues).toEqual(['cursor']);
@@ -342,7 +345,7 @@ describe('the settings of the Start menu', () => {
     const screen = press(testWorld, playIn(testWorld, settings(), 'down', 'down'), { a: true });
     expect(screen.cues).toEqual(['screen']);
     expect(press(testWorld, settings(), { pressed: 'right' }).state.menu?.tab).toBe('items');
-    expect(press(testWorld, playIn(testWorld, settings(), 'down', 'down'), { pressed: 'left' }).state.menu?.tab).toBe('badges');
+    expect(press(testWorld, playIn(testWorld, settings(), 'down', 'down'), { pressed: 'left' }).state.menu?.tab).toBe('dex');
     // B and Start still close the menu from there.
     expect(press(testWorld, settings(), { b: true }).state.menu).toBeNull();
     expect(press(testWorld, settings(), { start: true }).state.menu).toBeNull();

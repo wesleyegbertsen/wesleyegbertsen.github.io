@@ -241,6 +241,8 @@ export type World = {
   ending: string[];
   /** The things to collect, counted on the Start menu: the item and how many of it the maps hide. */
   collect?: Collect[];
+  /** The DEX on the Start menu: every monster in the order of the list (content/dex.ts). */
+  dex?: DexEntry[];
   /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
   music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
 };
@@ -249,6 +251,9 @@ export type World = {
  * `label` is the word on the Start menu, `mark` the sign before the count in the corner note. `icon` is a small
  * picture (8 by 8, a name on the sheets) drawn in the place of the mark, and before the label on the menu.
  */
+/** A monster in the DEX: what its page says, and where it lives (a region of the world), or that it is a boss. */
+export type DexEntry = { enemy: string; text: string; area?: string; boss?: true };
+
 export type Collect = { item: string; total: number; label: string; mark: string; icon?: string };
 
 export type Levels = {
@@ -268,8 +273,11 @@ export type Levels = {
 };
 
 export type Dialogue = { pages: string[][]; page: number; shown: number };
-/** The Start menu: the bag, the badge case and the settings. */
-export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
+/**
+ * The Start menu: the bag, the badge case, the DEX and the settings. `detail` is the page of a monster open in the
+ * DEX: its row (`at`) and the button under the cursor (0 CRY, 1 BACK).
+ */
+export type Menu = { tab: 'items' | 'badges' | 'dex' | 'settings'; cursor: number; detail?: { at: number; focus: 0 | 1 } };
 /** The rows of the settings tab, in order. */
 export const SETTINGS = ['sound', 'volume', 'screen', 'mode'] as const;
 /**
@@ -347,6 +355,8 @@ export type GameState = {
   items: Record<string, number>;
   flags: Record<string, true>;
   badges: string[];
+  /** The monsters met in a battle (enemy ids, in the order met): the DEX shows them, the rest are ???. */
+  seen?: string[];
   dialogue: Dialogue | null;
   /** Actions still to run, once the open dialogue or battle is over. */
   script: Action[];

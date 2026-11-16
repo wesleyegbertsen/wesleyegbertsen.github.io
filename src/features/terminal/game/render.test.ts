@@ -563,12 +563,13 @@ describe('the Start menu', () => {
   const there = (): GameState => ({ ...initialGame(shop), scene: 'world' });
   const on: Hud = { muted: false, volume: 5, lcd: true };
 
-  it('names its three tabs and underlines the open one', () => {
-    const tab = (name: 'items' | 'badges' | 'settings') => drawn({ ...there(), menu: { tab: name, cursor: 0 } }, on, shop);
-    expect(textAt(tab('items').draws, 6)).toBe('BAGBADGESSETTINGS<>');
-    expect(tab('items').fills).toContainEqual({ shade: PALETTE[3], x: 10, y: 15, w: 17, h: 1 });
-    expect(tab('badges').fills).toContainEqual({ shade: PALETTE[3], x: 38, y: 15, w: 35, h: 1 });
-    expect(tab('settings').fills).toContainEqual({ shade: PALETTE[3], x: 84, y: 15, w: 47, h: 1 });
+  it('names its four tabs and underlines the open one', () => {
+    const tab = (name: 'items' | 'badges' | 'dex' | 'settings') => drawn({ ...there(), menu: { tab: name, cursor: 0 } }, on, shop);
+    expect(textAt(tab('items').draws, 6)).toBe('BAGBADGESDEXSETTINGS<>');
+    expect(tab('items').fills).toContainEqual({ shade: PALETTE[3], x: 8, y: 15, w: 17, h: 1 });
+    expect(tab('badges').fills).toContainEqual({ shade: PALETTE[3], x: 29, y: 15, w: 35, h: 1 });
+    expect(tab('dex').fills).toContainEqual({ shade: PALETTE[3], x: 68, y: 15, w: 17, h: 1 });
+    expect(tab('settings').fills).toContainEqual({ shade: PALETTE[3], x: 89, y: 15, w: 47, h: 1 });
   });
 
   it('counts the things to collect at its foot, on the bag and the badges', () => {

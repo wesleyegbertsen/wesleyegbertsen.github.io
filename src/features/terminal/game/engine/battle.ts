@@ -26,6 +26,13 @@ type Ctx = { world: World; events: GameEvent[]; cues: Cue[]; instant: boolean };
 const LOW = 0.25;
 const BLIP_EVERY = 3;
 
+/** The enemy is in place: it cries, and the DEX has it from now on. */
+function cry(state: GameState, enemy: string, ctx: Ctx): GameState {
+  ctx.cues.push(`cry:${enemy}`);
+  const seen = state.seen ?? [];
+  return seen.includes(enemy) ? state : { ...state, seen: [...seen, enemy] };
+}
+
 /** Shows a list of lines one by one. The first one appears (and takes effect) at once. */
 function show(state: GameState, battle: Battle, steps: BattleStep[], ctx: Ctx): GameState {
   const folded = steps.map((step) => ({ ...step, text: fold(step.text) }));
@@ -174,8 +181,7 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
   // The line is told (and its sound asked for) at once; on the screen it waits for the transition.
   const shown = show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : quick ? 'round' : 'showdown' }], ctx);
   // With reduced motion there is no way in: the enemy is there at once, and so is its cry.
-  if (ctx.instant) ctx.cues.push(`cry:${enemyId}`);
-  return shown;
+  return ctx.instant ? cry(shown, enemyId, ctx) : shown;
 }
 
 type Choice = { move: MoveDef; id?: string } | { item: string };
@@ -302,10 +308,7 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?:
   // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
   if (battle.intro > 0) {
     // With reduced motion the enemy is in place at once, and calls out.
-    if (ctx.instant) {
-      ctx.cues.push(`cry:${battle.enemy}`);
-      return { ...state, battle: { ...battle, intro: 0 } };
-    }
+    if (ctx.instant) return cry({ ...state, battle: { ...battle, intro: 0 } }, battle.enemy, ctx);
     // The way in is over on this tick: the battle screen is up (and its tune), and the enemy starts to come in.
     if (battle.intro === 1) return { ...state, battle: { ...battle, intro: 0, enter: ENTER_TICKS } };
     return { ...state, battle: { ...battle, intro: battle.intro - 1 } };
@@ -313,8 +316,8 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?:
   // The enemy comes in, tick by tick: the text and the menus wait, a press does nothing. In place, it calls out.
   if (battle.enter) {
     const enter = ctx.instant ? 0 : battle.enter - 1;
-    if (enter === 0) ctx.cues.push(`cry:${battle.enemy}`);
-    return { ...state, battle: { ...battle, enter: enter || undefined } };
+    const next = { ...state, battle: { ...battle, enter: enter || undefined } };
+    return enter === 0 ? cry(next, battle.enemy, ctx) : next;
   }
   if (!ctx.instant && !battle.hit && !battle.faint && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
 
