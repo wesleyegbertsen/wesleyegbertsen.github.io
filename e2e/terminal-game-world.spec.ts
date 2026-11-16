@@ -157,7 +157,7 @@ test.describe('the settings', () => {
     await pilot.press('right');
     await expect(game(page)).toHaveAttribute('data-menu', 'settings');
     await expect(game(page)).toHaveAttribute('data-row', 'sound');
-    await expect(status(page)).toHaveText('Settings. Sound, volume and screen.');
+    await expect(status(page)).toHaveText('Settings. Sound, volume, screen and mode.');
     await pilot.press('a');
     await expect(game(page)).toHaveAttribute('data-sound', 'off');
     await expect(status(page)).toHaveText('Sound off');
@@ -224,6 +224,66 @@ test.describe('the settings', () => {
     await pilot.press('a');
     await expect(lcd).toHaveCount(1);
     await expect(status(page)).toHaveText('LCD look on');
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('Game Boy Color mode', () => {
+  /** The colours on the screen, and how many of them are the four greens of the Game Boy. */
+  const colours = (page: Page) =>
+    canvas(page).evaluate((el) => {
+      const { data } = (el as HTMLCanvasElement).getContext('2d')!.getImageData(0, 0, 160, 144);
+      const greens = new Set(['224,248,208', '136,192,112', '52,104,86', '8,24,32']);
+      const seen = new Set<string>();
+      let green = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+        seen.add(key);
+        if (greens.has(key)) green++;
+      }
+      return { count: seen.size, green, all: data.length / 4 };
+    });
+
+  test('is switched on the fourth row of the Settings tab: the picture turns to colour and the console to a Game Boy Color', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    const storage = await page.evaluate(() => Object.keys(localStorage).sort());
+    await pilot.start();
+    const shell = game(page).locator('[data-wide]');
+    await expect(game(page)).toHaveAttribute('data-mode', 'gb');
+    await expect(shell).toHaveAttribute('data-mode', 'gb');
+    const before = await colours(page);
+    expect(before.green).toBe(before.all);
+    const body = await shell.evaluate((el) => getComputedStyle(el).backgroundImage + getComputedStyle(el).backgroundColor);
+
+    await pilot.press('start');
+    await pilot.press('left');
+    for (let i = 0; i < 3; i++) await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-row', 'mode');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-mode', 'gbc');
+    await expect(shell).toHaveAttribute('data-mode', 'gbc');
+    await expect(status(page)).toHaveText('Game Boy Color mode');
+    await expect(shell).toContainText('COLOR');
+    // The body of the console is another colour now: purple plastic instead of grey.
+    expect(await shell.evaluate((el) => getComputedStyle(el).backgroundImage + getComputedStyle(el).backgroundColor)).not.toBe(body);
+    await pilot.press('b');
+    await expect(game(page)).toHaveAttribute('data-menu', '');
+    // The map in colour: none of the four greens left, and more than four colours.
+    await expect.poll(async () => (await colours(page)).green).toBe(0);
+    expect((await colours(page)).count).toBeGreaterThan(4);
+    // The LCD look still lies over it.
+    await expect(page.getByTestId('lcd')).toHaveCount(1);
+
+    // And back.
+    await pilot.press('start');
+    await pilot.press('left');
+    for (let i = 0; i < 3; i++) await pilot.press('down');
+    await pilot.press('a');
+    await expect(game(page)).toHaveAttribute('data-mode', 'gb');
+    await pilot.press('b');
+    await expect.poll(async () => (await colours(page)).green).toBe(before.all);
+    // In memory only.
+    expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual(storage);
     expect(errors).toEqual([]);
   });
 });

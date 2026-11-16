@@ -265,7 +265,7 @@ export type Dialogue = { pages: string[][]; page: number; shown: number };
 /** The Start menu: the bag, the badge case and the settings. */
 export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
 /** The rows of the settings tab, in order. */
-export const SETTINGS = ['sound', 'volume', 'screen'] as const;
+export const SETTINGS = ['sound', 'volume', 'screen', 'mode'] as const;
 /** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
 export type Learn = { move: string; cursor: number };
 /**
@@ -424,10 +424,11 @@ export type Cue =
   /** Walking off the edge of a map onto the next one, and going into or out of a cave: not doors. */
   | 'path'
   | 'cave'
-  /** The settings of the Start menu: the game turns the sound down or up a step, switches it, or switches the LCD look. */
+  /** The settings of the Start menu: the game turns the sound down or up a step, switches it, switches the LCD look, or switches between Game Boy and Game Boy Color. */
   | 'quieter'
   | 'louder'
   | 'sound'
-  | 'screen';
+  | 'screen'
+  | 'mode';
 
 export type Result = { state: GameState; events: GameEvent[]; cues: Cue[] };

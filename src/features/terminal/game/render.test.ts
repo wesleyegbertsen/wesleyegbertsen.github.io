@@ -6,6 +6,7 @@ import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
+import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
 import { FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
 import { fitScale, layout } from './scale.ts';
 
@@ -653,21 +654,24 @@ describe('the Start menu', () => {
     expect([42, 52, 62, 72].map((y) => textAt(case4, y))).toEqual(['>*DEGREEBADGE', '*CAREERBADGE', '*MAKERBADGE', '*SKILLBADGE']);
   });
 
-  it('shows the settings: the sound, the volume wheel and the look of the screen, with the cursor on one', () => {
+  it('shows the settings: the sound, the volume wheel, the look of the screen and the mode, with the cursor on one', () => {
     const settings = (cursor: number, hud: Hud = on) => drawn({ ...there(), menu: { tab: 'settings' as const, cursor } }, hud, shop);
     const first = settings(0);
-    // Three rows with room between them: fourteen pixels apart.
+    // Four rows with room between them: twelve pixels apart, the last above what was collected (94).
     expect(textAt(first.draws, 46)).toBe('>SOUNDON');
-    expect(textAt(first.draws, 60)).toBe('VOLUME50%');
-    expect(textAt(first.draws, 74)).toBe('SCREENLCD');
+    expect(textAt(first.draws, 58)).toBe('VOLUME50%');
+    expect(textAt(first.draws, 70)).toBe('SCREENLCD');
+    expect(textAt(first.draws, 82)).toBe('MODEGB');
+    expect(textAt(settings(3, { ...on, colour: true }).draws, 82)).toBe('>MODEGBC');
+    expect(textAt(settings(3).draws, 110)).toBe('AswitchesbetweenGame');
     expect(textAt(first.draws, 110)).toBe('Aswitchesthesoundoff');
-    expect(textAt(settings(1).draws, 60)).toBe('>VOLUME50%');
+    expect(textAt(settings(1).draws, 58)).toBe('>VOLUME50%');
     expect(textAt(settings(1).draws, 110)).toBe('Leftandrightchange');
-    expect(textAt(settings(2).draws, 74)).toBe('>SCREENLCD');
+    expect(textAt(settings(2).draws, 70)).toBe('>SCREENLCD');
     expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 46)).toBe('>SOUNDOFF');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 74)).toBe('SCREENPLAIN');
-    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 60)).toBe('>VOLUME100%');
-    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 60)).toBe('>VOLUME0%');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 70)).toBe('SCREENPLAIN');
+    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 58)).toBe('>VOLUME100%');
+    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 58)).toBe('>VOLUME0%');
     // What each row is for fits the three lines of the note: the last word is on the screen.
     expect([120, 130].map((y) => textAt(settings(0).draws, y))).toEqual(['oron.SodoestheM', 'key.']);
     expect(textAt(settings(1).draws, 120)).toBe('thevolume.');
@@ -676,7 +680,7 @@ describe('the Start menu', () => {
 
   it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
     const steps = (hud: Hud) =>
-      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 59 && fill.y <= 67);
+      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 57 && fill.y <= 65);
     const half = steps({ muted: false, volume: 5 });
     expect(half).toHaveLength(VOLUME_STEPS);
     const filled = half.filter((fill) => fill.shade === PALETTE[3]);
@@ -1035,5 +1039,37 @@ describe('levels on the screen', () => {
     const swapped = { ...play(initialGame(levelWorld, 7), 'a', 'a'), moves: ['hit', 'zap'], pp: { hit: 2, zap: 3 } };
     const moves = playIn(levelWorld, swapped, 'down', 'right', 'a', 'a');
     expect(textAt(drawn(moves, undefined, levelWorld).draws, 111)).toBe('ZAP3/3');
+  });
+});
+
+describe('Game Boy Color mode', () => {
+  const ids = Object.keys(PALETTES) as PaletteId[];
+  const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;
+  const paint = (state: GameState, hud: Hud) => {
+    const record = recorder();
+    drawGame(record.ctx, coloured, state, world, hud);
+    return record;
+  };
+
+  it('draws every tile and sprite from the copy of its sheet in its palette, and the text in the colours of the boxes', () => {
+    const { draws } = paint(started(), { muted: false, volume: 5, colour: true });
+    expect(draws.length).toBeGreaterThan(20);
+    for (const draw of draws) expect(draw.sheet, draw.sheet).toMatch(/^(tiles|sprites|font):/);
+    const [fx, fy] = tiles.floor;
+    expect(draws.find((draw) => draw.sx === fx && draw.sy === fy && draw.sheet.startsWith('tiles'))?.sheet).toBe(`tiles:${paletteOf('floor')}`);
+    expect(spriteDraws(draws.map((draw) => ({ ...draw, sheet: draw.sheet.split(':')[0]! })), 'player-down-0')).toHaveLength(1);
+    expect(draws.filter((draw) => draw.sheet.startsWith('sprites:')).every((draw) => draw.sheet === 'sprites:people' || draw.sheet === 'sprites:foe')).toBe(true);
+  });
+
+  it('fills the boxes, bars and the dark with colours, and goes back to the four greens when it is switched off', () => {
+    const talking = { ...started(), dialogue: { pages: [['Hello.']], page: 0, shown: 6 } };
+    const colour = paint(talking, { muted: false, volume: 5, colour: true }).fills;
+    expect(colour.every((fill) => [...Object.values(PALETTES).flat()].includes(fill.shade))).toBe(true);
+    expect(colour.some((fill) => fill.shade === PALETTES.ui[3])).toBe(true);
+    const plain = paint(talking, { muted: false, volume: 5, colour: false });
+    expect(plain.fills.every((fill) => (PALETTE as readonly string[]).includes(fill.shade))).toBe(true);
+    expect(plain.draws.every((draw) => !draw.sheet.includes(':'))).toBe(true);
+    // Without the coloured copies (they are made in the page), colour mode draws the greens: never nothing.
+    expect(drawn(talking, { muted: false, volume: 5, colour: true }).draws.every((draw) => !draw.sheet.includes(':'))).toBe(true);
   });
 });

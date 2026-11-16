@@ -400,7 +400,7 @@ describe('Game', () => {
     await user.keyboard('p{ArrowLeft}');
     expect(game).toHaveAttribute('data-menu', 'settings');
     expect(game).toHaveAttribute('data-row', 'sound');
-    expect(status).toHaveTextContent('Settings. Sound, volume and screen.');
+    expect(status).toHaveTextContent('Settings. Sound, volume, screen and mode.');
     await user.keyboard('{ArrowDown}');
     expect(game).toHaveAttribute('data-row', 'volume');
     expect(status).toHaveTextContent('Volume. Left and right change it.');
@@ -491,5 +491,27 @@ describe('Game', () => {
     await user.keyboard('z');
     expect(screen.getByTestId('lcd')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('LCD look on');
+  });
+
+  it('switches between Game Boy and Game Boy Color from the settings: the console follows, in memory only', async () => {
+    const { game, sound, user } = setup(started());
+    const shell = () => game.querySelector('[data-wide]')!;
+    expect(game).toHaveAttribute('data-mode', 'gb');
+    expect(shell()).toHaveAttribute('data-mode', 'gb');
+    expect(shell()).toHaveTextContent('CAREER QUEST');
+    expect(shell().textContent).not.toMatch(/COLOR/);
+    await user.keyboard('p{ArrowLeft}{ArrowDown}{ArrowDown}{ArrowDown}');
+    expect(game).toHaveAttribute('data-row', 'mode');
+    expect(screen.getByRole('status')).toHaveTextContent('Mode. A switches between Game Boy and Game Boy Color.');
+    await user.keyboard('z');
+    expect(sound.colour()).toBe(true);
+    expect(game).toHaveAttribute('data-mode', 'gbc');
+    expect(shell()).toHaveAttribute('data-mode', 'gbc');
+    expect(shell().textContent).toMatch(/CAREER QUEST\s*COLOR/);
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
+    await user.keyboard('z');
+    expect(sound.colour()).toBe(false);
+    expect(game).toHaveAttribute('data-mode', 'gb');
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy mode');
   });
 });

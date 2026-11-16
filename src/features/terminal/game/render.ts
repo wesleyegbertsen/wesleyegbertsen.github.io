@@ -10,24 +10,38 @@ import { curtainOf, type Curtain } from './engine/transition.ts';
 import { SETTINGS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
+import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
 
 /** The Game Boy's screen, in pixels. */
 export const SCREEN_W = 160;
 export const SCREEN_H = 144;
 
 /** The three sheets, loaded. */
-export type Sheets = { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource };
+export type Sheets = {
+  tiles: CanvasImageSource;
+  sprites: CanvasImageSource;
+  font: CanvasImageSource;
+  /** The same three, recoloured once per palette of Game Boy Color mode (palettes.ts). Made when colour is first asked for. */
+  colour?: Record<PaletteId, { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }>;
+};
 
 /** What the renderer needs of a 2D context, so a test can hand it a recorder. */
 export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
 
 /** What is shown on top of the game that is not part of its state: whether the sound is off, and how loud it is (0 to 10). */
-export type Hud = { muted: boolean; volume: number; lcd?: boolean };
+export type Hud = { muted: boolean; volume: number; lcd?: boolean; /** Game Boy Color mode: drawn in colour. */ colour?: boolean };
 
 /** The volume wheel has this many steps. */
 export const VOLUME_STEPS = 10;
 
-const [LIGHTEST, , DARK, DARKEST] = PALETTE;
+/**
+ * The shades of the boxes, bars and lines: the Game Boy's own, or in colour mode those of the `ui` palette. Set at
+ * the start of every drawGame, with the sheets to draw from (`tint`, null for the Game Boy).
+ */
+let [LIGHTEST, , DARK, DARKEST] = PALETTE as readonly [string, string, string, string];
+let tint: Sheets['colour'] | null = null;
+/** The darkest shade of the dark in a cave. */
+let NIGHT = PALETTE[3] as string;
 const LINE = 10;
 const BOX_Y = 104;
 /** The height of the note in the corner and of the label with the name of a place. */
@@ -45,7 +59,7 @@ const BAG_ROWS = 5;
 const COLLECT_Y = 94;
 /** The settings: where the first row is, and how far apart they are. */
 const SETTINGS_Y = 46;
-const SETTINGS_LINE = 14;
+const SETTINGS_LINE = 12;
 /** The most coins the menu has room to show beside the energy: four digits. The purse itself has no limit. */
 const COINS_SHOWN = 9999;
 /** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
@@ -76,7 +90,7 @@ export function drawText(ctx: Painter, sheets: Sheets, text: string, x: number, 
     const index = (code >= first && code <= last ? code : 63) - first;
     if (index === 0) return;
     ctx.drawImage(
-      sheets.font,
+      tint ? tint.ui.font : sheets.font,
       (index % cols) * cellW,
       Math.floor(index / cols) * cellH + (light ? lightY : 0),
       cellW,
@@ -113,10 +127,10 @@ export function facingSprite(sprite: string, object: GameObject, state: GameStat
 function drawSprite(ctx: Painter, sheets: Sheets, name: string, x: number, y: number, scale = 1) {
   if (Object.hasOwn(sprites, name)) {
     const [sx, sy, w, h] = sprites[name as keyof typeof sprites];
-    ctx.drawImage(sheets.sprites, sx, sy, w, h, x, y, w * scale, h * scale);
+    ctx.drawImage(tint ? tint[paletteOf(name)].sprites : sheets.sprites, sx, sy, w, h, x, y, w * scale, h * scale);
   } else if (Object.hasOwn(tiles, name)) {
     const [sx, sy] = tiles[name as keyof typeof tiles];
-    ctx.drawImage(sheets.tiles, sx, sy, TILE, TILE, x, y, TILE * scale, TILE * scale);
+    ctx.drawImage(tint ? tint[paletteOf(name)].tiles : sheets.tiles, sx, sy, TILE, TILE, x, y, TILE * scale, TILE * scale);
   }
 }
 
@@ -220,7 +234,7 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
       for (let cx = Math.floor(camX / TILE); cx * TILE < camX + SCREEN_W; cx++) {
         const dim = lit(cx, cy, px / TILE, py / TILE, map.dark, map.lights);
         if (dim === 0) continue;
-        if (dim === 3) rect(ctx, cx * TILE - camX, cy * TILE - camY, TILE, TILE, DARKEST);
+        if (dim === 3) rect(ctx, cx * TILE - camX, cy * TILE - camY, TILE, TILE, NIGHT);
         else drawSprite(ctx, sheets, SHADES[dim], cx * TILE - camX, cy * TILE - camY);
       }
     }
@@ -287,15 +301,18 @@ function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): 
   drawText(ctx, sheets, 'SOUND', 18, row('sound'));
   drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
   drawText(ctx, sheets, 'SCREEN', 18, row('screen'));
+  drawText(ctx, sheets, 'MODE', 18, row('mode'));
   if (hud) {
     drawText(ctx, sheets, hud.muted ? 'OFF' : 'ON', 64, row('sound'));
     drawVolume(ctx, 64, row('volume') - 1, hud);
     drawText(ctx, sheets, `${hud.volume * 10}%`, 110, row('volume'));
     drawText(ctx, sheets, hud.lcd === false ? 'PLAIN' : 'LCD', 64, row('screen'));
+    drawText(ctx, sheets, hud.colour ? 'GBC' : 'GB', 64, row('mode'));
   }
   if (at === 'sound') return 'A switches the sound off or on. So does the M key.';
   if (at === 'volume') return 'Left and right change the volume.';
-  return 'A switches the LCD look: a pixel grid, as on the real thing.';
+  if (at === 'screen') return 'A switches the LCD look: a pixel grid, as on the real thing.';
+  return 'A switches between Game Boy and Game Boy Color.';
 }
 
 function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
@@ -553,6 +570,10 @@ function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World
 /** Draws the whole screen for a state: the map, or a battle, with the menu and the text box on top. */
 export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   ctx.imageSmoothingEnabled = false;
+  // Game Boy Color: every picture from the copy of its sheet in its palette, the boxes and lines in the `ui` one.
+  tint = hud?.colour && sheets.colour ? sheets.colour : null;
+  [LIGHTEST, , DARK, DARKEST] = (tint ? PALETTES.ui : PALETTE) as readonly [string, string, string, string];
+  NIGHT = (tint ? PALETTES.cave : PALETTE)[3];
   if (state.scene === 'title') {
     drawTitle(ctx, sheets, world);
     if (hud) drawSpeaker(ctx, hud.muted);

@@ -73,4 +73,19 @@ describe('the settings store', () => {
     expect(store.lcd()).toBe(false);
     expect(heard).toHaveBeenCalledTimes(1);
   });
+
+  it('starts as a Game Boy, switches to a Game Boy Color, tells its listeners, and writes nothing to storage', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    const store = createSettingsStore();
+    expect(store.colour()).toBe(false);
+    const heard = vi.fn();
+    store.subscribe(heard);
+    store.setColour(false);
+    expect(heard).not.toHaveBeenCalled();
+    store.setColour(true);
+    expect(store.colour()).toBe(true);
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
 });

@@ -23,8 +23,26 @@
   overflow: hidden;
 }
 
-/* The Game Boy's body. The paddings and sizes below are mirrored by CHROME and UNDER in scale.ts: change both. */
+/*
+ * The Game Boy's body. The paddings and sizes below are mirrored by CHROME and UNDER in scale.ts: change both.
+ * Its colours are custom properties, so the Game Boy Color mode (data-mode="gbc", set from the Settings tab of the
+ * game) only swaps them: a translucent purple body, a darker bezel, coloured buttons and its own name plate.
+ */
 .console {
+  --shell: #c9c7bd;
+  --shell-hi: #e4e2da;
+  --shell-lo: #a09e94;
+  --ink: #2b2d42;
+  --rule: #8f8d84;
+  --bezel: #53566a;
+  --brand: #33358a;
+  --led: #c8102e;
+  --pad: #2b2c36;
+  --small: #7d7f8c;
+  --small-off: #a3a5b0;
+  --ab: #9a2257;
+  --ab-ink: #f6dce7;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -35,11 +53,49 @@
   height: 100%;
   padding: 6px 8px;
   border-radius: 10px 10px 34px 10px;
-  background: #c9c7bd;
+  background: var(--shell);
   box-shadow:
-    inset 0 2px 0 #e4e2da,
-    inset 0 -3px 0 #a09e94;
-  color: #2b2d42;
+    inset 0 2px 0 var(--shell-hi),
+    inset 0 -3px 0 var(--shell-lo);
+  color: var(--ink);
+}
+
+/* Game Boy Color: see-through purple plastic, the light falling in from the top left. */
+.console[data-mode='gbc'] {
+  --shell: linear-gradient(150deg, rgb(150 110 230 / 0.92), rgb(96 58 176 / 0.9) 60%, rgb(70 40 140 / 0.92));
+  --shell-hi: rgb(214 196 255 / 0.8);
+  --shell-lo: rgb(40 18 92 / 0.7);
+  --ink: #f6f2ff;
+  --rule: rgb(230 220 255 / 0.45);
+  --bezel: #2a2b3d;
+  --brand: #f6f2ff;
+  --led: #2fd35a;
+  --pad: #1d1c2b;
+  --small: #4a3a7a;
+  --small-off: #7b6fa3;
+  --ab: #1f1d33;
+  --ab-ink: #f0e8ff;
+}
+
+/* The name plate of the colour one: each letter of COLOR in its own colour, as on the real thing. */
+.colourName > span:nth-child(1) {
+  color: #ff5a6e;
+}
+
+.colourName > span:nth-child(2) {
+  color: #c79bff;
+}
+
+.colourName > span:nth-child(3) {
+  color: #63e08a;
+}
+
+.colourName > span:nth-child(4) {
+  color: #5ab8ff;
+}
+
+.colourName > span:nth-child(5) {
+  color: #ffd84a;
 }
 
 .console[data-wide='true'] {
@@ -55,7 +111,7 @@
   flex: 0 0 auto;
   padding: 6px;
   border-radius: 8px 8px 22px 8px;
-  background: #53566a;
+  background: var(--bezel);
   line-height: 0;
 }
 
@@ -145,7 +201,7 @@
   width: 64px;
   height: 40px;
   margin-right: 6px;
-  background: repeating-linear-gradient(115deg, transparent 0 6px, #a09e94 6px 9px);
+  background: repeating-linear-gradient(115deg, transparent 0 6px, var(--shell-lo) 6px 9px);
   border-radius: 4px;
   content: '';
 }
@@ -155,7 +211,7 @@
   align-items: center;
   gap: 0.4rem;
   height: 14px;
-  color: #33358a;
+  color: var(--brand);
   font-size: 0.65rem;
   font-style: italic;
   font-weight: 700;
@@ -167,7 +223,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #c8102e;
+  background: var(--led);
 }
 
 /* The keyboard, for devices without the on-screen buttons. */
@@ -184,7 +240,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0 0.5rem;
-  border-bottom: 1px dotted #8f8d84;
+  border-bottom: 1px dotted var(--rule);
 }
 
 .keys dt {
@@ -259,13 +315,13 @@
 /* The middle of the cross. */
 .dpad::before {
   grid-area: 2 / 2;
-  background: #2b2c36;
+  background: var(--pad);
   content: '';
 }
 
 .dpad button {
   position: relative;
-  background: #2b2c36;
+  background: var(--pad);
 }
 
 .up {
@@ -298,7 +354,7 @@
 
 /* The Sound button, while the sound is off. */
 .small button[data-off='true'] {
-  background: #a3a5b0;
+  background: var(--small-off);
   text-decoration: line-through;
 }
 
@@ -307,7 +363,7 @@
   min-width: 50px;
   min-height: 32px;
   border-radius: 999px;
-  background: #7d7f8c;
+  background: var(--small);
   color: #fff;
   font-size: 0.6rem;
   font-weight: 700;
@@ -339,8 +395,8 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: #9a2257;
-  color: #f6dce7;
+  background: var(--ab);
+  color: var(--ab-ink);
   font-weight: 700;
 }
 

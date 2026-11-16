@@ -1,5 +1,6 @@
 /**
- * The settings of the game: whether its sound is off, how loud it is, and whether the screen has its LCD look. A tiny store that lives in the terminal's session, beside
+ * The settings of the game: whether its sound is off, how loud it is, whether the screen has its LCD look, and
+ * whether it is a Game Boy or a Game Boy Color. A tiny store that lives in the terminal's session, beside
  * the game's progress: in memory only, so the choices outlast leaving the game and visiting another page, and a
  * reload starts with the sound on at half volume again. Nothing is written to storage.
  */
@@ -14,6 +15,9 @@ export type SettingsStore = {
   /** Whether the screen has its LCD look (a pixel grid over the picture). On at the start. */
   lcd(): boolean;
   setLcd(on: boolean): void;
+  /** Whether the game runs as a Game Boy Color: in colour, in a coloured console. Off (a Game Boy) at the start. */
+  colour(): boolean;
+  setColour(on: boolean): void;
   /** Calls `listener` after every change; returns how to stop. */
   subscribe(listener: () => void): () => void;
 };
@@ -26,6 +30,7 @@ export function createSettingsStore(muted = false, volume = VOLUME_START): Setti
   let off = muted;
   let step = volume;
   let grid = true;
+  let colours = false;
   const listeners = new Set<() => void>();
   const tell = () => listeners.forEach((listener) => listener());
   return {
@@ -46,6 +51,12 @@ export function createSettingsStore(muted = false, volume = VOLUME_START): Setti
     setLcd(next) {
       if (next === grid) return;
       grid = next;
+      tell();
+    },
+    colour: () => colours,
+    setColour(next) {
+      if (next === colours) return;
+      colours = next;
       tell();
     },
     subscribe(listener) {

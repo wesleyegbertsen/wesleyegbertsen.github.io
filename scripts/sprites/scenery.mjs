@@ -172,24 +172,25 @@ const fencePiece = (sides) => {
     for (let y = from; y <= to; y++) {
       put(6, y, '3');
       put(7, y, '0');
-      put(8, y, '1');
+      put(8, y, '2');
       put(9, y, '3');
     }
   };
   if (sides.includes('n')) plank(0, 2);
   if (sides.includes('s')) plank(13, 15);
-  // The post: a cap with a light top, the wood lit from the left, a shadow at its foot.
+  // The post: a cap with a light top, the wood (the dark shade, so it is brown in colour) lit from the left, a
+  // shadow at its foot.
   const post = [
     '3333',
     '3003',
-    '3013',
-    '3013',
-    '3013',
-    '3013',
-    '3013',
-    '3013',
-    '3113',
-    '3123',
+    '3023',
+    '3023',
+    '3023',
+    '3023',
+    '3023',
+    '3023',
+    '3223',
+    '3223',
     '3333',
   ];
   post.forEach((row, y) => [...row].forEach((v, x) => put(6 + x, 2 + y, v)));

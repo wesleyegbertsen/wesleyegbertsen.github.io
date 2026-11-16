@@ -276,20 +276,24 @@ describe('the settings of the Start menu', () => {
     expect(badges.events).toEqual([{ kind: 'menu', text: 'Badges' }]);
     const third = press(testWorld, badges.state, { pressed: 'right' });
     expect(third.state.menu).toEqual({ tab: 'settings', cursor: 0 });
-    expect(third.events).toEqual([{ kind: 'menu', text: 'Settings. Sound, volume and screen.' }]);
+    expect(third.events).toEqual([{ kind: 'menu', text: 'Settings. Sound, volume, screen and mode.' }]);
     expect(third.cues).toEqual(['cursor']);
     expect(press(testWorld, third.state, { pressed: 'right' }).state.menu).toEqual({ tab: 'items', cursor: 0 });
     expect(press(testWorld, bag(), { pressed: 'left' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 
-  it('has three rows, sound, volume and screen, and reads them out as the cursor moves', () => {
-    expect(SETTINGS).toEqual(['sound', 'volume', 'screen']);
+  it('has four rows, sound, volume, screen and mode, and reads them out as the cursor moves', () => {
+    expect(SETTINGS).toEqual(['sound', 'volume', 'screen', 'mode']);
     const volume = press(testWorld, settings(), { pressed: 'down' });
     expect(volume.state.menu).toEqual({ tab: 'settings', cursor: 1 });
     expect(volume.events).toEqual([{ kind: 'menu', text: 'Volume. Left and right change it.' }]);
     const screen = press(testWorld, volume.state, { pressed: 'down' });
     expect(screen.events).toEqual([{ kind: 'menu', text: 'Screen. A switches the LCD look.' }]);
-    expect(press(testWorld, screen.state, { pressed: 'down' }).state).toBe(screen.state);
+    const mode = press(testWorld, screen.state, { pressed: 'down' });
+    expect(mode.events).toEqual([{ kind: 'menu', text: 'Mode. A switches between Game Boy and Game Boy Color.' }]);
+    // A on it asks for the other mode; whoever draws the screen switches it.
+    expect(press(testWorld, mode.state, { a: true }).cues).toEqual(['mode']);
+    expect(press(testWorld, mode.state, { pressed: 'down' }).state).toBe(mode.state);
     expect(press(testWorld, settings(), { pressed: 'up' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 

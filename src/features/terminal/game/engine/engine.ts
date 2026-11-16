@@ -179,8 +179,8 @@ function stepDialogue(state: GameState, input: Input, ctx: Ctx): GameState {
 
 /** The tabs of the Start menu, in order; left and right go round. */
 export const MENU_TABS = ['items', 'badges', 'settings'] as const;
-const TAB_NAMES = { items: 'Bag', badges: 'Badges', settings: 'Settings. Sound, volume and screen.' };
-const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.' };
+const TAB_NAMES = { items: 'Bag', badges: 'Badges', settings: 'Settings. Sound, volume, screen and mode.' };
+const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.', mode: 'Mode. A switches between Game Boy and Game Boy Color.' };
 
 /** A move in a few words, for the offer of a new one: on the screen and in the status region. */
 export function describeMove(move: MoveDef): string {
