@@ -7,7 +7,8 @@ import { skills } from '../../../../data/skills.ts';
 import { routeTo } from '../engine/bot.ts';
 import { initialGame } from '../engine/engine.ts';
 import type { GameState } from '../engine/types.ts';
-import { MUSIC, TRACKS } from './music.ts';
+import { TRACKS } from './music.ts';
+import { PIECES } from './pieces.ts';
 import { buildWorld } from './world.ts';
 
 /** The summed volume of the voices that sound at each step (as in audio/levels.test.ts). */
@@ -19,10 +20,10 @@ const peakOf = (name: string) => {
 };
 
 describe('the Moonlight Sonata on the player piano of the cafe', () => {
-  const piece = TRACKS[MUSIC.piano!]!;
+  const piece = TRACKS.moonlight!;
 
-  it('is the piano tune of the world, played once', () => {
-    expect(MUSIC.piano).toBe('moonlight');
+  it('is a piece of the player piano, played once', () => {
+    expect(PIECES.map((entry) => entry.track)).toContain('moonlight');
     expect(piece.loop).toBe(false);
   });
 
@@ -66,10 +67,6 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
 describe('the player piano in the cafe', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const cafe = world.maps.cafe!;
-
-  it('knows how long the piece is, in ticks of the game', () => {
-    expect(MUSIC.pianoTicks).toBe(Math.round(flatten(TRACKS.moonlight!).length * 60));
-  });
 
   it('stands on the right wall, in the pocket between the table and the plant, and starts and stops the piece', () => {
     const piano = cafe.objects.find((object) => object.id === 'cafe:k')!;

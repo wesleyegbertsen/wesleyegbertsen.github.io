@@ -1,5 +1,5 @@
 import type { Effect, Tone } from '../audio/player.ts';
-import { flatten, type Track, type Wave } from '../audio/score.ts';
+import type { Track, Wave } from '../audio/score.ts';
 import type { Cue, World } from '../engine/types.ts';
 
 /**
@@ -230,7 +230,7 @@ export const TRACKS: Record<string, Track> = {
    * accidentals (B#1, G3 natural), not the key signature. The triplets are one voice (where the left hand takes them
    * over too), the bass another (the lowest note of the left hand; one voice is one line, so its octaves are one
    * note), the melody the third. `pluck` makes every note die away from its start, like a piano. It plays once
-   * (MUSIC.piano); content/piano.test.ts holds the score's notes bar by bar.
+   * (an entry in content/pieces.ts); content/piano.test.ts holds the score's notes bar by bar.
    */
   moonlight: {
     bpm: 168,
@@ -400,9 +400,6 @@ export const MUSIC: NonNullable<World['music']> = {
   victory: 'victory',
   indoors: 'indoors',
   maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', deep: 'cave', cafe: 'cafe' },
-  // The player piano in the cafe, while it plays, and how long its piece is in ticks (60 a second).
-  piano: 'moonlight',
-  pianoTicks: Math.round(flatten(TRACKS.moonlight!).length * 60),
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------

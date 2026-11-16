@@ -3,7 +3,9 @@ import type { World } from '../engine/types.ts';
 import { parseMap } from '../engine/world.ts';
 import { BADGES, BASE_HP, COLLECT, ECONOMY, ENEMIES, FALLBACK_MOVE, HP_PER_BADGE, ITEMS, LEARN, LEVELS, MOVES, PLAYER_MOVES, SHOPS, STAMP, START_ITEMS } from './battles.ts';
 import { DEX } from './dex.ts';
-import { MUSIC } from './music.ts';
+import { flatten } from '../audio/score.ts';
+import { MUSIC, TRACKS } from './music.ts';
+import { PIECES } from './pieces.ts';
 import { HINTS, buildMaps, countCollectibles, ending, intro } from './story.ts';
 
 /** Puts the content modules together into the world the engine plays. The facts come from `data`. */
@@ -38,6 +40,8 @@ export function buildWorld(data: FsData): World {
       { item: STAMP, total: countCollectibles(specs, STAMP), label: 'STAMPS', mark: '#' },
     ],
     dex: DEX,
+    // The pieces of the player piano, each with the length of its track in ticks (60 a second).
+    pieces: PIECES.map((piece) => ({ ...piece, ticks: Math.round(flatten(TRACKS[piece.track]!).length * 60) })),
     music: MUSIC,
   };
 }
