@@ -80,7 +80,9 @@ test('the DEX: ??? before a monster is met, its page after, a cry on that page, 
   await expect(status(page)).toContainText(`No. ${first! + 1} `);
   await expect(status(page)).toContainText(DEX[first!]!.text);
 
-  // CRY: its cue, and its first note on the AudioContext.
+  // CRY: its cue, and its first note on the AudioContext. The battle that just ended played this cry too, and a cry
+  // asked for again while it still sounds is skipped (its gap): the presses since then can take less than that.
+  await page.waitForTimeout(CRIES[seen[0]!]!.duration * 1000 + 200);
   const before = (await audioLog(page))[0]!.frequencies.length;
   await key('a');
   await expect(game(page)).toHaveAttribute('data-cue', `cry:${seen[0]}`);
