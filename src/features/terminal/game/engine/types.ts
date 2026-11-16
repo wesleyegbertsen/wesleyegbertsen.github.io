@@ -51,6 +51,8 @@ export type Action =
   | { coins: number }
   /** Opens a shop (a name in `world.shops`): a list to buy from, until the player leaves it. */
   | { shop: string }
+  /** The player piano: starts the piece (MUSIC.piano) from its start, or stops it when it plays. */
+  | { piano: true }
   | { ending: true };
 
 /** What an object does while `when` holds. The first branch that holds is the one that runs. */
@@ -244,7 +246,8 @@ export type World = {
   /** The DEX on the Start menu: every monster in the order of the list (content/dex.ts). */
   dex?: DexEntry[];
   /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
-  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string>; piano?: string };
+  /** `piano`: the piece of the player piano, `pianoTicks` how long it is (60 a second). */
+  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string>; piano?: string; pianoTicks?: number };
 };
 
 /**
@@ -383,6 +386,8 @@ export type GameState = {
   heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;
   finished: boolean;
+  /** The player piano plays (the cafe's): the map it is on, and the ticks left of its piece. Off when absent. */
+  piano?: { map: string; ticks: number };
   /** The ending screen is up: how many ticks so far (it takes a press only after ENDING_HOLD of them). */
   ending?: { ticks: number };
   /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */
@@ -421,6 +426,11 @@ export type Input = {
   b: boolean;
   start: boolean;
   select: boolean;
+  /**
+   * With reduced motion no clock runs (one key is one move): how many ticks went by, told by the page when it
+   * matters (the player piano's piece is over, or the tab hides). Never set with motion.
+   */
+  elapsed?: number;
 };
 
 export const NO_INPUT: Input = { dir: null, pressed: null, a: false, b: false, start: false, select: false };

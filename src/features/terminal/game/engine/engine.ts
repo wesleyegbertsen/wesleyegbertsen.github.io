@@ -120,6 +120,8 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     ctx.cues.push(action.rest ? 'rest' : 'heal');
     // A rest is played through: the script waits until its jingle is over (with reduced motion it does not wait).
     const pause = action.rest && !ctx.instant ? { pause: action.rest, rest: { ticks: action.rest, from: state.hp } } : {};
+    // A rest stops the player piano: the rest's jingle plays over the cafe's own tune, as always.
+    if (action.rest && state.piano) state = { ...state, piano: undefined };
     return { ...state, ...pause, hp: state.maxHp, pp: fullPp(world, state.moves), heal: { map: state.map, x: state.x, y: state.y } };
   }
   if ('boost' in action) {
@@ -140,13 +142,20 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     return say({ ...state, coins: state.coins + action.coins }, [`You got ${money(action.coins, world)}!`], ctx, 'item');
   }
   if ('shop' in action) return openShop(state, action.shop, ctx);
+  if ('piano' in action) {
+    // It says nothing: the music is the answer. The status region is told, for whoever does not hear it.
+    ctx.events.push({ kind: 'menu', text: state.piano ? 'The player piano stops.' : 'The player piano plays.' });
+    return { ...state, piano: state.piano ? undefined : { map: state.map, ticks: world.music?.pianoTicks ?? 0 } };
+  }
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx, 0, action.quick);
   if ('warp' in action) {
     const spot = resolveSpot(world, action.warp);
     ctx.cues.push(action.cue ?? 'door');
     ctx.events.push({ kind: 'place', text: world.maps[spot.map]!.name });
     // Arriving on a map puts what was pushed about there back in its place (unless its puzzle is solved).
-    return { ...state, ...spot, dir: action.warp.dir ?? state.dir, walk: null, roam: putBack(state, world, spot.map, spot) };
+    // Out of the room of the player piano: it stops (the next place plays its own tune; back, it is off).
+    const piano = state.piano && state.piano.map !== spot.map ? { piano: undefined } : {};
+    return { ...state, ...spot, ...piano, dir: action.warp.dir ?? state.dir, walk: null, roam: putBack(state, world, spot.map, spot) };
   }
   ctx.events.push({ kind: 'ending', text: world.ending.join(' ') });
   return { ...state, scene: 'ending', finished: true, script: [], ending: { ticks: 0 } };
@@ -615,8 +624,23 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
  * the map the game clock runs (one tick, or a whole step's worth with reduced motion), which moves the townsfolk
  * and the animated tiles.
  */
-export function step(state: GameState, input: Input, world: World, options: Options = {}): Result {
+/**
+ * The player piano's piece runs on: a tick at a time with motion (menus and text boxes too, like the music), and
+ * with reduced motion by the ticks the page says went by. Off at its end.
+ */
+function playOn(state: GameState, input: Input, ctx: Ctx): GameState {
+  if (!state.piano) return state;
+  const gone = ctx.instant ? (input.elapsed ?? 0) : 1;
+  if (gone <= 0) return state;
+  const ticks = state.piano.ticks - gone;
+  if (ticks > 0) return { ...state, piano: { ...state.piano, ticks } };
+  ctx.events.push({ kind: 'menu', text: 'The player piano stops.' });
+  return { ...state, piano: undefined };
+}
+
+export function step(given: GameState, input: Input, world: World, options: Options = {}): Result {
   const ctx: Ctx = { world, events: [], cues: [], instant: options.instant ?? false, pressed: input.pressed !== null };
+  const state = given.scene === 'world' ? playOn(given, input, ctx) : given;
   // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back, a moment later.
   const done = (next: GameState): Result => ({ state: letGo(arrived(next, state.map, ctx)), events: ctx.events, cues: ctx.cues });
 
