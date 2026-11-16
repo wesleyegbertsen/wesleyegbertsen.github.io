@@ -75,7 +75,7 @@ describe('the fighters breathe, with motion', () => {
     for (let i = 1; i < changes.length; i++) expect(changes[i]! - changes[i - 1]!).toBeGreaterThanOrEqual(30);
     // A boss sways sideways by one or two pixels.
     const boss = run(bossFight(), 200).map((state) => idleOffset(state.battle!, 'foe'));
-    expect(new Set(boss.map((offset) => offset.dx))).toEqual(new Set([0, 1, 2]));
+    expect(new Set(boss.map((offset) => offset.dx))).toEqual(new Set([-1, 0, 1]));
     for (const offset of boss) expect(offset.dy).toBe(0);
     // Still during a hit, and with reduced motion (one key is one whole move): no breathing at all.
     const hit = { ...states[50]!, battle: { ...states[50]!.battle!, hit: { who: 'foe' as const, ticks: 30, from: 10, to: 5 } } };

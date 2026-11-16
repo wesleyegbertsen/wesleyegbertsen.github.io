@@ -15,6 +15,11 @@ import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
 /** The Game Boy's screen, in pixels. */
 export const SCREEN_W = 160;
 export const SCREEN_H = 144;
+/**
+ * Where the enemy stands in a battle (its top left corner, 32 by 32): under the row of its name, so the longest name
+ * never runs into it, and as far from the right edge as the trainer is from the left, sway included.
+ */
+export const FOE_AT = { x: 110, y: 15 } as const;
 
 /** The three sheets, loaded. */
 export type Sheets = {
@@ -491,9 +496,10 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   // The fighters breathe (with motion): a pixel up and down, a boss swaying sideways.
   const foeAt = idleOffset(battle, 'foe');
   const youAt = idleOffset(battle, 'you');
-  if (shown('foe')) drawSprite(ctx, sheets, enemy.sprite, 124 + foeAt.dx, 6 - foeAt.dy);
-  if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', 132, 14);
-  rect(ctx, 118, 40, 40, 2, DARK);
+  if (shown('foe')) drawSprite(ctx, sheets, enemy.sprite, FOE_AT.x + foeAt.dx, FOE_AT.y - foeAt.dy);
+  if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', FOE_AT.x + 8, FOE_AT.y + 8);
+  // The ground under it, which stays where it is while the enemy breathes or sways.
+  rect(ctx, FOE_AT.x - 6, FOE_AT.y + 34, 44, 2, DARK);
 
   // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
   // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.

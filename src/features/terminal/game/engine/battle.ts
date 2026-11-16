@@ -58,13 +58,13 @@ export const BREATH_TICKS = 36;
 
 /**
  * Where a fighter stands now, a pixel or two from its place: the trainer and a wild enemy bob a pixel up every
- * other BREATH_TICKS, half a breath apart; a boss sways sideways, 0, 1, 2, 1 pixels. Still on the way in, during a
+ * other BREATH_TICKS, half a breath apart; a boss sways around its place, 0, 1, 0, -1 pixels. Still on the way in, during a
  * hit, and with reduced motion (the battle clock `t` only runs with motion).
  */
 export function idleOffset(battle: Battle, who: 'foe' | 'you'): { dx: number; dy: number } {
   const t = battle.t ?? 0;
   if (!t || battle.hit || battle.intro > 0) return { dx: 0, dy: 0 };
-  if (who === 'foe' && !battle.wild) return { dx: [0, 1, 2, 1][Math.floor(t / BREATH_TICKS) % 4]!, dy: 0 };
+  if (who === 'foe' && !battle.wild) return { dx: [0, 1, 0, -1][Math.floor(t / BREATH_TICKS) % 4]!, dy: 0 };
   const shift = who === 'foe' ? BREATH_TICKS / 2 : 0;
   return { dx: 0, dy: Math.floor((t + shift) / BREATH_TICKS) % 2 };
 }

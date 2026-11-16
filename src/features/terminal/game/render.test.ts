@@ -8,7 +8,8 @@ import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
 import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
-import { FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
+import { FOE_AT, FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
+import { execFileSync } from 'node:child_process';
 import { fitScale, layout } from './scale.ts';
 
 type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: number; y: number; w: number; h: number };
@@ -408,14 +409,15 @@ describe('the battle screen', () => {
     expect(Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 77).map((draw) => draw.x + draw.w))).toBe(152);
   });
 
-  it('has room for the longest name at the highest level beside the picture of the enemy', () => {
+  it('has room for the longest name at the highest level: the picture of the enemy stands under the row of the name', () => {
     const long: World = { ...world, enemies: { ...world.enemies, rat: { ...world.enemies.rat!, name: 'RACE CONDITION' } } };
     const state = battle();
     const { draws } = drawn({ ...state, battle: { ...state.battle!, level: 10 } }, undefined, long);
     expect(textAt(draws, 6)).toBe('RACECONDITIONLv10');
     const end = Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 6).map((draw) => draw.x + draw.w));
     const picture = spriteDraws(draws, 'bug')[0]!;
-    expect(end).toBeLessThanOrEqual(picture.x);
+    // Either beside the name or below its row (8 pixels high from 6).
+    expect(end <= picture.x || picture.y >= 6 + 8).toBe(true);
     expect(picture.x + picture.w).toBeLessThanOrEqual(SCREEN_W);
     expect(picture).toMatchObject({ w: 32, h: 32 });
   });
@@ -1125,7 +1127,7 @@ describe('a hit in a battle', () => {
     // The first blink: shown, with the spark on it; the bar still full.
     const first = foe(HIT_TICKS);
     expect(spriteDraws(first.draws, 'bug')).toHaveLength(1);
-    expect(sparks(first.draws)).toEqual([expect.objectContaining({ x: 132, y: 14 })]);
+    expect(sparks(first.draws)).toEqual([expect.objectContaining({ x: FOE_AT.x + 8, y: FOE_AT.y + 8 })]);
     expect(first.fills).toContainEqual(expect.objectContaining({ x: 24, y: 19, w: 60, h: 3 }));
     // Blinked away a moment later.
     expect(spriteDraws(foe(HIT_TICKS - BLINK_TICKS).draws, 'bug')).toHaveLength(0);
@@ -1144,13 +1146,41 @@ describe('the fighters breathing', () => {
     const battle = play(started(), 'down', 'right', 'a');
     const at = (t: number | undefined, wild = true) => drawn({ ...battle, battle: { ...battle.battle!, t, wild } }).draws;
     const where = (draws: Draw[], name: 'bug' | 'trainer-back') => spriteDraws(draws, name).map((draw) => [draw.x, draw.y]);
-    expect(where(at(undefined), 'bug')).toEqual([[124, 6]]);
+    expect(where(at(undefined), 'bug')).toEqual([[FOE_AT.x, FOE_AT.y]]);
     expect(where(at(undefined), 'trainer-back')).toEqual([[12, 60]]);
     // Half a breath in: the enemy is up, the trainer not yet; a breath in: the trainer is up.
-    expect(where(at(BREATH_TICKS / 2 + 1), 'bug')).toEqual([[124, 5]]);
+    expect(where(at(BREATH_TICKS / 2 + 1), 'bug')).toEqual([[FOE_AT.x, FOE_AT.y - 1]]);
     expect(where(at(BREATH_TICKS / 2 + 1), 'trainer-back')).toEqual([[12, 60]]);
     expect(where(at(BREATH_TICKS + 1), 'trainer-back')).toEqual([[12, 59]]);
     // A boss sways.
-    expect(where(at(2 * BREATH_TICKS + 1, false), 'bug')).toEqual([[126, 6]]);
+    expect(where(at(BREATH_TICKS + 1, false), 'bug')).toEqual([[FOE_AT.x + 1, FOE_AT.y]]);
+    expect(where(at(3 * BREATH_TICKS + 1, false), 'bug')).toEqual([[FOE_AT.x - 1, FOE_AT.y]]);
+  });
+});
+
+describe('where the enemy stands', () => {
+  it('keeps every enemy, at every sway and breath, as far from the right edge as the trainer is from the left, and clear of its box', () => {
+    // The pixels of every enemy straight from the definitions (a half, mirrored), the trainer's too.
+    const script = "import('./scripts/sprites/enemies.mjs').then(({ enemies }) => import('./scripts/sprites/trainer.mjs').then(({ trainers }) => console.log(JSON.stringify({ enemies, trainer: trainers['trainer-back'] }))))";
+    const { enemies, trainer } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { enemies: Record<string, string[]>; trainer: string[] };
+    const opaque = (rows: string[]) => rows.flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [{ x, y }])));
+    // The trainer is drawn at x 12: its margin on the left is where its first pixel is.
+    const margin = 12 + Math.min(...opaque(trainer).map((cell) => cell.x));
+    expect(margin).toBeGreaterThanOrEqual(8);
+    for (const [sprite, half] of Object.entries(enemies)) {
+      const pixels = opaque(half.map((row) => row + [...row].reverse().join('')));
+      const owner = Object.values(world.enemies).find((enemy) => enemy.sprite === sprite);
+      for (const dx of [-1, 0, 1]) {
+        for (const dy of [0, 1]) {
+          const right = FOE_AT.x + dx + Math.max(...pixels.map((cell) => cell.x));
+          expect(SCREEN_W - 1 - right, `${sprite} ${dx}`).toBeGreaterThanOrEqual(margin - 1);
+          // Clear of the name and level (the longest a level can be, two digits) and of the energy bar.
+          const label = `${owner?.name ?? 'X'.repeat(14)} Lv10`;
+          const top = FOE_AT.y - dy + Math.min(...pixels.map((cell) => cell.y));
+          const left = FOE_AT.x + dx + Math.min(...pixels.map((cell) => cell.x));
+          expect(top >= 6 + 8 || left >= 9 + label.length * 6, `${sprite} under its name`).toBe(true);
+        }
+      }
+    }
   });
 });
