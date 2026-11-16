@@ -149,7 +149,23 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
     return { ...state, ...spot, dir: action.warp.dir ?? state.dir, walk: null, roam: putBack(state, world, spot.map, spot) };
   }
   ctx.events.push({ kind: 'ending', text: world.ending.join(' ') });
-  return { ...state, scene: 'ending', finished: true, script: [] };
+  return { ...state, scene: 'ending', finished: true, script: [], ending: { ticks: 0 } };
+}
+
+/**
+ * How long the ending screen stands before it takes a press: a second. An A that was already on its way when the last
+ * text box closed would else leave it at once. Ticks, not motion: the same with reduced motion.
+ */
+export const ENDING_HOLD = 60;
+
+/** The ending screen: it holds, then A or Start is KEEP EXPLORING, back where the player stood with everything kept. */
+function stepEnding(state: GameState, input: Input, ctx: Ctx): GameState {
+  const ticks = state.ending?.ticks ?? ENDING_HOLD;
+  if (ticks < ENDING_HOLD) return { ...state, ending: { ticks: ticks + 1 } };
+  if (!input.a && !input.start) return state;
+  ctx.cues.push('confirm');
+  ctx.events.push({ kind: 'place', text: ctx.world.maps[state.map]!.name });
+  return { ...state, scene: 'world', walk: null, ending: undefined };
 }
 
 /** Runs the waiting actions until one of them opens a dialogue or a battle, which the player has to finish first. */
@@ -597,7 +613,7 @@ export function step(state: GameState, input: Input, world: World, options: Opti
   // The talk is over (no text, no battle, no offer left): whoever turned to the player turns back, a moment later.
   const done = (next: GameState): Result => ({ state: letGo(arrived(next, state.map, ctx)), events: ctx.events, cues: ctx.cues });
 
-  if (state.scene === 'ending') return done(state);
+  if (state.scene === 'ending') return done(stepEnding(state, input, ctx));
   if (state.scene === 'title') {
     // B on the title asks for the other mode, Game Boy or Game Boy Color: whoever draws the screen switches it.
     if (input.b) {

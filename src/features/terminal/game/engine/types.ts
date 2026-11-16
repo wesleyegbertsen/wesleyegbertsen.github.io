@@ -383,6 +383,8 @@ export type GameState = {
   heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;
   finished: boolean;
+  /** The ending screen is up: how many ticks so far (it takes a press only after ENDING_HOLD of them). */
+  ending?: { ticks: number };
   /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */
   clock: number;
   /**

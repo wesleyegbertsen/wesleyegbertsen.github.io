@@ -295,7 +295,8 @@ describe('things on the map', () => {
     const ended = step(talking, { ...NO_INPUT, a: true }, world, { instant: true });
     expect(ended.state).toMatchObject({ scene: 'ending', finished: true });
     expect(ended.events).toEqual([{ kind: 'ending', text: 'THE END' }]);
-    expect(play(ended.state, 'a', 'left')).toBe(ended.state);
+    // A press right away does nothing: the ending screen holds first (engine/ending.test.ts).
+    expect(play(ended.state, 'a', 'left').scene).toBe('ending');
   });
 });
 
