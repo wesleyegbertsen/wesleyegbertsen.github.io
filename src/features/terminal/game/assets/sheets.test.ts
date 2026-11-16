@@ -142,7 +142,7 @@ describe('the sprite sheets', () => {
 
   it('swing the arms of the player with the walk: the walking frames differ from standing above the legs', () => {
     // The pixel rows of a character, mirrors included, straight from the definitions.
-    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, mirrored }) => { const rows = (name) => characters[name] ?? rows(mirrored[name]).map((row) => [...row].reverse().join('')); console.log(JSON.stringify(Object.fromEntries(['up', 'down', 'left', 'right'].flatMap((dir) => [0, 1, 2].map((frame) => ['player-' + dir + '-' + frame, rows('player-' + dir + '-' + frame)]))))); })";
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters, mirrored }) => { const rows = (name) => characters[name] ?? rows(mirrored[name]).map((row) => [...row].reverse().join('')); console.log(JSON.stringify(Object.fromEntries(['up', 'down', 'left', 'right'].flatMap((dir) => [0, 1, 2].map((frame) => ['player-' + dir + '-' + frame, rows('player-' + dir + '-' + frame)]).concat([1, 2].map((frame) => ['player-' + dir + '-' + frame + 's', rows('player-' + dir + '-' + frame + 's')])))))); })";
     const frames = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as Record<string, string[]>;
     // Rows 9 to 12 hold the shoulders, the arms and the hands; the legs are below.
     const arms = (name: string) => frames[name]!.slice(9, 13).join('/');
@@ -151,15 +151,18 @@ describe('the sprite sheets', () => {
       expect(arms(one), one).not.toBe(arms(standing));
       expect(arms(two), two).not.toBe(arms(standing));
       expect(arms(one), direction).not.toBe(arms(two));
-      // The head sways a pixel with the step, the same in every direction: the rows above the collar (0 to 7) are
-      // the standing head in the first frame and moved one pixel in the second. The collar
-      // (row 8) stays, and the head always touches it.
+      // The head sways slowly, the same in every direction: in the walk pictures (-1, -2) the rows above the collar
+      // (0 to 7) are the standing head; in their twins (-1s, -2s), shown for two steps of four, the same head a pixel
+      // over, the same way in both, and everything from the collar down the same as the twin at rest. The head
+      // always touches the collar.
       const shifted = (rows: string[], dx: number) => rows.slice(0, 8).map((row) => (dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
       const sway = (name: string) => [-1, 0, 1].find((dx) => (dx === 0 ? frames[standing]!.slice(0, 8) : shifted(frames[standing]!, dx)).join('/') === frames[name]!.slice(0, 8).join('/'));
-      // Half a sway: the first frame keeps the head at rest, the second moves it one pixel.
       expect(sway(one), one).toBe(0);
-      expect([-1, 1], two).toContain(sway(two));
-      for (const name of [one, two]) {
+      expect(sway(two), two).toBe(0);
+      expect([-1, 1], `${one}s`).toContain(sway(`${one}s`));
+      expect(sway(`${two}s`), `${two}s`).toBe(sway(`${one}s`));
+      for (const name of [one, two]) expect(frames[`${name}s`]!.slice(8).join('/'), name).toBe(frames[name]!.slice(8).join('/'));
+      for (const name of [one, two, `${one}s`, `${two}s`]) {
         expect(frames[name]![8], name).toBe(frames[standing]![8]);
         const above = [...frames[name]![7]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
         const collar = [...frames[name]![8]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));

@@ -9,8 +9,7 @@ const step = (rows, ...below) => [...rows.slice(0, 9), ...below, '..............
 
 /**
  * Half a sway of the head: the rows above the collar (0 to 7) moved `dx` pixels sideways, the collar and all
- * below it where they are, so the head rests on the collar. Only the second frame of a walk has it: the head moves
- * a pixel once per two steps (forward from the side, to the right walking up or down).
+ * below it where they are, so the head rests on the collar. The twins of the walk pictures have it (see below).
  */
 const sway = (rows, dx) => rows.map((row, y) => (y >= 8 ? row : dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
 
@@ -108,7 +107,7 @@ export const characters = {
     '...3223.3333....',
     '...333..333.....',
   ),
-  'player-left-2': sway(step(
+  'player-left-2': step(
     left,
     '....32222223....',
     '....32200223....',
@@ -116,7 +115,7 @@ export const characters = {
     '....32211223....',
     '...3333.3223....',
     '...333..333.....',
-  ), -1),
+  ),
   teacher: [
     '................',
     '.....333333.....',
@@ -835,6 +834,8 @@ export const mirrored = {
   'player-right-0': 'player-left-0',
   'player-right-1': 'player-left-1',
   'player-right-2': 'player-left-2',
+  'player-right-1s': 'player-left-1s',
+  'player-right-2s': 'player-left-2s',
   'dog-right': 'dog',
   'cat-right': 'cat-left',
 };
@@ -845,7 +846,12 @@ export const mirrored = {
  */
 export const facing = ['teacher', 'dev', 'maker', 'librarian', 'wesley', 'kid', 'elder', 'postman', 'gardener', 'barista'];
 
-/** The second frame of the walk up and down: the first one mirrored (the other foot), with the head a pixel to the right. */
+/** The second frame of the walk up and down: the first one mirrored (the other foot). */
 const flipped = (rows) => rows.map((row) => [...row].reverse().join(''));
-characters['player-down-2'] = sway(flipped(characters['player-down-1']), 1);
-characters['player-up-2'] = sway(flipped(characters['player-up-1']), 1);
+characters['player-down-2'] = flipped(characters['player-down-1']);
+characters['player-up-2'] = flipped(characters['player-up-1']);
+// The twins with the head a pixel over (`-1s`, `-2s`): the renderer shows them for two steps of every four, so the
+// head sways slowly, the same way in every direction (forward from the side, to the right walking up or down).
+for (const [dir, dx] of [['down', 1], ['up', 1], ['left', -1]]) {
+  for (const frame of [1, 2]) characters[`player-${dir}-${frame}s`] = sway(characters[`player-${dir}-${frame}`], dx);
+}
