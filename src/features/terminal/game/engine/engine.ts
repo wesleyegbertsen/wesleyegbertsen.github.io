@@ -215,8 +215,9 @@ function stepLearn(state: GameState, input: Input, ctx: Ctx): GameState {
   const offered = world.moves[learn.move]!;
   // The question: forget this move for the new one? YES replaces it, NO (or B) goes back to the choice.
   if (learn.confirm !== undefined) {
-    if (input.pressed === 'up' || input.pressed === 'down') {
-      const confirm = input.pressed === 'up' ? 0 : 1;
+    // YES and NO stand side by side: left and up go to YES, right and down to NO.
+    if (input.pressed) {
+      const confirm = input.pressed === 'up' || input.pressed === 'left' ? 0 : 1;
       if (confirm === learn.confirm) return state;
       ctx.cues.push('cursor');
       ctx.events.push({ kind: 'menu', text: confirm === 0 ? 'Yes' : 'No' });

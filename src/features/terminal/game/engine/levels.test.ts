@@ -163,6 +163,15 @@ describe('the offer of a new move', () => {
     const back = press(levelWorld, no.state, { a: true });
     expect(back.state.learn).toEqual({ move: 'zap', cursor: 0 });
     expect(back.state.moves).toEqual(['hit', 'nap']);
+    // YES and NO stand side by side: right goes to NO and left back to YES, like down and up.
+    const right = press(levelWorld, asked.state, { pressed: 'right' });
+    expect(right.state.learn).toEqual({ move: 'zap', cursor: 0, confirm: 1 });
+    expect(right.events).toEqual([{ kind: 'menu', text: 'No' }]);
+    expect(right.cues).toEqual(['cursor']);
+    const left = press(levelWorld, right.state, { pressed: 'left' });
+    expect(left.state.learn).toEqual({ move: 'zap', cursor: 0, confirm: 0 });
+    expect(left.events).toEqual([{ kind: 'menu', text: 'Yes' }]);
+    expect(press(levelWorld, left.state, { pressed: 'left' }).state).toBe(left.state);
     // B in the question is NO too: it does not throw the offer away.
     const out = press(levelWorld, asked.state, { b: true });
     expect(out.state.learn).toEqual({ move: 'zap', cursor: 0 });

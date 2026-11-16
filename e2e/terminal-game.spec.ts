@@ -208,6 +208,11 @@ test.describe('the adventure in the terminal', () => {
     // It asks first; YES is under the cursor.
     await expect(status(page)).toHaveText('Replace DEPLOY with HOTFIX? Yes or no.');
     await expect(game(page)).toHaveAttribute('data-learn', 'hotfix');
+    // YES and NO stand side by side: right to NO, left back to YES.
+    await pilot.press('right');
+    await expect(status(page)).toHaveText('No');
+    await pilot.press('left');
+    await expect(status(page)).toHaveText('Yes');
     await pilot.press('a');
     await expect(game(page)).toHaveAttribute('data-learn', '');
     await expect(status(page)).toHaveText('You forget DEPLOY and learn HOTFIX!');
