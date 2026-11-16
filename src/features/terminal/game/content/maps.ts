@@ -168,7 +168,7 @@ export const CAVE: Record<string, TileDef> = {
  * its sign. C is a chest, F the fountain, e the well.
  * People: B the postman, < the market vendor, ? the star collector, and the ones who stroll: H a kid, E an elder,
  * D a dog, m the gardener. ( and ) in the main road are the ways out of town: west to the mountain, east to
- * Hobby Hills. The duck pond has a sandy shore (+) all round but for one cell, where it runs into the stream, and reeds (*); its
+ * Hobby Hills. The duck pond has a sandy shore (+) all round but for a channel three cells wide, where it runs into the stream between two banks of sand, and reeds (*); its
  * signpost (9) stands by the main road between two lamps, and the bench (n) east of it.
  */
 export const TOWN = [
@@ -185,8 +185,8 @@ export const TOWN = [
   'T4jjjjjj.zx....=,////+*~^~~~~+2T',
   'T.v>KSv>s..i,..=bG`XG+~~~~d~~+nT',
   'T....===============.+~~~~~^*+.T',
-  'T..,...........=.,...+++~+++++.T',
-  'T~~~~^~~~~~~~~~|~~~~~~^~~~r....T',
+  'T..,...........=.,...++~~~++++.T',
+  'T~~~~^~~~~~~~~~|~~~~~~^~~~+....T',
   'Y..Y...u......i=7..,....Y...,..T',
   'T""""..e...Y...=.,.E..hhhhhhhh.Y',
   'T"""""....n....=..u...h{{{{{{h6T',
