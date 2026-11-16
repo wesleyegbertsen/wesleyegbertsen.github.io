@@ -148,12 +148,14 @@ test.describe('the volume wheel', () => {
 });
 
 test.describe('the settings', () => {
-  test('are the third tab of the Start menu, and SOUND there is the same switch as M', async ({ page }) => {
+  test('are the last tab of the Start menu, after the DEX, and SOUND there is the same switch as M', async ({ page }) => {
     const { pilot } = await play(page);
     await pilot.start();
     await pilot.press('start');
     await pilot.press('right');
     await expect(game(page)).toHaveAttribute('data-menu', 'badges');
+    await pilot.press('right');
+    await expect(game(page)).toHaveAttribute('data-menu', 'dex');
     await pilot.press('right');
     await expect(game(page)).toHaveAttribute('data-menu', 'settings');
     await expect(game(page)).toHaveAttribute('data-row', 'sound');

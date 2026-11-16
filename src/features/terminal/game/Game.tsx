@@ -106,7 +106,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     const page = state.dialogue?.pages[state.dialogue.page];
     const typed = !page || state.dialogue!.shown >= pageLength(page);
     const root = focusRef.current;
-    const key = [!!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [!!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -133,6 +133,12 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         foeLevel: state.battle ? String(state.battle.level) : '',
         menu: state.menu?.tab ?? '',
         row: state.menu?.tab === 'settings' ? (SETTINGS[state.menu.cursor] ?? '') : '',
+        // The DEX: the monster under the cursor of its list, the one whose page is open (empty on the list) and the
+        // button under the cursor there (cry or back), and how many monsters have been seen.
+        dexRow: state.menu?.tab === 'dex' ? (world.dex?.[state.menu.cursor]?.enemy ?? '') : '',
+        dex: state.menu?.detail ? (world.dex?.[state.menu.detail.at]?.enemy ?? '') : '',
+        dexFocus: state.menu?.detail ? (state.menu.detail.focus === 0 ? 'cry' : 'back') : '',
+        seen: String(state.seen?.length ?? 0),
         learn: state.learn?.move ?? '',
         // The money, and the shop while one is open: its name in `world.shops` and the item under the cursor (`leave` on the last entry).
         coins: String(state.coins),
@@ -270,7 +276,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color; on the title screen B switches the mode too."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Dex of the monsters met, and a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color; on the title screen B switches the mode too."
       tabIndex={0}
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}
