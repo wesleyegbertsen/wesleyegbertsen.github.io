@@ -409,15 +409,14 @@ describe('the battle screen', () => {
     expect(Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 77).map((draw) => draw.x + draw.w))).toBe(152);
   });
 
-  it('has room for the longest name at the highest level: the picture of the enemy stands under the row of the name', () => {
+  it('has room for the longest name at the highest level beside the picture of the enemy', () => {
     const long: World = { ...world, enemies: { ...world.enemies, rat: { ...world.enemies.rat!, name: 'RACE CONDITION' } } };
     const state = battle();
     const { draws } = drawn({ ...state, battle: { ...state.battle!, level: 10 } }, undefined, long);
     expect(textAt(draws, 6)).toBe('RACECONDITIONLv10');
     const end = Math.max(...draws.filter((draw) => draw.sheet === 'font' && draw.y === 6).map((draw) => draw.x + draw.w));
     const picture = spriteDraws(draws, 'bug')[0]!;
-    // Either beside the name or below its row (8 pixels high from 6).
-    expect(end <= picture.x || picture.y >= 6 + 8).toBe(true);
+    expect(end).toBeLessThanOrEqual(picture.x - 1);
     expect(picture.x + picture.w).toBeLessThanOrEqual(SCREEN_W);
     expect(picture).toMatchObject({ w: 32, h: 32 });
   });
@@ -1159,21 +1158,23 @@ describe('the fighters breathing', () => {
 });
 
 describe('where the enemy stands', () => {
-  it('keeps every enemy, at every sway and breath, as far from the right edge as the trainer is from the left, and clear of its box', () => {
+  it('keeps every enemy, at every sway and breath, inside the screen with a margin, and clear of its name', () => {
     // The pixels of every enemy straight from the definitions (a half, mirrored), the trainer's too.
     const script = "import('./scripts/sprites/enemies.mjs').then(({ enemies }) => import('./scripts/sprites/trainer.mjs').then(({ trainers }) => console.log(JSON.stringify({ enemies, trainer: trainers['trainer-back'] }))))";
     const { enemies, trainer } = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as { enemies: Record<string, string[]>; trainer: string[] };
     const opaque = (rows: string[]) => rows.flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [{ x, y }])));
-    // The trainer is drawn at x 12: its margin on the left is where its first pixel is.
-    const margin = 12 + Math.min(...opaque(trainer).map((cell) => cell.x));
-    expect(margin).toBeGreaterThanOrEqual(8);
+    // The enemy stands where it always stood (top right); it may never touch the edge: two pixels at the least.
+    const margin = 2;
+    expect(FOE_AT).toEqual({ x: 124, y: 6 });
+    expect(opaque(trainer).length).toBeGreaterThan(0);
     for (const [sprite, half] of Object.entries(enemies)) {
       const pixels = opaque(half.map((row) => row + [...row].reverse().join('')));
       const owner = Object.values(world.enemies).find((enemy) => enemy.sprite === sprite);
       for (const dx of [-1, 0, 1]) {
         for (const dy of [0, 1]) {
           const right = FOE_AT.x + dx + Math.max(...pixels.map((cell) => cell.x));
-          expect(SCREEN_W - 1 - right, `${sprite} ${dx}`).toBeGreaterThanOrEqual(margin - 1);
+          expect(SCREEN_W - 1 - right, `${sprite} ${dx}`).toBeGreaterThanOrEqual(margin);
+          expect(FOE_AT.y - dy + Math.min(...pixels.map((cell) => cell.y)), `${sprite} ${dy}`).toBeGreaterThanOrEqual(0);
           // Clear of the name and level (the longest a level can be, two digits) and of the energy bar.
           const label = `${owner?.name ?? 'X'.repeat(14)} Lv10`;
           const top = FOE_AT.y - dy + Math.min(...pixels.map((cell) => cell.y));
