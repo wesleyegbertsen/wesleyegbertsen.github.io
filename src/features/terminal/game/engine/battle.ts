@@ -53,6 +53,21 @@ export function hitLook(battle: Battle | null | undefined): { who: 'foe' | 'you'
   return { who: hit.who, visible: !blinking || Math.floor(at / BLINK_TICKS) % 2 === 0, spark: at < BLINK_TICKS, hp: Math.round(hit.from + (hit.to - hit.from) * drained) };
 }
 
+/** How long the player's side shakes when the player is hit: the first ticks of the hit. */
+export const SHAKE_TICKS = 16;
+
+/**
+ * How far the player's side is shaken up (negative) or down at this moment: 2, 0, -2, 0 pixels, two ticks each,
+ * over the first SHAKE_TICKS of a hit on the player. 0 otherwise: the enemy's hit has a look of its own (hitLook),
+ * and with reduced motion there is no hit to show.
+ */
+export function shakeOffset(battle: Battle | null | undefined): number {
+  const hit = battle?.hit;
+  if (!hit || hit.who !== 'you') return 0;
+  const at = HIT_TICKS - hit.ticks;
+  return at < SHAKE_TICKS ? [2, 0, -2, 0][Math.floor(at / 2) % 4]! : 0;
+}
+
 /** How long a fainting fighter takes to slide down out of sight: a pixel a tick, about half a second. */
 export const FAINT_TICKS = 32;
 

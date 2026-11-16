@@ -1,4 +1,4 @@
-import { FAINT_TICKS, HIT_TICKS, faintLook, hitLook, idleOffset } from './battle.ts';
+import { FAINT_TICKS, HIT_TICKS, SHAKE_TICKS, faintLook, hitLook, idleOffset, shakeOffset } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState } from './types.ts';
@@ -281,5 +281,24 @@ describe('battles', () => {
     expect(state).toMatchObject({ map: 'main', x: 4, y: 1, hp: 20, items: { key: 1 }, flags: { opened: true }, finished: false });
     expect(state.dialogue?.pages[0]?.join(' ')).toMatch(/You come to in the .*Nothing was lost/);
     expect(play(state, 'a', 'down')).toMatchObject({ x: 4, y: 2, dialogue: null });
+  });
+});
+
+describe('the shake of a hit on the player', () => {
+  it('goes up and down a pixel or two in the first ticks of the hit, in a fixed order, and only for the player', () => {
+    const menu = wild();
+    const at = (who: 'foe' | 'you', ticks: number) => shakeOffset({ ...menu.battle!, hit: { who, ticks, from: 20, to: 12 } });
+    const you = Array.from({ length: HIT_TICKS }, (_, i) => at('you', HIT_TICKS - i));
+    expect(you.slice(0, SHAKE_TICKS).some((dy) => dy > 0)).toBe(true);
+    expect(you.slice(0, SHAKE_TICKS).some((dy) => dy < 0)).toBe(true);
+    expect(you.every((dy) => Math.abs(dy) <= 2)).toBe(true);
+    expect(you.slice(SHAKE_TICKS).every((dy) => dy === 0)).toBe(true);
+    // The same every time: it is a function of the tick alone.
+    expect(Array.from({ length: HIT_TICKS }, (_, i) => at('you', HIT_TICKS - i))).toEqual(you);
+    // Never for the enemy's hit, and nothing without a hit (as with reduced motion, which shows no hit).
+    expect(Array.from({ length: HIT_TICKS }, (_, i) => at('foe', HIT_TICKS - i)).every((dy) => dy === 0)).toBe(true);
+    expect(shakeOffset(menu.battle!)).toBe(0);
+    const quick = play(menu, 'a', 'a', 'a');
+    expect(quick.battle!.hit).toBeUndefined();
   });
 });

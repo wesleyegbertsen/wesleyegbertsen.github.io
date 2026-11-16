@@ -3,7 +3,7 @@ import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
-import { BLINK_TICKS, BREATH_TICKS, HIT_TICKS } from './engine/battle.ts';
+import { BLINK_TICKS, BREATH_TICKS, FAINT_TICKS, HIT_TICKS } from './engine/battle.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -1132,8 +1132,8 @@ describe('a hit in a battle', () => {
     expect(spriteDraws(foe(HIT_TICKS - BLINK_TICKS).draws, 'bug')).toHaveLength(0);
     // At the end the bar has drained to the new energy (4 of 10 of 60 pixels: 24).
     expect(foe(1).fills).toContainEqual(expect.objectContaining({ x: 24, y: 19, w: 24, h: 3 }));
-    // The trainer blinks when it is the player who is hit.
-    const you = drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who: 'you', ticks: HIT_TICKS - BLINK_TICKS, from: 20, to: 12 } } });
+    // The trainer blinks when it is the player who is hit (the second blink: the shake of the first is over).
+    const you = drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who: 'you', ticks: HIT_TICKS - 3 * BLINK_TICKS, from: 20, to: 12 } } });
     expect(spriteDraws(you.draws, 'trainer-back')).toHaveLength(0);
     expect(textAt(you.draws, 77)).toBe('20/20');
     expect(sparks(drawn(battle).draws)).toHaveLength(0);
@@ -1183,5 +1183,49 @@ describe('where the enemy stands', () => {
         }
       }
     }
+  });
+});
+
+describe('a fighter that faints', () => {
+  it('slides the enemy down into its ground, cut off at its feet, and leaves it gone; the trainer the same way', () => {
+    const battle = play(started(), 'down', 'right', 'a');
+    const at = (extra: Partial<NonNullable<GameState['battle']>>) => drawn({ ...battle, battle: { ...battle.battle!, ...extra } }).draws;
+    // At the start of the slide it is whole and in its place.
+    expect(spriteDraws(at({ faint: { who: 'foe', ticks: FAINT_TICKS } }), 'bug')).toEqual([expect.objectContaining({ x: FOE_AT.x, y: FOE_AT.y, sh: 32, h: 32 })]);
+    // Ten ticks on it is ten pixels down, and only its top 22 rows are drawn: its feet stay where they stood.
+    expect(spriteDraws(at({ faint: { who: 'foe', ticks: FAINT_TICKS - 10 } }), 'bug')).toEqual([expect.objectContaining({ x: FOE_AT.x, y: FOE_AT.y + 10, sh: 22, h: 22 })]);
+    // Once fainted it is gone, and the trainer is still there.
+    const gone = at({ fainted: 'foe' });
+    expect(spriteDraws(gone, 'bug')).toHaveLength(0);
+    expect(spriteDraws(gone, 'trainer-back')).toHaveLength(1);
+    // The trainer slides the same way, the enemy stays.
+    const you = at({ faint: { who: 'you', ticks: FAINT_TICKS - 10 } });
+    expect(spriteDraws(you, 'trainer-back')).toEqual([expect.objectContaining({ x: 12, y: 70, sh: 22, h: 22 })]);
+    expect(spriteDraws(you, 'bug')).toHaveLength(1);
+    expect(spriteDraws(at({ fainted: 'you' }), 'trainer-back')).toHaveLength(0);
+  });
+});
+
+describe('the player hit', () => {
+  it("shakes the player's side up and down while the enemy and its box stay put; not when the enemy is hit", () => {
+    const battle = play(started(), 'down', 'right', 'a');
+    const hit = (who: 'foe' | 'you', ticks: number) => drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who, ticks, from: 20, to: 12 } } }).draws;
+    const ys = (who: 'foe' | 'you') =>
+      Array.from({ length: HIT_TICKS }, (_, i) => {
+        const draws = hit(who, HIT_TICKS - i);
+        // The energy numbers of the player (always drawn, also while the trainer blinks), and the enemy's name.
+        return [draws.find((draw) => draw.sheet === 'font' && draw.x >= 77 && draw.y > 60 && draw.y < 100)?.y, draws.find((draw) => draw.sheet === 'font' && draw.x === 9)?.y];
+      });
+    const you = ys('you');
+    const shaken = new Set(you.map(([y]) => y));
+    expect(shaken.size).toBeGreaterThan(1);
+    // Up and down from its place, a couple of pixels, and back in its place at the end.
+    const still = ys('foe')[0]![0]!;
+    expect(Math.max(...you.map(([y]) => y!)) - still).toBeLessThanOrEqual(2);
+    expect(still - Math.min(...you.map(([y]) => y!))).toBeLessThanOrEqual(2);
+    expect(you.at(-1)![0]).toBe(still);
+    // The enemy's box does not move; and when the enemy is hit, nothing shakes.
+    expect(new Set(you.map(([, y]) => y)).size).toBe(1);
+    expect(new Set(ys('foe').flat()).size).toBe(2);
   });
 });
