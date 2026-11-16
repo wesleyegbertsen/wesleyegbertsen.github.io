@@ -4,7 +4,8 @@ import { profile } from '../../../../data/profile.ts';
 import { projects } from '../../../../data/projects.ts';
 import { skills } from '../../../../data/skills.ts';
 import { flatten, parseVoice, trackSteps } from '../audio/score.ts';
-import { TRACKS } from './music.ts';
+import { loudnessOf } from '../audio/score.ts';
+import { PIANO_LOUDNESS, PIANO_PEAK, TRACKS, levelled } from './music.ts';
 import { PIECES, PIECE_TEXT_MAX } from './pieces.ts';
 import { buildWorld } from './world.ts';
 
@@ -22,14 +23,40 @@ describe('the pieces of the player piano', () => {
     expect(PIECES.find((piece) => piece.id === 'moonlight')?.artist).toMatch(/BEETHOVEN/);
   });
 
-  it('names a track of TRACKS for every piece: one that plays once, as soft as the piano is', () => {
-    const songs = Object.keys(TRACKS).filter((name) => TRACKS[name]!.loop);
-    const quietest = Math.min(...songs.map(peakOf));
+  it('names a track of TRACKS for every piece: one that plays once, plucked', () => {
     for (const piece of PIECES) {
       expect(TRACKS[piece.track], piece.id).toBeDefined();
       expect(TRACKS[piece.track]!.loop, piece.id).toBe(false);
-      expect(peakOf(piece.track), piece.id).toBeLessThan(quietest);
       expect(TRACKS[piece.track]!.voices.every((voice) => voice.pluck), piece.id).toBe(true);
+    }
+  });
+
+  it('sets every piece by its energy: at the level of the cafe tune, or with its peak at the loudest tune\'s, never over either', () => {
+    // The target is the level of the tune the piano replaces; the ceiling the loudest step of any tune (as the cries).
+    expect(PIANO_LOUDNESS).toBeCloseTo(loudnessOf(TRACKS.cafe!), 2);
+    expect(PIANO_PEAK).toBeCloseTo(Math.max(...Object.keys(TRACKS).filter((name) => TRACKS[name]!.loop).map(peakOf)), 6);
+    for (const piece of PIECES) {
+      const level = loudnessOf(TRACKS[piece.track]!);
+      const peak = peakOf(piece.track);
+      expect(level, piece.id).toBeLessThanOrEqual(PIANO_LOUDNESS * 1.001);
+      expect(peak, piece.id).toBeLessThanOrEqual(PIANO_PEAK + 1e-9);
+      // As loud as it may be: at the target, or at the ceiling.
+      expect(level >= PIANO_LOUDNESS * 0.999 || peak >= PIANO_PEAK - 1e-6, piece.id).toBe(true);
+    }
+  });
+
+  it('raises a quiet piece and lowers a loud one, all its voices together, so a new piece cannot be quiet or loud by accident', () => {
+    const quiet = { bpm: 120, loop: false, voices: [{ wave: 'pulse' as const, volume: 0.05, pluck: true as const, notes: 'C4:4 E4:4 G4:4 C5:4' }, { wave: 'triangle' as const, volume: 0.1, pluck: true as const, notes: 'C3:16' }] };
+    const raised = levelled(quiet);
+    expect(raised.voices[0]!.volume / raised.voices[1]!.volume).toBeCloseTo(0.5, 9);
+    expect(loudnessOf(raised)).toBeGreaterThan(loudnessOf(quiet));
+    const loud = { ...quiet, voices: quiet.voices.map((voice) => ({ ...voice, volume: voice.volume * 20 })) };
+    const lowered = levelled(loud);
+    expect(lowered.voices[0]!.volume).toBeLessThan(loud.voices[0]!.volume);
+    for (const track of [raised, lowered]) {
+      const sum = Math.max(...track.voices.map((voice) => voice.volume)) + Math.min(...track.voices.map((voice) => voice.volume));
+      expect(sum).toBeLessThanOrEqual(PIANO_PEAK + 1e-9);
+      expect(loudnessOf(track)).toBeLessThanOrEqual(PIANO_LOUDNESS * 1.001);
     }
   });
 

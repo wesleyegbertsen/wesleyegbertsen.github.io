@@ -3,7 +3,7 @@ import { PIECES } from '../content/pieces.ts';
 import { JUMP_TICKS } from '../engine/engine.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import type { Cue } from '../engine/types.ts';
-import { createSequencer, flatten, frequencyOf, parseVoice, stepSeconds, trackSteps, type Track } from './score.ts';
+import { createSequencer, flatten, frequencyOf, loudnessOf, parseVoice, stepSeconds, trackSteps, type Track } from './score.ts';
 
 // Written as a record so that a new cue in the engine is a type error here until it is listed.
 const CUE_LIST = { cursor: true, confirm: true, cancel: true, blip: true, door: true, item: true, coin: true, star: true, badge: true, bump: true, jump: true, heal: true, rest: true, hit: true, hurt: true, miss: true, faint: true, fall: true, light: true, low: true, run: true, encounter: true, showdown: true, round: true, levelup: true, quieter: true, louder: true, path: true, cave: true, sound: true, screen: true, mode: true, push: true, slide: true, switch: true, gate: true } satisfies Record<Cue, true>;
@@ -218,6 +218,18 @@ describe('the scores of the game', () => {
     // The quiet ones stay quiet: the bump and the typewriter must not nag.
     expect(EFFECTS.blip!.tones[0]!.volume).toBeLessThanOrEqual(0.1);
     expect(EFFECTS.bump!.gap).toBeGreaterThanOrEqual(0.2);
+  });
+});
+
+describe('how loud a track is over its length', () => {
+  it('measures the mean power: a plucked note a third of a held one, a square fuller than a triangle, rests count', () => {
+    const one = (wave: 'pulse' | 'triangle' | 'thin', notes: string, pluck?: true) => loudnessOf({ bpm: 60, loop: false, voices: [{ wave, volume: 0.6, notes, ...(pluck ? { pluck } : {}) }] });
+    // A held triangle of 4 s: 0.6 x 0.577 for 92% of it, three quarters held and the last quarter dying away.
+    expect(one('triangle', 'A4:16')).toBeCloseTo(Math.sqrt((0.6 * Math.sqrt(1 / 3)) ** 2 * 0.92 * (0.75 + 0.25 / 3)), 9);
+    expect(one('triangle', 'A4:16', true) ** 2 / one('triangle', 'A4:16') ** 2).toBeCloseTo((1 / 3) / (0.75 + 0.25 / 3), 9);
+    // A pulse is struck anyway, and a square is fuller than a triangle.
+    expect(one('pulse', 'A4:16')).toBeGreaterThan(one('triangle', 'A4:16', true));
+    expect(one('triangle', 'A4:8 -:8', true)).toBeCloseTo(one('triangle', 'A4:8', true) / Math.SQRT2, 9);
   });
 });
 

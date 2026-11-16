@@ -134,3 +134,32 @@ export function createSequencer(track: Track): Sequencer {
     },
   };
 }
+
+/** The RMS of each wave at full scale: a square 1; the thin pulse (normalised), a triangle and white noise about 0.577. */
+const WAVE_RMS: Record<Wave, number> = { pulse: 1, thin: Math.sqrt(1 / 3), triangle: Math.sqrt(1 / 3), noise: Math.sqrt(1 / 3) };
+/** How long a drum rings at most (as audio/player.ts plays it). */
+const DRUM_RING: Record<Drum, number> = { k: 0.12, s: 0.1, h: 0.035 };
+
+/**
+ * How loud a track is over its length: the RMS of its mean power. Every note with its wave's RMS and its envelope as
+ * the player makes it: a struck note (a pulse, a drum, a plucked note) dies away linearly from its start, a third
+ * of the energy of a held one; a held note keeps its level for three quarters of its sound and dies away over the
+ * last quarter. A note sounds for 92% of its length, a drum for its ring at most. Rests count as silence.
+ */
+export function loudnessOf(track: Track): number {
+  const { notes, length } = flatten(track);
+  let energy = 0;
+  for (const note of notes) {
+    const sounding = note.drum ? Math.min(note.duration, DRUM_RING[note.drum]) : note.duration * 0.92;
+    const held = !note.drum && note.wave !== 'pulse' && !note.pluck;
+    energy += (note.volume * WAVE_RMS[note.wave]) ** 2 * sounding * (held ? 0.75 + 0.25 / 3 : 1 / 3);
+  }
+  return length > 0 ? Math.sqrt(energy / length) : 0;
+}
+
+/** The loudest step of a track: the volumes of the voices that sound at it, summed (as audio/levels.test.ts). */
+export function peakOf(track: Track): number {
+  const sum = new Array<number>(trackSteps(track)).fill(0);
+  for (const voice of track.voices) for (const note of parseVoice(voice.notes).notes) for (let step = note.step; step < note.step + note.steps; step++) sum[step]! += voice.volume;
+  return Math.max(0, ...sum);
+}

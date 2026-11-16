@@ -3,7 +3,8 @@
  *
  * HOW TO EDIT: to add a piece,
  *   1. write its track in TRACKS (content/music.ts), like `moonlight`: `loop: false`, every voice `pluck: true`,
- *      and soft (a test keeps it under the loudest step of every other tune);
+ *      with its voices at the levels they have to each other: how loud the piece is comes out by itself (`levelled`
+ *      in music.ts: the cafe tune's level, its loudest step no louder than the loudest tune's);
  *   2. add one line here: an `id` of its own, the `name` and the `artist` as the selector shows them (capitals,
  *      22 characters at most each: the width of the box), and `track`, the name of that track in TRACKS.
  * Nothing else: the length the selector shows comes from the track (world.ts), never from here.

@@ -57,11 +57,9 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
     expect(first.map((note) => note.step)).toEqual([0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44]);
   });
 
-  it('is softer than the other tunes at its loudest', () => {
+  it('is as loud as a piece may be: its peak at the loudest tune\'s (pieces.test.ts holds the rule)', () => {
     const others = Object.keys(TRACKS).filter((name) => name !== 'moonlight' && TRACKS[name]!.loop);
-    const quietest = Math.min(...others.map(peakOf));
-    expect(peakOf('moonlight')).toBeLessThan(quietest);
-    expect(peakOf('moonlight')).toBeGreaterThanOrEqual(0.6);
+    expect(peakOf('moonlight')).toBeCloseTo(Math.max(...others.map(peakOf)), 6);
   });
 });
 

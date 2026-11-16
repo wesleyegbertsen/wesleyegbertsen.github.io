@@ -1,5 +1,6 @@
 import type { Effect, Tone } from '../audio/player.ts';
-import type { Track, Wave } from '../audio/score.ts';
+import { loudnessOf, peakOf as trackPeak, type Track, type Wave } from '../audio/score.ts';
+import { PIECES } from './pieces.ts';
 import type { Cue, World } from '../engine/types.ts';
 
 /**
@@ -394,6 +395,25 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 };
+
+/**
+ * How loud the pieces of the player piano are. HOW TO EDIT: nothing per piece. A piece's voices are written at the
+ * levels they have to each other (their balance); `levelled` then scales all of them together by one gain, the
+ * smaller of: PIANO_LOUDNESS over the piece's own level (`loudnessOf`: its mean power, with the plucked notes
+ * dying away), and PIANO_PEAK over its loudest step (`peakOf`). So a piece is as loud as the cafe tune it replaces,
+ * or as loud as it can be with its loudest step no louder than the loudest tune's (as the cries, round 21); never
+ * louder, and never quiet by accident. A test holds the rule (content/pieces.test.ts).
+ */
+export const PIANO_LOUDNESS = loudnessOf(TRACKS.cafe!);
+export const PIANO_PEAK = Math.max(...Object.values(TRACKS).filter((track) => track.loop).map(trackPeak));
+
+/** A piece with all its voices scaled together to the level of the pieces (above). */
+export function levelled(track: Track): Track {
+  const gain = Math.min(PIANO_LOUDNESS / loudnessOf(track), PIANO_PEAK / trackPeak(track));
+  return { ...track, voices: track.voices.map((voice) => ({ ...voice, volume: voice.volume * gain })) };
+}
+
+for (const name of new Set(PIECES.map((piece) => piece.track))) TRACKS[name] = levelled(TRACKS[name]!);
 
 /** Which track plays where. */
 export const MUSIC: NonNullable<World['music']> = {
