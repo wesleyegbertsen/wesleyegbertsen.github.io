@@ -64,23 +64,52 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
   });
 });
 
-describe('the player piano in the cafe', () => {
+describe('the music corner of the cafe', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const cafe = world.maps.cafe!;
+  const at: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', x: 4, y: 7 };
+  const object = (key: string) => cafe.objects.find((candidate) => candidate.id === `cafe:${key}`)!;
 
-  it('stands on the right wall, in the pocket between the table and the plant, and starts and stops the piece', () => {
-    const piano = cafe.objects.find((object) => object.id === 'cafe:k')!;
-    expect(piano).toMatchObject({ x: 8, y: 5, sprite: 'piano', solid: true, trigger: 'interact' });
-    expect(piano.branches).toEqual([{ do: [{ piano: true }] }]);
+  it('makes the cafe 17 cells wide and 9 high, the left part as it was, the old pocket of the piano floor again', () => {
+    expect([cafe.width, cafe.height]).toEqual([17, 9]);
+    // The counter, the barista and the shop clerk, the regular and the door stay where they were.
+    expect([object('B'), object('V'), object('1'), object('m')].map((thing) => [thing.x, thing.y])).toEqual([
+      [3, 2],
+      [6, 2],
+      [3, 6],
+      [4, 8],
+    ]);
+    expect(cafe.tiles[cafe.cells[5]![8]!]!.sprite).toBe(cafe.tiles[cafe.cells[5]![7]!]!.sprite);
   });
 
-  it('is in nobody\'s way: from the door every other thing of the cafe can still be reached, and the piano too', () => {
-    // Just inside the door (m at 4,8).
-    const at: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', x: 4, y: 7 };
-    for (const object of cafe.objects) expect(routeTo(world, { ...at, x: 4, y: 7 }, object.id), object.id).not.toBeNull();
-    // The piano is faced from the one cell beside it.
-    const route = routeTo(world, { ...at, x: 4, y: 7 }, 'cafe:k')!;
-    expect(route.at(-1)).toBe('right');
+  it('has the piano in the middle of a stage across the top of the corner, faced from the front of the stage', () => {
+    const piano = object('k');
+    expect(piano).toMatchObject({ x: 13, y: 1, sprite: 'piano', solid: true, trigger: 'interact' });
+    expect(piano.branches).toEqual([{ do: [{ piano: true }] }]);
+    const stage = cafe.tiles[cafe.cells[1]![13]!]!.sprite;
+    expect(stage).toBe('stage');
+    for (let x = 11; x <= 15; x++) {
+      expect(cafe.tiles[cafe.cells[2]![x]!]!.sprite, `edge ${x}`).toBe('stage-edge');
+      expect(cafe.tiles[cafe.cells[2]![x]!]!.solid).toBe(false);
+    }
+    const route = routeTo(world, at, 'cafe:k')!;
+    expect(route.at(-1)).toBe('up');
+    // Chairs face the stage, with an aisle in the middle.
+    expect([11, 12, 13, 14, 15].map((x) => cafe.tiles[cafe.cells[4]![x]!]!.sprite)).toEqual(['chair', 'chair', cafe.tiles[cafe.cells[4]![13]!]!.sprite, 'chair', 'chair']);
+  });
+
+  it('has three people of music who talk, and nothing in the cafe is out of reach from the door', () => {
+    const musicians = ['f', 'l', 'r'].map(object);
+    expect(musicians.map((person) => [person.x, person.y])).toEqual([
+      [15, 1],
+      [14, 5],
+      [11, 6],
+    ]);
+    for (const person of musicians) {
+      expect(person.trigger).toBe('interact');
+      expect(JSON.stringify(person.branches)).toMatch(/say/);
+    }
+    for (const thing of cafe.objects) expect(routeTo(world, at, thing.id), thing.id).not.toBeNull();
   });
 });
 

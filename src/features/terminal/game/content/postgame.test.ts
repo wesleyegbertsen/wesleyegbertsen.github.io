@@ -29,14 +29,21 @@ const through = (state: GameState) => {
 /** Walks to face an object of the current map, fighting off whatever jumps out on the way. */
 const reach = (state: GameState, id: string) => {
   let current = state;
-  for (let tries = 0; tries < 20; tries++) {
+  for (let tries = 0; tries < 40; tries++) {
     const route = routeTo(world, current, id);
     if (!route) throw new Error(`no way to ${id}`);
     for (const dir of route) {
       current = go(current, dir);
       if (current.battle || current.dialogue) break;
     }
-    if (!current.battle && !current.dialogue) return current;
+    // Arrived: facing it (one turn or step left). Someone strolling into the way cuts a walk short: try again.
+    // (Or standing on it: something walked onto, like a star.)
+    const left = routeTo(world, current, id);
+    const target = world.maps[current.map]!.objects.find((object) => object.id === id)!;
+    const on = current.x === target.x && current.y === target.y;
+    if (!current.battle && !current.dialogue && (on || (left && left.length <= 1))) return current;
+    // Someone standing in the way: wait a moment (a press of nothing lets the town stroll on).
+    for (let i = 0; i < 3; i++) current = press(current, {});
     current = through(current);
   }
   throw new Error(`could not reach ${id}`);

@@ -1095,6 +1095,40 @@ const piano = pianoWith('00000000', '000000000000');
 const pianoPlay = pianoWith('03003003', '010000100100');
 const pianoPlayB = pianoWith('30030030', '000100001000');
 
+/**
+ * The stage of the cafe's music corner: boards a shade darker than the floor (`stage`), and its front edge
+ * (`stage-edge`): the last boards, a dark lip, and a lighter step down to the floor. Both are walked on.
+ */
+const stage = [
+  '1111111211111112',
+  '1111111211111112',
+  '2222222222222222',
+  '1112111111121111',
+  '1112111111121111',
+  '2222222222222222',
+  '1111111211111112',
+  '1111111211111112',
+  '2222222222222222',
+  '1112111111121111',
+  '1112111111121111',
+  '2222222222222222',
+  '1111111211111112',
+  '1111111211111112',
+  '2222222222222222',
+  '1112111111121111'
+];
+const stageEdge = [
+  ...stage.slice(0, 8),
+  '3333333333333333',
+  '2222222222222222',
+  '0000000000000000',
+  '1111111111111111',
+  '1111111111111111',
+  '2222222222222222',
+  '................',
+  '................',
+];
+
 /** A shelf of cups on the wall behind the counter of the cafe. */
 const cupshelf = [
   '................',
@@ -1595,6 +1629,8 @@ export const scenery = {
   piano,
   'piano-play': pianoPlay,
   'piano-play-b': pianoPlayB,
+  stage,
+  'stage-edge': stageEdge,
   cliff,
   ...cliffFaces,
   'cliff-rock-0': rocks[0].map((row) => row.join('')),

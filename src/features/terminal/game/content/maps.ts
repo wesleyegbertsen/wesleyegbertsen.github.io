@@ -112,6 +112,9 @@ export function indoors(floor: string): Record<string, TileDef> {
   return {
     _: { sprite: floor, solid: false },
     '=': { sprite: 'rug', solid: false },
+    // A small stage (the cafe's music corner): its boards, and the front edge with a step, both walked on.
+    ':': { sprite: 'stage', solid: false },
+    '^': { sprite: 'stage-edge', solid: false },
     // Walls and what hangs on them
     X: { sprite: 'iwall', solid: true },
     W: { sprite: 'wallpane', solid: true },
@@ -426,20 +429,22 @@ export const LIBRARY = [
 /**
  * The Cafe. B is the barista (restores energy and moves; a defeat anywhere wakes the player up in front of her),
  * V the shopkeeper (opens the shop), both in the counter. 1 is a regular at a table by the sofa. e is the big
- * coffee machine and u the cups, behind the counter where nobody but the staff gets. k is the player piano on the
- * right wall, in the pocket between a table and the plant (it plays the Moonlight Sonata; story.ts). The tables stand against the
+ * coffee machine and u the cups, behind the counter where nobody but the staff gets. The right part (from column 10)
+ * is the music corner: a stage across its top (`:` the boards, `^` the front edge, both walked on) with the
+ * player piano k in the middle (faced from the edge below it), f a flute player beside it, two pairs of chairs
+ * facing the stage, l a listener behind them and r a regular at the side (story.ts). The tables stand against the
  * walls: the way from the door (m) up to the counter stays free (a test checks every room for that).
  */
 export const CAFE = [
-  'XXQuuXOXWX',
-  'Xe__x__zyX',
-  'XnnBnnVnnX',
-  'X________X',
-  'Xoh____hoX',
-  'X_______kX',
-  'Xso1____yX',
-  'X__===___X',
-  'XXXXmXXXXX',
+  'XXQuuXOXWXXPXXXPX',
+  'Xe__x__zyXy::k:fX',
+  'XnnBnnVnnX_^^^^^X',
+  'X_______________X',
+  'Xoh____ho__hh_hhX',
+  'X_____________l_X',
+  'Xso1____y__r____X',
+  'X__===__________X',
+  'XXXXmXXXXXXXXXXXX',
 ];
 
 /** Contact. H is the host, behind the counter. */
@@ -466,6 +471,8 @@ export const CONTACT = [
 export const REGIONS: Record<string, { name: string; x: number; y: number; w: number; h: number; holds: string }[]> = {
   // The cobbles around the fountain.
   town: [{ name: 'Fountain Plaza', x: 11, y: 4, w: 9, h: 3, holds: 'F' }],
+  // The right part of the cafe: the stage with the player piano, the seats in front of it.
+  cafe: [{ name: 'Music Corner', x: 10, y: 1, w: 6, h: 7, holds: 'k' }],
   // The deep cave: its three puzzle rooms, and behind the heavy door the boss, the prize and the ladder.
   deep: [
     { name: 'Boulder Hall', x: 10, y: 1, w: 8, h: 5, holds: '1' },

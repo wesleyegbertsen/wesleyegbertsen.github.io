@@ -214,6 +214,13 @@ export const CAFE_TEXT = {
   shop: [`Something for the road? We take ${ECONOMY.currency}.`],
   /** A regular at a table. */
   regular: (who: string) => ['They know my order by heart here.', `${who} says the best ideas come after the second cup. I am on my fourth. Still waiting.`],
+  // The music corner, on the right. HOW TO EDIT: a line or two each, drafts to rewrite.
+  /** The flute player on the stage, beside the piano. */
+  flute: ['I have the next slot. Well, after the piano. It never takes a break.', 'Nobody books a flute when a piano plays itself.'],
+  /** A listener behind the chairs. */
+  listener: ['That piano knows its pieces by heart, and plays them better than I ever could.', 'It even has a list. Choose one and sit down, it does the rest.'],
+  /** A regular at the side of the music corner. */
+  selfplaying: ['The piano plays itself, you know. Nobody has ever seen who winds it up.', 'I come for the coffee. I stay for the Moonlight Sonata.'],
 };
 
 /**
@@ -777,8 +784,11 @@ export function buildMaps(data: FsData): BuiltMap[] {
       B: barista(),
       V: shopkeeper('maker', 'cafe', CAFE_TEXT.shop),
       '1': person('dev', CAFE_TEXT.regular(who)),
-      // The player piano on the right wall: A starts the Moonlight Sonata, or stops it. It says nothing.
-      k: { sprite: 'piano', solid: true, trigger: 'interact', branches: [{ do: [{ piano: true }] }] },
+      // The player piano on the stage of the music corner: A opens its list of pieces, or stops the one that plays.
+      k: { sprite: 'piano', solid: true, trigger: 'interact', under: ':', branches: [{ do: [{ piano: true }] }] },
+      f: person('kid', CAFE_TEXT.flute, ':'),
+      l: person('elder', CAFE_TEXT.listener),
+      r: person('gardener', CAFE_TEXT.selfplaying),
       m: exitTo('X'),
     },
   };

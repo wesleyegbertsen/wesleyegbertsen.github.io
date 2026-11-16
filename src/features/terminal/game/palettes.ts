@@ -60,7 +60,7 @@ export const RULES: [RegExp, PaletteId][] = [
   [/^(shore|path)$/, 'sand'],
   [/^(roof|awning|canopy|shingle|slate|tin|flag|torii|mailbox)/, 'roof'],
   [/^(computer|server|cooler|coffee|crt|arcade|solder|telescope|kanji|flask|globe|lever|gate|lamp)/, 'tech'],
-  [/^(planks|wood|piano|desk|table|chair|sofa|workbench|crate|barrel|counter|bench|stall|bridge|rug|carpet|checker|floor|ladder|sign|mat|bookshelf|cupshelf|door-wood|plaque-workshop)/, 'wood'],
+  [/^(planks|wood|piano|stage|desk|table|chair|sofa|workbench|crate|barrel|counter|bench|stall|bridge|rug|carpet|checker|floor|ladder|sign|mat|bookshelf|cupshelf|door-wood|plaque-workshop)/, 'wood'],
   [/^(wall|pane|door|brick|glass|column|stone|plaque|iwall|wallpane|poster|blackboard|clock|pegboard|whiteboard|void|cobble)/, 'stone'],
   // The people and the animals: skin, hair, clothes.
   [/^(player|trainer|teacher|dev|maker|librarian|wesley|kid|elder|postman|gardener|barista|angler|dog|cat|bunny)/, 'people'],

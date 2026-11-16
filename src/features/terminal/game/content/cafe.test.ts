@@ -124,8 +124,9 @@ describe('the cafe in town', () => {
     expect(barista.y).toBe(keeper.y);
     expect(barista.wander).toBeUndefined();
     expect(keeper.wander).toBeUndefined();
-    // The counter runs from wall to wall on their row, so the cells behind it cannot be reached.
-    for (let x = 1; x < cafe.width - 1; x++) {
+    // The counter runs from the left wall to the wall at column 9 (the music corner is to the right of it, from 10)
+    // on their row, so the cells behind it cannot be reached.
+    for (let x = 1; x < 10; x++) {
       const solid = tileOf(cafe, x, barista.y)!.solid || x === barista.x || x === keeper.x;
       expect(solid, String(x)).toBe(true);
     }
