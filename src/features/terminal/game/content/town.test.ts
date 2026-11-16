@@ -407,3 +407,20 @@ describe('the gold stars and the errands', () => {
     expect(state.finished).toBe(false);
   });
 });
+
+describe('the mountain by the West Road', () => {
+  it('has height: a face where it meets the road, slopes and peaks further in, and no single picture fills it', () => {
+    const west = world.maps.west!;
+    const looks = west.cells.flat().map((char) => west.tiles[char]!).filter((tile) => tile.sprite === 'cliff').map((tile) => tile.look!);
+    expect(looks.length).toBeGreaterThan(40);
+    const counts = new Map<string, number>();
+    for (const look of looks) counts.set(look, (counts.get(look) ?? 0) + 1);
+    for (const look of ['cliff-base', 'cliff-e', 'cliff-slope']) expect(counts.has(look), look).toBe(true);
+    expect([...counts.keys()].filter((look) => look.startsWith('cliff-peak')).length).toBeGreaterThanOrEqual(2);
+    expect(Math.max(...counts.values()) / looks.length).toBeLessThan(0.5);
+    for (const look of counts.keys()) expect(Object.keys(tiles), look).toContain(look);
+    // Still solid rock everywhere, with the mouth of the cave in its face.
+    for (const tile of Object.values(west.tiles)) if (tile.sprite === 'cliff') expect(tile.solid).toBe(true);
+    expect(west.objects.find((object) => object.id === 'west:D')?.sprite).toBe('cavemouth');
+  });
+});

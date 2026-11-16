@@ -121,6 +121,12 @@ export type TileDef = {
    * picks the picture and writes it in `look`.
    */
   join?: true;
+  /**
+   * A mountain: each cell is drawn by how far it is from open ground (reliefLook in engine/world.ts): the face where
+   * it meets the ground (`-base` with its shadow below, `-e`/`-w` at the sides, `-top` above), a slope one cell
+   * in, and peaks further in. Only the picture changes: it stays the same solid tile.
+   */
+  relief?: true;
   /** The picture drawn for this cell when it is not `sprite` (picked by parseMap for a tile that joins). */
   look?: string;
 };

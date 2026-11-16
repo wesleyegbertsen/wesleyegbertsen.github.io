@@ -63,6 +63,16 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
   const joined = cells.map((row, y) =>
     row.map((char, x) => {
       const tile = legend[char]!;
+      if (tile.relief) {
+        const look = reliefLook(tile.sprite, x, y, (dx, dy) => {
+          const there = cells[y + dy]?.[x + dx];
+          // Off the map is more mountain, not open ground.
+          return there === undefined || there === char;
+        });
+        const key = `${char}:${look}`;
+        tiles[key] ??= { ...tile, look };
+        return key;
+      }
       if (!tile.join) return char;
       const same = (dx: number, dy: number) => cells[y + dy]?.[x + dx] === char;
       const look = joinedLook(tile.sprite, { n: same(0, -1), e: same(1, 0), s: same(0, 1), w: same(-1, 0) });
@@ -94,6 +104,27 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
 export function joinedLook(sprite: string, sides: { n: boolean; e: boolean; s: boolean; w: boolean }): string {
   const on = (['n', 'e', 's', 'w'] as const).filter((side) => sides[side]).join('');
   return on ? `${sprite}-${on}` : sprite;
+}
+
+/**
+ * The picture of a mountain cell (a tile with `relief`), from what is around it (`rock(dx, dy)`: whether that
+ * cell is more of the mountain). Where it meets open ground it is a face: the foot (`-base`, its shadow on the
+ * ground) when the ground is right below, else a side (`-e`, `-w`) or the ridge (`-top`). One cell
+ * further in it is a slope (`-slope`); further still it is peaks, in three pictures taken in turn along the rows,
+ * so no single picture fills the field.
+ */
+export function reliefLook(sprite: string, x: number, y: number, rock: (dx: number, dy: number) => boolean): string {
+  let distance = 4;
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (!rock(dx, dy)) distance = Math.min(distance, Math.max(Math.abs(dx), Math.abs(dy)));
+  if (distance === 1) {
+    if (!rock(0, 1)) return `${sprite}-base`;
+    if (!rock(1, 0)) return `${sprite}-e`;
+    if (!rock(-1, 0)) return `${sprite}-w`;
+    if (!rock(0, -1) || !rock(-1, -1) || !rock(1, -1)) return `${sprite}-top`;
+    return `${sprite}-base`;
+  }
+  if (distance === 2) return `${sprite}-slope`;
+  return `${sprite}-peak-${(x + 2 * y) % 3}`;
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {

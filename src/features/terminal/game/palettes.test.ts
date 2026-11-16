@@ -39,6 +39,9 @@ describe('the palettes of Game Boy Color mode', () => {
     expect(paletteOf('cliff')).toBe('earth');
     expect(paletteOf('rock')).toBe('stone');
     expect(paletteOf('boulder')).toBe('stone');
+    // Every picture of the mountain is earth: brown rock, a light lip, a dark foot.
+    for (const name of SHEET_NAMES.filter((candidate) => candidate.startsWith('cliff'))) expect(paletteOf(name), name).toBe('earth');
+    expect(SHEET_NAMES.filter((candidate) => candidate.startsWith('cliff-')).length).toBeGreaterThanOrEqual(8);
     // What stands in or on the water has colours of its own: green plants, a white duck, wooden planks, grey stones.
     // Only the water around them is blue (they are drawn over the water of their cell).
     expect(paletteOf('lily')).toBe('grass');

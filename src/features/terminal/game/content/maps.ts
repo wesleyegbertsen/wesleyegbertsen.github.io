@@ -67,7 +67,7 @@ export const OUTDOORS: Record<string, TileDef> = {
   N: { sprite: 'bench', under: 'cobble', solid: true },
   M: { sprite: 'stall', under: 'grass', solid: true },
   // The mountain
-  c: { sprite: 'cliff', solid: true },
+  c: { sprite: 'cliff', solid: true, relief: true }, // drawn by its distance from the ground: a face, a slope, peaks
   x: { sprite: 'crate', under: 'grass', solid: true },
   z: { sprite: 'barrel', under: 'grass', solid: true },
   q: { sprite: 'mailbox', under: 'grass', solid: true },
