@@ -75,7 +75,7 @@ describe('Unravel on the player piano, as converted from the MIDI', () => {
   });
 });
 
-describe('the selector with four pieces', () => {
+describe('the selector, its first four pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
@@ -83,9 +83,10 @@ describe('the selector with four pieces', () => {
 
   it('lists the four pieces, each with the length of its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'unravel')).toEqual({ id: 'unravel', name: 'UNRAVEL', artist: 'TK, LING TOSITE SIGURE', track: 'unravel' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel']);
+    // The first four of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 4)).toEqual(['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel']);
     expect(world.pieces![3]!.ticks).toBe(Math.round(flatten(TRACKS.unravel!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(4);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays the fourth piece with A on its row, and the first three still their own', () => {

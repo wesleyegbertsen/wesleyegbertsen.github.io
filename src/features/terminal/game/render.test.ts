@@ -1500,7 +1500,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the four real pieces, and the second, third and fourth ones\' artists whole and inside the box at the foot', () => {
+  it('lists the five real pieces, and the second to fifth ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
@@ -1509,7 +1509,8 @@ describe('the piece selector of the player piano', () => {
     expect(Math.max(...row.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     expect(textAt(draws, 44)).toBe('ALWAYSINMYHEART');
     expect(textAt(draws, 54)).toBe('UNRAVEL');
-    expect(textAt(draws, 64)).toBe('');
+    expect(textAt(draws, 64)).toBe('ALIEZ');
+    expect(textAt(draws, 74)).toBe('');
     expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
     expect(textAt(draws, 120)).toBe('2:31A:playB:back');
     const artist = draws.filter((draw) => draw.sheet === 'font' && draw.y === 110);
@@ -1524,6 +1525,11 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(fourth, 54)).toBe('>UNRAVEL');
     expect(textAt(fourth, 110)).toBe('TK,LINGTOSITESIGURE');
     expect(textAt(fourth, 120)).toBe('1:27A:playB:back');
+    // The fifth: the anime and the ending as its line at the foot, the dot in the font.
+    const fifth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 4 } }, undefined, real).draws;
+    expect(textAt(fifth, 64)).toBe('>ALIEZ');
+    expect(textAt(fifth, 110)).toBe('ALDNOAH.ZEROED2');
+    expect(textAt(fifth, 120)).toBe('1:39A:playB:back');
     const credit = fourth.filter((draw) => draw.sheet === 'font' && draw.y === 110);
     expect(Math.max(...credit.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
   });
