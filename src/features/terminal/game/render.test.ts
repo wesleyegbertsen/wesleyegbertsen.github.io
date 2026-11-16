@@ -85,6 +85,8 @@ describe('drawGame', () => {
     const big = draws.filter((draw) => draw.sheet === 'font' && draw.w === 12);
     expect(big).toHaveLength(world.title.length);
     expect(textAt(draws, 92)).toBe('-PRESSA-');
+    // And under it, how to switch between Game Boy and Game Boy Color.
+    expect(textAt(draws, 102)).toBe('B:GB/GBC');
   });
 
   it('draws every cell of the map, the things on it and the player facing down', () => {

@@ -244,6 +244,22 @@ test.describe('Game Boy Color mode', () => {
       return { count: seen.size, green, all: data.length / 4 };
     });
 
+  test('is switched with B on the title screen too, by key or by the on-screen B', async ({ page, isMobile }) => {
+    const { errors } = await play(page);
+    const shell = game(page).locator('[data-wide]');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    if (isMobile) await touch(page, 'B');
+    else await page.keyboard.press('x');
+    await expect(shell).toHaveAttribute('data-mode', 'gbc');
+    await expect(status(page)).toHaveText('Game Boy Color mode');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    await expect.poll(async () => (await colours(page)).green).toBe(0);
+    await page.keyboard.press('x');
+    await expect(shell).toHaveAttribute('data-mode', 'gb');
+    await expect(status(page)).toHaveText('Game Boy mode');
+    expect(errors).toEqual([]);
+  });
+
   test('is switched on the fourth row of the Settings tab: the picture turns to colour and the console to a Game Boy Color', async ({ page }) => {
     const { pilot, errors } = await play(page);
     const storage = await page.evaluate(() => Object.keys(localStorage).sort());

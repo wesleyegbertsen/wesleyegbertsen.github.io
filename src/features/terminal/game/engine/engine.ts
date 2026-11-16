@@ -485,6 +485,11 @@ export function step(state: GameState, input: Input, world: World, options: Opti
 
   if (state.scene === 'ending') return done(state);
   if (state.scene === 'title') {
+    // B on the title asks for the other mode, Game Boy or Game Boy Color: whoever draws the screen switches it.
+    if (input.b) {
+      ctx.cues.push('mode');
+      return done(state);
+    }
     if (!input.a && !input.start) return done(state);
     ctx.cues.push('confirm');
     return done(runScript({ ...state, scene: 'world', script: [{ say: world.intro }] }, ctx));

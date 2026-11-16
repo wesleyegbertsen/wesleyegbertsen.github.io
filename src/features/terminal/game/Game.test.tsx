@@ -493,6 +493,19 @@ describe('Game', () => {
     expect(screen.getByRole('status')).toHaveTextContent('LCD look on');
   });
 
+  it('switches between Game Boy and Game Boy Color with B on the title, and says so', async () => {
+    const { game, sound, user } = setup(initialGame(world));
+    expect(game).toHaveAttribute('data-scene', 'title');
+    await user.keyboard('x');
+    expect(sound.colour()).toBe(true);
+    expect(game).toHaveAttribute('data-mode', 'gbc');
+    expect(game).toHaveAttribute('data-scene', 'title');
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
+    await user.keyboard('x');
+    expect(sound.colour()).toBe(false);
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy mode');
+  });
+
   it('switches between Game Boy and Game Boy Color from the settings: the console follows, in memory only', async () => {
     const { game, sound, user } = setup(started());
     const shell = () => game.querySelector('[data-wide]')!;

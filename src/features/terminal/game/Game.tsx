@@ -270,7 +270,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color; on the title screen B switches the mode too."
       tabIndex={0}
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}

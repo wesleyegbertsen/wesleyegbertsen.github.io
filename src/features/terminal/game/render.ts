@@ -555,6 +555,7 @@ function drawTitle(ctx: Painter, sheets: Sheets, world: World) {
   const name = fold(world.subtitle);
   drawText(ctx, sheets, name, centred(name), 68);
   drawText(ctx, sheets, '- PRESS A -', centred('- PRESS A -'), 92);
+  drawText(ctx, sheets, 'B: GB / GBC', centred('B: GB / GBC'), 102);
   drawScenery(ctx, sheets, ['player-down-0', 'cat']);
 }
 

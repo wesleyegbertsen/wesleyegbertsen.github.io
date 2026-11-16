@@ -66,6 +66,12 @@ describe('parseMap', () => {
 });
 
 describe('the title and dialogue', () => {
+  it('asks for the other mode, Game Boy or Game Boy Color, when B is pressed on the title, and stays there', () => {
+    const pressed = step(fresh(), { ...NO_INPUT, b: true }, world);
+    expect(pressed.cues).toEqual(['mode']);
+    expect(pressed.state.scene).toBe('title');
+  });
+
   it('waits on the title, then opens the intro', () => {
     const state = fresh();
     expect(state.scene).toBe('title');
