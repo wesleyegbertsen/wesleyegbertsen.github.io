@@ -409,18 +409,37 @@ describe('the gold stars and the errands', () => {
 });
 
 describe('the mountain by the West Road', () => {
-  it('has height: a face where it meets the road, slopes and peaks further in, and no single picture fills it', () => {
-    const west = world.maps.west!;
-    const looks = west.cells.flat().map((char) => west.tiles[char]!).filter((tile) => tile.sprite === 'cliff').map((tile) => tile.look!);
-    expect(looks.length).toBeGreaterThan(40);
+  const west = world.maps.west!;
+  const rock = (x: number, y: number) => { const char = west.cells[y]?.[x]; return char === undefined || !!west.tiles[char]!.relief; };
+  const lookAt = (x: number, y: number) => west.tiles[west.cells[y]![x]!]!.look!;
+  const cells = west.cells.flatMap((row, y) => row.flatMap((char, x) => (west.tiles[char]!.relief ? [{ x, y }] : [])));
+
+  it('is one rock: a face of the right sides wherever it meets open ground, bare rock inside, peaks only on the ridge', () => {
+    expect(cells.length).toBeGreaterThan(40);
+    for (const { x, y } of cells) {
+      const look = lookAt(x, y);
+      expect(look, `${x},${y}`).toMatch(/^cliff-(face-[nesw]+|rock-\d|peak-[01])$/);
+      expect(Object.keys(tiles), look).toContain(look);
+      const open = ([['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]] as const).filter(([, dx, dy]) => !rock(x + dx, y + dy)).map(([side]) => side).join('');
+      expect(look, `${x},${y}`).toBe(open ? `cliff-face-${open}` : look);
+      if (!open) expect(look).not.toMatch(/face/);
+      if (look.startsWith('cliff-peak')) {
+        expect(y).toBe(0);
+        // Never beside a face: the massifs stand back from the edge.
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]] as const) if (rock(x + dx, y + dy) && west.cells[y + dy]?.[x + dx]) expect(lookAt(x + dx, y + dy)).not.toMatch(/face/);
+      }
+    }
+    // Inner rock in two pictures, the face facing the road, and a couple of peaks; no single picture fills it.
     const counts = new Map<string, number>();
-    for (const look of looks) counts.set(look, (counts.get(look) ?? 0) + 1);
-    for (const look of ['cliff-base', 'cliff-e', 'cliff-slope']) expect(counts.has(look), look).toBe(true);
-    expect([...counts.keys()].filter((look) => look.startsWith('cliff-peak')).length).toBeGreaterThanOrEqual(2);
-    expect(Math.max(...counts.values()) / looks.length).toBeLessThan(0.5);
-    for (const look of counts.keys()) expect(Object.keys(tiles), look).toContain(look);
-    // Still solid rock everywhere, with the mouth of the cave in its face.
-    for (const tile of Object.values(west.tiles)) if (tile.sprite === 'cliff') expect(tile.solid).toBe(true);
-    expect(west.objects.find((object) => object.id === 'west:D')?.sprite).toBe('cavemouth');
+    for (const { x, y } of cells) counts.set(lookAt(x, y), (counts.get(lookAt(x, y)) ?? 0) + 1);
+    expect(counts.has('cliff-face-e')).toBe(true);
+    expect(counts.get('cliff-peak-0')).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...counts.values()) / cells.length).toBeLessThan(0.5);
+    // Solid, but for the mountain under the mouth of the cave, which counts as rock to its neighbours.
+    const mouth = west.objects.find((object) => object.id === 'west:D')!;
+    expect(mouth.sprite).toBe('cavemouth');
+    for (const { x, y } of cells) expect(west.tiles[west.cells[y]![x]!]!.solid, `${x},${y}`).toBe(!(x === mouth.x && y === mouth.y));
+    expect(lookAt(mouth.x, mouth.y - 1)).toBe('cliff-face-e');
+    expect(lookAt(mouth.x, mouth.y + 1)).toBe('cliff-face-e');
   });
 });

@@ -66,8 +66,8 @@ export function parseMap(spec: MapSpec, legend: Record<string, TileDef>): GameMa
       if (tile.relief) {
         const look = reliefLook(tile.sprite, x, y, (dx, dy) => {
           const there = cells[y + dy]?.[x + dx];
-          // Off the map is more mountain, not open ground.
-          return there === undefined || there === char;
+          // Off the map is more mountain, not open ground; so is any tile with relief (the mouth of a cave).
+          return there === undefined || !!legend[there]?.relief;
         });
         const key = `${char}:${look}`;
         tiles[key] ??= { ...tile, look };
@@ -108,23 +108,21 @@ export function joinedLook(sprite: string, sides: { n: boolean; e: boolean; s: b
 
 /**
  * The picture of a mountain cell (a tile with `relief`), from what is around it (`rock(dx, dy)`: whether that
- * cell is more of the mountain). Where it meets open ground it is a face: the foot (`-base`, its shadow on the
- * ground) when the ground is right below, else a side (`-e`, `-w`) or the ridge (`-top`). One cell
- * further in it is a slope (`-slope`); further still it is peaks, in three pictures taken in turn along the rows,
- * so no single picture fills the field.
+ * cell is more of the mountain). All of it is one rock: where it meets open ground it is a face, named by its open
+ * sides in the order north, east, south, west (`cliff-face-e`, `cliff-face-ne`, `cliff-face-s`: a lit top, an
+ * edge, a shadow at the foot, in one picture for a corner); inside it is the bare rock in two pictures taken in
+ * turn; on the top row, away from every face, big peaks two cells wide (`cliff-peak-0` and `cliff-peak-1`).
  */
 export function reliefLook(sprite: string, x: number, y: number, rock: (dx: number, dy: number) => boolean): string {
-  let distance = 4;
-  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (!rock(dx, dy)) distance = Math.min(distance, Math.max(Math.abs(dx), Math.abs(dy)));
-  if (distance === 1) {
-    if (!rock(0, 1)) return `${sprite}-base`;
-    if (!rock(1, 0)) return `${sprite}-e`;
-    if (!rock(-1, 0)) return `${sprite}-w`;
-    if (!rock(0, -1) || !rock(-1, -1) || !rock(1, -1)) return `${sprite}-top`;
-    return `${sprite}-base`;
-  }
-  if (distance === 2) return `${sprite}-slope`;
-  return `${sprite}-peak-${(x + 2 * y) % 3}`;
+  const SIDES = [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]] as const;
+  const faceAt = (dx: number, dy: number) => rock(dx, dy) && SIDES.some(([, a, b]) => !rock(dx + a, dy + b));
+  const open = SIDES.filter(([, dx, dy]) => !rock(dx, dy)).map(([side]) => side).join('');
+  if (open) return `${sprite}-face-${open}`;
+  // A peak stands on the top ridge, with rock that is no face on both sides of it and below it.
+  const peak = (dx: number) => y === 0 && rock(dx, 0) && !faceAt(dx, 0) && !faceAt(dx - 1, 0) && !faceAt(dx + 1, 0) && !faceAt(dx, 1);
+  if (x % 2 === 0 && peak(0) && peak(1)) return `${sprite}-peak-0`;
+  if (x % 2 === 1 && peak(0) && peak(-1)) return `${sprite}-peak-1`;
+  return `${sprite}-rock-${(x + y) % 2}`;
 }
 
 export function holds(cond: Cond | undefined, state: GameState): boolean {

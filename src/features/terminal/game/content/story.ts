@@ -861,12 +861,16 @@ export function buildMaps(data: FsData): BuiltMap[] {
     objects: {
       ')': wayOut({ map: 'town', at: '(', dx: 1, dir: 'right' }),
       // You walk into the mountain going left, and come out in the cave at its east side, still going left.
-      D: door(
-        { map: 'cave', at: 'm', dx: -1, dir: 'left' },
-        { when: { level: CAVE_LEVEL }, deny: `Cold air breathes out of the mountain. Scratched by the entrance: "Lv ${CAVE_LEVEL} and up."` },
-        'cavemouth',
-        'cave',
-      ),
+      D: {
+        ...door(
+          { map: 'cave', at: 'm', dx: -1, dir: 'left' },
+          { when: { level: CAVE_LEVEL }, deny: `Cold air breathes out of the mountain. Scratched by the entrance: "Lv ${CAVE_LEVEL} and up."` },
+          'cavemouth',
+          'cave',
+        ),
+        // On the mountain, not on grass: the rock face runs on above and below the mouth.
+        under: 'k',
+      },
       s: sign('WEST ROAD.', 'The mountain ahead keeps its own counsel.'),
       C: chest('chest:west', 'energydrink', '"'),
     },

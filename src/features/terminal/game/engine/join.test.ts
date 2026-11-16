@@ -44,35 +44,52 @@ describe('tiles that join their neighbours', () => {
 });
 
 describe('a mountain (relief)', () => {
-  const rock: Record<string, TileDef> = { '.': { sprite: 'grass', solid: false }, c: { sprite: 'cliff', solid: true, relief: true } };
+  const rock: Record<string, TileDef> = {
+    '.': { sprite: 'grass', solid: false },
+    c: { sprite: 'cliff', solid: true, relief: true },
+    // The mouth of a cave: not solid, but part of the mountain to its neighbours.
+    k: { sprite: 'cliff', solid: false, relief: true },
+  };
   const reliefLooks = (rows: string[]) => {
     const map = parseMap({ id: 'hill', name: 'Hill', rows, ground: '.', objects: {} }, rock);
     return map.cells.map((row) => row.map((char) => map.tiles[char]!.look ?? map.tiles[char]!.sprite));
   };
 
-  it('draws the face where the rock meets open ground: the foot below, the sides, the ridge on top', () => {
+  it('is one face wherever it meets open ground, with the open sides in its name: corners included', () => {
     const looks = reliefLooks(['.....', '.ccc.', '.ccc.', '.ccc.', '.....']);
-    expect(looks[1]![2]).toBe('cliff-top');
-    expect(looks[3]![2]).toBe('cliff-base');
-    expect(looks[2]![1]).toBe('cliff-w');
-    expect(looks[2]![3]).toBe('cliff-e');
-    // A corner open below is the foot: the shadow is where the rock meets the ground.
-    expect(looks[3]![1]).toBe('cliff-base');
+    expect(looks[1]![2]).toBe('cliff-face-n');
+    expect(looks[3]![2]).toBe('cliff-face-s');
+    expect(looks[2]![1]).toBe('cliff-face-w');
+    expect(looks[2]![3]).toBe('cliff-face-e');
+    // Outer corners: the lit top and the side, the side and the shadow at the foot.
+    expect(looks[1]![3]).toBe('cliff-face-ne');
+    expect(looks[3]![1]).toBe('cliff-face-sw');
+    // Inside: the same rock, no edge.
+    expect(looks[2]![2]).toMatch(/^cliff-rock-\d$/);
   });
 
-  it('rises away from the open ground: a slope one cell in, peaks further in, and no single picture fills the field', () => {
-    const rows = ['cccccccc', 'cccccccc', 'cccccccc', 'cccccccc', 'cccc....'];
+  it('counts the mouth of a cave as rock, so the face runs on above and below it', () => {
+    const looks = reliefLooks(['cc.', 'ck.', 'cc.']);
+    expect(looks[0]![1]).toBe('cliff-face-e');
+    expect(looks[2]![1]).toBe('cliff-face-e');
+  });
+
+  it('puts the peaks only on the top ridge, as big pairs, and nowhere next to a face', () => {
+    const rows = ['ccccccc.', 'cccccccc', 'cccccccc', 'cccc....'];
     const looks = reliefLooks(rows);
-    // Next to the open ground: the foot. One further: the slope. Further still: peaks, in more than one picture.
-    expect(looks[3]![5]).toBe('cliff-base');
-    expect(looks[2]![5]).toBe('cliff-slope');
-    const far = looks.slice(0, 2).flat().filter((look) => look.startsWith('cliff-peak'));
-    expect(far.length).toBeGreaterThan(4);
-    expect(new Set(far).size).toBeGreaterThanOrEqual(2);
-    const all = looks.flat().filter((look) => look.startsWith('cliff'));
-    expect(new Set(all).size).toBeGreaterThanOrEqual(4);
-    // Every cell stays solid rock.
+    const peaks = looks.flatMap((row, y) => row.flatMap((look, x) => (look.startsWith('cliff-peak') ? [[x, y] as const] : [])));
+    expect(peaks.length).toBeGreaterThanOrEqual(2);
+    for (const [x, y] of peaks) {
+      expect(y).toBe(0);
+      // In pairs: the left half beside the right half.
+      const look = looks[y]![x]!;
+      if (look === 'cliff-peak-0') expect(looks[y]![x + 1]).toBe('cliff-peak-1');
+      if (look === 'cliff-peak-1') expect(looks[y]![x - 1]).toBe('cliff-peak-0');
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]] as const) expect(looks[y + dy]?.[x + dx] ?? '', `${x},${y}`).not.toMatch(/^cliff-face/);
+    }
+    // One family: every look is a face, the rock or a peak.
+    for (const look of looks.flat()) if (look.startsWith('cliff')) expect(look).toMatch(/^cliff-(face-[nesw]+|rock-\d|peak-[01])$/);
     const map = parseMap({ id: 'hill', name: 'Hill', rows, ground: '.', objects: {} }, rock);
-    for (const row of map.cells) for (const char of row) if (map.tiles[char]!.sprite === 'cliff') expect(map.tiles[char]!.solid).toBe(true);
+    for (const row of map.cells) for (const char of row) if (map.tiles[char]!.sprite === 'cliff' && char.startsWith('c')) expect(map.tiles[char]!.solid).toBe(true);
   });
 });

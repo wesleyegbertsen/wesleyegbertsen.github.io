@@ -640,75 +640,51 @@ const sparkle = [
 
 
 /**
- * The mountain beside the West Road, drawn by how far a cell is from the ground (`relief` in the legend, picked by
- * reliefLook in engine/world.ts). Rock is the dark shade with darker cracks and the lightest shade where the light
- * from the upper left falls; the light shade (grass in colour) is not used in the rock.
- * - The face, where the rock meets the ground: upright strata and cracks. `-base` has the dark shadow at its foot,
- *   `-e` and `-w` a lit edge and a dark outline at the side that is open, `-top` a light ridge along the top.
- * - `-slope`, one cell in: the rock leaning back, strata running down to the right, lighter.
- * - `-peak-0` to `-peak-2`, further in: peaks and shoulders with light tops and shaded right flanks, so the
- *   mountain has a silhouette instead of one field.
+ * The mountain beside the West Road: one rock, drawn by where a cell is (`relief` in the legend, picked by
+ * reliefLook in engine/world.ts). Every picture is the same texture (upright strata of the dark shade, darker
+ * cracks with the lightest shade on their left where the light from the upper left falls), so they join:
+ * - `cliff-rock-0` and `-1`: the bare rock inside, the cracks a little apart in the second;
+ * - `cliff-face-<sides>`: the rock where it meets open ground, with an edge on each open side: a lit lip on top
+ *   (n), a dark outline with the shade beside it at the sides (e, w), one dark shadow line at its foot (s);
+ * - `cliff-peak-0` and `-1`: a big massif on the top ridge, two cells wide: a light ridge rising across the
+ *   left half and falling across the right, the slope under it lit on the left and shaded on the right.
+ * The light shade (grass in colour) is never used in the rock.
  */
-const face = () => {
-  const rows = [];
-  for (let y = 0; y < 16; y++) {
+const rockTexture = (shift) =>
+  Array.from({ length: 16 }, (_, y) => {
     const row = Array(16).fill('2');
-    // Upright cracks, a little jagged, with a lit edge on their left.
-    for (const base of [3, 9, 13]) {
-      const x = base + ((y + base) % 5 === 0 ? 1 : 0);
+    for (const base of [2, 7, 12]) {
+      const x = (base + shift + ((y + base) % 6 === 0 ? 1 : 0)) % 16;
       row[x] = '3';
-      if (x - 1 >= 0 && y % 4 !== 3) row[x - 1] = '0';
+      if (y % 5 !== 4) row[(x + 15) % 16] = '0';
     }
-    // A few dark specks between the cracks: rough rock.
-    if ((x0 => (y * 5 + 2) % 7)(0) === 0) row[(y * 3 + 6) % 16] = '3';
-    rows.push(row);
-  }
-  return rows;
+    return row;
+  });
+const rocks = [rockTexture(0), rockTexture(2)];
+const cliffFace = (sides) => {
+  const rows = rockTexture(0).map((row) => [...row]);
+  if (sides.includes('w')) for (const row of rows) { row[0] = '3'; row[1] = '0'; }
+  if (sides.includes('e')) for (const row of rows) { row[14] = '2'; row[15] = '3'; }
+  if (sides.includes('n')) { rows[0] = Array(16).fill('0'); rows[1] = Array(16).fill('3'); if (sides.includes('e')) rows[0][15] = '3'; if (sides.includes('w')) rows[0][0] = '3'; }
+  if (sides.includes('s')) { rows[14] = rows[14].map((c) => (c === '0' ? '2' : c)); rows[15] = Array(16).fill('3'); }
+  return rows.map((row) => row.join(''));
 };
-const cliffBase = (() => {
-  const rows = face();
-  rows[13] = Array(16).fill('3');
-  rows[14] = Array(16).fill('3');
-  rows[15] = '3.3.3.3.3.3.3.3.'.split('');
-  return rows.map((row) => row.join(''));
-})();
-const cliffSide = (() => {
-  const rows = face();
-  for (const row of rows) {
-    row[13] = '0';
-    row[14] = '2';
-    row[15] = '3';
+const FACE_SIDES = ['n', 'e', 's', 'w', 'ne', 'ns', 'nw', 'es', 'ew', 'sw', 'nes', 'new', 'nsw', 'esw', 'nesw'];
+const cliffFaces = Object.fromEntries(FACE_SIDES.map((sides) => [`cliff-face-${sides}`, cliffFace(sides)]));
+/** The massif: `half` 0 rises from the lower left to the top right corner, 1 falls from the top left to the lower right. */
+const cliffPeak = (half) => {
+  const rows = rockTexture(0).map((row) => [...row]);
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      // Height of the ridge at this column, counted from the top: 15 at the outer edge, 0 where the halves meet.
+      const ridge = half === 0 ? 15 - x : x;
+      if (y === ridge || y === ridge + 1) rows[y][x] = '0';
+      else if (y === ridge + 2) rows[y][x] = '3';
+      else if (y > ridge + 2 && half === 1 && (x + y) % 3 === 0) rows[y][x] = '3';
+    }
   }
   return rows.map((row) => row.join(''));
-})();
-const cliffTop = (() => {
-  const rows = face();
-  rows[0] = Array(16).fill('0');
-  rows[1] = '0000000000000000'.split('').map((c, x) => (x % 5 === 2 ? '2' : c));
-  rows[2] = Array(16).fill('3');
-  return rows.map((row) => row.join(''));
-})();
-const cliffSlope = Array.from({ length: 16 }, (_, y) =>
-  Array.from({ length: 16 }, (_, x) => {
-    const d = (x - y + 32) % 8;
-    return d === 0 ? '3' : d === 1 ? '0' : (x * 3 + y) % 11 === 0 ? '0' : '2';
-  }).join(''),
-);
-/** A peak: light snow on top, the lit left flank, the shaded right one, rock around. `at` is its middle column. */
-const peak = (peaks) =>
-  Array.from({ length: 16 }, (_, y) =>
-    Array.from({ length: 16 }, (_, x) => {
-      for (const { at, top } of peaks) {
-        const half = y - top;
-        if (half < 0 || Math.abs(x - at) > half) continue;
-        if (Math.abs(x - at) === half) return '3';
-        if (half <= 2) return '0';
-        return x < at ? '0' : x === at ? '2' : '3';
-      }
-      return (x * 5 + y * 3) % 17 === 0 ? '3' : '2';
-    }).join(''),
-  );
-const cliffPeaks = [peak([{ at: 8, top: 1 }]), peak([{ at: 4, top: 5 }, { at: 12, top: 3 }]), peak([{ at: 11, top: 7 }])];
+};
 
 // --- buildings -----------------------------------------------------------------------------------------------------
 
@@ -1589,15 +1565,12 @@ export const scenery = {
   counter,
   cupshelf: on(tiles.iwall, cupshelf),
   cliff,
-  'cliff-base': cliffBase,
-  'cliff-e': cliffSide,
-  'cliff-w': cliffSide.map((row) => [...row].reverse().join('')),
-  'cliff-top': cliffTop,
-  'cliff-slope': cliffSlope,
-  'cliff-peak-0': cliffPeaks[0],
-  'cliff-peak-1': cliffPeaks[1],
-  'cliff-peak-2': cliffPeaks[2],
-  cavemouth: on(cliff, arch),
+  ...cliffFaces,
+  'cliff-rock-0': rocks[0].map((row) => row.join('')),
+  'cliff-rock-1': rocks[1].map((row) => row.join('')),
+  'cliff-peak-0': cliffPeak(0),
+  'cliff-peak-1': cliffPeak(1),
+  cavemouth: on(cliffFaces['cliff-face-e'], arch),
   cavefloor,
   rubble,
   cavewall,
