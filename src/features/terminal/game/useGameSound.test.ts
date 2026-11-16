@@ -2,9 +2,10 @@ import { act, renderHook } from '@testing-library/react';
 import { FakeAudio, type FakeOptions } from './audio/fakeAudio.ts';
 import { frequencyOf } from './audio/score.ts';
 import { CRIES, EFFECTS, TRACKS } from './content/music.ts';
-import { initialGame } from './engine/engine.ts';
+import { ENTER_TICKS } from './engine/battle.ts';
+import { initialGame, step } from './engine/engine.ts';
 import { play, testWorld } from './engine/testWorld.ts';
-import type { World } from './engine/types.ts';
+import { NO_INPUT, type World } from './engine/types.ts';
 import { createSettingsStore } from './settingsStore.ts';
 import { MAX_GAIN, VOLUME, gainFor, useGameSound } from './useGameSound.ts';
 
@@ -275,5 +276,44 @@ describe('a cry in a battle', () => {
     expect(tune(0.1 + length + 0.01).length).toBeGreaterThan(0);
     // And it is the same tune: nothing new was asked of the player.
     expect(result.current.follow(battle)).toBe('battle');
+  });
+});
+
+describe('the way a battle opens, heard', () => {
+  it('has the battle tune playing while the enemy comes in, pauses it for the cry once it is in place, and goes on after', () => {
+    vi.useFakeTimers();
+    try {
+      const { audio, result } = setup();
+      const tune = (time: number) => audio().sounding(time).filter((source) => (source.bus as { to: unknown[] }).to.includes(audio().buses[0]));
+      // Into the tall grass with motion, the game's ticks driving the sound as the page does (60 a second).
+      let state = step(play(inTown, 'down'), { ...NO_INPUT, dir: 'right', pressed: 'right' }, world).state;
+      let cried: number | null = null;
+      let slide: number | null = null;
+      for (let i = 0; i < 400 && cried === null; i++) {
+        const next = step(state, NO_INPUT, world);
+        state = next.state;
+        audio().currentTime += 1 / 60;
+        act(() => {
+          result.current.follow(state);
+          // (The test world's rat has no cry of its own; the BUG's, from the game's CRIES, stands in.)
+          result.current.play(next.cues.map((cue) => (cue === 'cry:rat' ? 'cry:bug' : cue)));
+          vi.advanceTimersByTime(1000 / 60);
+        });
+        if (slide === null && state.battle?.enter) slide = audio().currentTime;
+        if (next.cues.includes('cry:rat')) cried = audio().currentTime;
+      }
+      expect(slide).not.toBeNull();
+      expect(cried).not.toBeNull();
+      // The cry comes when the enemy is in place: ENTER_TICKS after the battle screen came up.
+      expect(cried! - slide!).toBeCloseTo(ENTER_TICKS / 60, 6);
+      // While it came in, the tune was already playing.
+      expect(tune((slide! + cried!) / 2).length).toBeGreaterThan(0);
+      // Silent for the length of the cry, then on again.
+      const length = CRIES.bug!.duration;
+      for (let at = cried! + 0.001; at < cried! + length - 0.005; at += 0.02) expect(tune(at), `${at}`).toHaveLength(0);
+      expect(tune(cried! + length + 0.01).length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

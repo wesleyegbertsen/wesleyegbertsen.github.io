@@ -118,9 +118,15 @@ test.describe('the way into a battle', () => {
     await expect(status(page)).toHaveText('FINAL EXAM wants to battle!');
     await expect(game(page)).toHaveAttribute('data-transition', '', { timeout: 6000 });
     await expect(game(page)).toHaveAttribute('data-music', 'boss');
+    // The examiner comes in from the right (0.6 s) with the boss tune playing, and cries once it is in place; then
+    // its line types itself (a blip, the last cue), and the recording has the cry in it.
+    await expect(game(page)).toHaveAttribute('data-cue', 'blip');
     const frames = await recorded(page);
 
     const show = frames.filter((frame) => frame.transition === 'boss');
+    const cried = frames.find((frame) => frame.cue === 'cry:exam')!;
+    expect(cried.at - show.at(-1)!.at).toBeGreaterThan(400);
+    expect(frames.filter((frame) => frame.at > show.at(-1)!.at && frame.at < cried.at).every((frame) => frame.music === 'boss')).toBe(true);
     const length = show.at(-1)!.at - show[0]!.at;
     // 108 ticks at 60 a second: 1.8 seconds, give or take a slow frame.
     expect(length).toBeGreaterThan(1400);
