@@ -42,23 +42,27 @@ const SCORE: { bar: number; melody: string; upper: string; bass: string; octave:
   { bar: 23, melody: '-:24', upper: 'A4:24', bass: 'A2:24', octave: 'D3:24', lower: 'D4:24' },
 ];
 
-/** The bars as the piano plays them: the intro (1 and 2), the repeated section (3 to 22) twice, the last chord (23). */
-const PLAYED = [1, 2, ...Array.from({ length: 20 }, (_, i) => i + 3), ...Array.from({ length: 20 }, (_, i) => i + 3), 23];
+/**
+ * The bars as the piano plays them, as the song is performed: the intro (1 and 2), the repeated section (3 to 22)
+ * four times (one for each verse), the last chord (23).
+ */
+const SECTION = Array.from({ length: 20 }, (_, i) => i + 3);
+const PLAYED = [1, 2, ...SECTION, ...SECTION, ...SECTION, ...SECTION, 23];
 
 describe('Scarborough Fair on the player piano, against the score', () => {
   const piece = TRACKS['scarborough-fair']!;
   /** A voice's bars, as written between the bar lines, each one's tokens joined by a space. */
   const bars = (voice: number) => piece.voices[voice]?.notes.split('|').map((bar) => bar.trim().split(/\s+/).join(' ')) ?? [];
 
-  it('is the intro, the repeated section twice and the last chord: 43 bars of 3/4 at 100 a minute, about 1:19, played once', () => {
+  it('is the intro, the repeated section four times and the last chord: 83 bars of 3/4 at 100 a minute, about 2:31, played once', () => {
     expect(piece.bpm).toBe(100);
     expect(piece.loop).toBe(false);
     // A step is a sixteenth: a bar of three quarters is 12; the chord under the fermata is held 24.
-    expect(trackSteps(piece)).toBe(42 * 12 + 24);
+    expect(trackSteps(piece)).toBe(82 * 12 + 24);
     const { length } = flatten(piece);
-    expect(length).toBeCloseTo((42 * 12 + 24) * stepSeconds(piece), 6);
-    expect(length).toBeGreaterThanOrEqual(75);
-    expect(length).toBeLessThanOrEqual(85);
+    expect(length).toBeCloseTo((82 * 12 + 24) * stepSeconds(piece), 6);
+    expect(length).toBeGreaterThanOrEqual(145);
+    expect(length).toBeLessThanOrEqual(157);
     for (const voice of piece.voices) expect(parseVoice(voice.notes).steps).toBe(trackSteps(piece));
   });
 
@@ -83,7 +87,7 @@ describe('Scarborough Fair on the player piano, against the score', () => {
   );
 
   it('has nothing after the last chord', () => {
-    expect([0, 1, 2, 3, 4].map((voice) => bars(voice).length)).toEqual([43, 43, 43, 43, 43]);
+    expect([0, 1, 2, 3, 4].map((voice) => bars(voice).length)).toEqual([83, 83, 83, 83, 83]);
   });
 
   it('is as loud as a piece may be: at the cafe tune\'s level or with its peak at the loudest tune\'s', () => {

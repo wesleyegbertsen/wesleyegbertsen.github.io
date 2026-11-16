@@ -87,12 +87,13 @@ const DRIVING = 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h h';
 /**
  * Scarborough Fair, a traditional English song; the notes are written out here from an arrangement published on IMSLP
  * (PMLP514655, file IMSLP318388) under Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0); changed here:
- * reduced to five chiptune voices, the repeated section played twice, a chosen tempo, no lyrics. Non-commercial use
+ * reduced to five chiptune voices, the repeated section played four times, a chosen tempo, no lyrics. Non-commercial use
  * only: if the site is ever used commercially, remove the piece (its line in content/pieces.ts and its track).
  *
  * HOW TO EDIT: per voice, the score's bars 1 and 2 (`intro`), 3 to 22 (`section`, the part between the repeat
- * signs) and 23 (`end`, the chord under the fermata, held 24 steps); the track plays the intro, the section twice and
- * the end. A step is a sixteenth (`bpm: 100`, the score has no tempo; a calm folk pace), a bar of 3/4 is 12 steps, a
+ * signs) and 23 (`end`, the chord under the fermata, held 24 steps); the track plays the intro, the section four times
+ * (once for each verse, as the song is performed) and the end. A step is a sixteenth (`bpm: 100`, the score has no
+ * tempo; a calm folk pace), a bar of 3/4 is 12 steps, a
  * bar line `|` between bars (content/scarborough.test.ts reads them). A tie is one longer note in the bar where it
  * starts, and an empty bar after it. Every pitch carries its accidental (bar 11's B naturals are B4).
  */
@@ -129,8 +130,8 @@ const FAIR: Record<'melody' | 'upper' | 'bass' | 'octave' | 'lower', { intro: st
   },
 };
 
-/** A voice of Scarborough Fair as played: the intro, the section twice, the end. */
-const fair = ({ intro, section, end }: { intro: string; section: string; end: string }) => [intro, section, section, end].join(' | ');
+/** A voice of Scarborough Fair as played: the intro, the section four times (one for each verse), the end. */
+const fair = ({ intro, section, end }: { intro: string; section: string; end: string }) => [intro, ...Array<string>(4).fill(section), end].join(' | ');
 
 // --- the tracks ----------------------------------------------------------------------------------------------------
 

@@ -95,7 +95,7 @@ test('the second piece of the player piano: Scarborough Fair chosen with down, i
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'scarborough-fair');
-  await expect(status(page)).toHaveText('SCARBOROUGH FAIR, TRADITIONAL ENGLISH, 1:19.');
+  await expect(status(page)).toHaveText('SCARBOROUGH FAIR, TRADITIONAL ENGLISH, 2:31.');
   // A: Scarborough Fair, not the Moonlight Sonata. Its first notes: the right hand's D and A, the left hand's low D.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');

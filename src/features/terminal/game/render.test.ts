@@ -1506,7 +1506,7 @@ describe('the piece selector of the player piano', () => {
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATA', '>SCARBOROUGHFAIR']);
     expect(textAt(draws, 44)).toBe('');
     expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
-    expect(textAt(draws, 120)).toBe('1:19A:playB:back');
+    expect(textAt(draws, 120)).toBe('2:31A:playB:back');
     const artist = draws.filter((draw) => draw.sheet === 'font' && draw.y === 110);
     expect(Math.max(...artist.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
   });
