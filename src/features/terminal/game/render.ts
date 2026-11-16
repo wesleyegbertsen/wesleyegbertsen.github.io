@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
-import { BATTLE_MENU, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
+import { BATTLE_MENU, enterOffset, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
@@ -541,7 +541,8 @@ function drawBattle(screen: Painter, sheets: Sheets, state: GameState, world: Wo
   // The fighters breathe (with motion): a pixel up and down, a boss swaying sideways.
   const foeAt = idleOffset(battle, 'foe');
   const youAt = idleOffset(battle, 'you');
-  if (shown('foe')) fighter('foe', enemy.sprite, FOE_AT.x + foeAt.dx, FOE_AT.y - foeAt.dy);
+  // Coming in from the right edge once the way in is over (with motion), on the ground that is already there.
+  if (shown('foe')) fighter('foe', enemy.sprite, FOE_AT.x + enterOffset(battle) + foeAt.dx, FOE_AT.y - foeAt.dy);
   if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', FOE_AT.x + 8, FOE_AT.y + 8);
   // The ground under it, which stays where it is while the enemy breathes or sways.
   rect(ctx, FOE_AT.x - 6, FOE_AT.y + 34, 40, 2, DARK);

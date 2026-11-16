@@ -3,7 +3,7 @@ import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
-import { BLINK_TICKS, BREATH_TICKS, FAINT_TICKS, HIT_TICKS } from './engine/battle.ts';
+import { BLINK_TICKS, BREATH_TICKS, ENTER_TICKS, FAINT_TICKS, HIT_TICKS } from './engine/battle.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -1249,5 +1249,18 @@ describe('the player hit', () => {
       const now = parts('foe', HIT_TICKS - i);
       expect([now.name, now.foeGround, now.energy, now.ground, now.text]).toEqual([still.name, still.foeGround, still.energy, still.ground, still.text]);
     }
+  });
+});
+
+describe('the enemy coming in', () => {
+  it('draws it from the right edge to its place, its ground already there, and no line in the text box yet', () => {
+    const battle = play(started(), 'down', 'right', 'a');
+    const at = (enter: number | undefined) => drawn({ ...battle, battle: { ...battle.battle!, enter, phase: 'steps', shown: 0 } });
+    const where = (enter: number | undefined) => spriteDraws(at(enter).draws, 'bug').map((draw) => [draw.x, draw.y]);
+    expect(where(ENTER_TICKS)).toEqual([[SCREEN_W, FOE_AT.y]]);
+    expect(where(10)).toEqual([[FOE_AT.x + 10, FOE_AT.y]]);
+    expect(where(undefined)).toEqual([[FOE_AT.x, FOE_AT.y]]);
+    // The ground under it does not move.
+    expect(at(ENTER_TICKS).fills).toContainEqual(expect.objectContaining({ x: FOE_AT.x - 6, y: FOE_AT.y + 34, w: 40, h: 2 }));
   });
 });
