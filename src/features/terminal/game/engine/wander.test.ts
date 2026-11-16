@@ -171,6 +171,13 @@ describe('a find in passing', () => {
     expect(objectAt(park, 6, 2, found.state)).toBeUndefined();
   });
 
+  it('takes the place of a label that is still out: one label at a time, the newest wins', () => {
+    const before = { ...beside(), banner: { text: 'Somewhere', at: 0, slide: true } };
+    const found = press(before, { dir: 'right', pressed: 'right' }).state;
+    expect(found.notice?.text).toBe('* 1/1');
+    expect(found.banner).toBeNull();
+  });
+
   it('happens once: walking over the spot again finds nothing', () => {
     const found = walk(beside(), 'right');
     const again = press(walk(found, 'left'), { dir: 'right', pressed: 'right' });

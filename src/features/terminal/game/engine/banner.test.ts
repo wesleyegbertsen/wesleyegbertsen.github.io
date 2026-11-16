@@ -28,6 +28,17 @@ function throughTheDoor(): GameState {
   return state;
 }
 
+describe('one label at a time', () => {
+  it('lets the name of a new place take the place of the note after a find: the newest wins at once', () => {
+    const noted: GameState = { ...started(), notice: { text: '* 1/3', until: 9999 } };
+    let state = noted;
+    for (let i = 0; i < 4 && state.map === 'main'; i++) state = playIn(world, state, 'right');
+    expect(state.map).toBe('room');
+    expect(state.banner?.text).toBe('Room');
+    expect(state.notice).toBeNull();
+  });
+});
+
 describe('where the label shows', () => {
   it('names a cell after the named part of the map it is in, or else after the map', () => {
     const main = world.maps.main!;

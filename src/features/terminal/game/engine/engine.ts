@@ -87,7 +87,8 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
       ctx.cues.push('star');
       ctx.events.push({ kind: 'item', text: `Found a ${item.name}!${tally ? ` ${tally}.` : ''}` });
       const text = counted ? `${counted.mark} ${items[action.give]}/${counted.total}` : item.name;
-      return { ...state, items, notice: { text, until: state.clock + NOTICE_TICKS } };
+      // One label at a time: the note takes the place of a label with a name that is still out.
+      return { ...state, items, notice: { text, until: state.clock + NOTICE_TICKS }, banner: null };
     }
     ctx.cues.push('item');
     return say({ ...state, items }, [`You got the ${item.name}! ${item.description}`], ctx, 'item');
@@ -281,7 +282,7 @@ function arrive(state: GameState, ctx: Ctx): GameState {
       // A spray from the shop: this step in the grass is a safe one. The last one says so.
       if (state.repel > 1) return { ...state, repel: state.repel - 1 };
       ctx.events.push({ kind: 'item', text: 'The spray has worn off.' });
-      return { ...state, repel: 0, notice: { text: 'SPRAY OFF', until: state.clock + NOTICE_TICKS } };
+      return { ...state, repel: 0, notice: { text: 'SPRAY OFF', until: state.clock + NOTICE_TICKS }, banner: null };
     }
     const chance = random(state.seed);
     if (chance.value >= map.encounters.rate) return { ...state, seed: chance.seed };
@@ -432,7 +433,8 @@ function arrived(state: GameState, from: string, ctx: Ctx): GameState {
   const sameMap = state.map === from && state.area !== '';
   if (sameMap && area === map.name) return { ...state, area };
   if (sameMap) ctx.events.push({ kind: 'place', text: area });
-  return { ...state, area, banner: { text: area, at: state.clock, slide: !ctx.instant } };
+  // One label at a time: the name takes the place of a note that is still out.
+  return { ...state, area, banner: { text: area, at: state.clock, slide: !ctx.instant }, notice: null };
 }
 
 const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop && state.scene === 'world';

@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
-import { JUMP_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -240,9 +240,13 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     }
   }
 
+  // One label at a time: of the name of a place and the note after a find, only the newer one (the game clears
+  // the older one; this keeps a state that has both from drawing them on top of each other).
+  const noted = state.notice && state.clock < state.notice.until ? state.notice : null;
+  const named = state.banner && (!noted || state.banner.at > noted.until - NOTICE_TICKS);
   // The name of a place that was just entered: a label in the style of the note below, centred, that slides
   // down from above the screen and back. It is drawn after the darkness, so a cave shows it too.
-  const drop = Math.round(bannerOut(state) * NOTE_H);
+  const drop = named ? Math.round(bannerOut(state) * NOTE_H) : 0;
   if (drop > 0) {
     const name = fold(state.banner!.text);
     const width = name.length * FONT.cellW + 11;
@@ -251,14 +255,14 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     drawText(ctx, sheets, name, left + 6, drop - NOTE_H + 4);
   }
 
-  // The note after a find: the count, in the corner, for a moment. While the label is out it hangs under it. A
-  // thing to collect with a picture of its own shows that picture in the place of its mark.
-  if (state.notice && state.clock < state.notice.until) {
-    const { text } = state.notice;
-    box(ctx, 0, drop, text.length * FONT.cellW + 11, NOTE_H);
+  // The note after a find: the count, in the corner, for a moment. A thing to collect with a picture of its own
+  // shows that picture in the place of its mark.
+  if (noted && !named) {
+    const { text } = noted;
+    box(ctx, 0, 0, text.length * FONT.cellW + 11, NOTE_H);
     const icon = world.collect?.find((collect) => collect.icon && text.startsWith(`${collect.mark} `))?.icon;
-    if (icon) drawSprite(ctx, sheets, icon, 5, drop + 4);
-    drawText(ctx, sheets, icon ? ` ${text.slice(1)}` : text, 6, drop + 4);
+    if (icon) drawSprite(ctx, sheets, icon, 5, 4);
+    drawText(ctx, sheets, icon ? ` ${text.slice(1)}` : text, 6, 4);
   }
 }
 

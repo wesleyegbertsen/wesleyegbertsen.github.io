@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
-import { JUMP_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
@@ -331,13 +331,14 @@ describe('a living map', () => {
       expect(y(60)).toBeUndefined();
     });
 
-    it('pushes the note after a find down while it is out, so both can be read', () => {
-      const both = (clock: number) => drawn({ ...label(clock), notice: { text: '* 2/3', until: 999 } }, undefined, living).draws;
-      expect(textAt(both(BANNER_SLIDE), 4)).toBe('Park');
-      expect(textAt(both(BANNER_SLIDE), 20)).toBe('*2/3');
-      // Half way out the note is half way down; with the label gone it is back in its corner.
-      expect(textAt(both(6), 12)).toBe('*2/3');
-      expect(textAt(both(BANNER_SLIDE * 2 + BANNER_HOLD), 4)).toBe('*2/3');
+    it('never shows the note after a find and the label together: the newer one is drawn, alone, in its place', () => {
+      // The label came at clock 0; a note that came later (until - NOTICE_TICKS > 0) wins, and the other way round.
+      const later = (clock: number) => drawn({ ...label(clock), notice: { text: '* 2/3', until: 5 + NOTICE_TICKS } }, undefined, living).draws;
+      expect(textAt(later(BANNER_SLIDE), 4)).toBe('*2/3');
+      expect(later(BANNER_SLIDE).some((draw) => draw.sheet === 'font' && draw.y !== 4 && draw.y < 30)).toBe(false);
+      const earlier = drawn({ ...label(BANNER_SLIDE), banner: { text: 'Park', at: 5, slide: true }, clock: 5 + BANNER_SLIDE, notice: { text: '* 2/3', until: NOTICE_TICKS } }, undefined, living).draws;
+      expect(textAt(earlier, 4)).toBe('Park');
+      expect(earlier.some((draw) => draw.sheet === 'font' && draw.y === 20)).toBe(false);
     });
 
     it('is not drawn over a battle or the Start menu', () => {
