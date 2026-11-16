@@ -76,7 +76,7 @@ describe('Always in my heart on the player piano, as converted from the MIDI', (
   });
 });
 
-describe('the selector with three pieces', () => {
+describe('the selector, its first three pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
@@ -84,9 +84,10 @@ describe('the selector with three pieces', () => {
 
   it('lists the three pieces, each with the length of its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'always-in-my-heart')).toEqual({ id: 'always-in-my-heart', name: 'ALWAYS IN MY HEART', artist: 'KATO TATSUYA', track: 'always-in-my-heart' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(['moonlight', 'scarborough-fair', 'always-in-my-heart']);
+    // The first three of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 3)).toEqual(['moonlight', 'scarborough-fair', 'always-in-my-heart']);
     expect(world.pieces![2]!.ticks).toBe(Math.round(flatten(TRACKS['always-in-my-heart']!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(3);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays the third piece with A on its row, and the first two still their own', () => {

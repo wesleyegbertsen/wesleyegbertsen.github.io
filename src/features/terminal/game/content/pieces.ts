@@ -18,4 +18,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'moonlight', name: 'MOONLIGHT SONATA MVT 1', artist: 'L. VAN BEETHOVEN', track: 'moonlight' },
   { id: 'scarborough-fair', name: 'SCARBOROUGH FAIR', artist: 'TRADITIONAL ENGLISH', track: 'scarborough-fair' },
   { id: 'always-in-my-heart', name: 'ALWAYS IN MY HEART', artist: 'KATO TATSUYA', track: 'always-in-my-heart' },
+  { id: 'unravel', name: 'UNRAVEL', artist: 'TK, LING TOSITE SIGURE', track: 'unravel' },
 ];
