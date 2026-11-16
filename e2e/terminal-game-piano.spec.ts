@@ -140,3 +140,32 @@ test('the third piece of the player piano: Always in my heart chosen with down t
   await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
   expect(errors).toEqual([]);
 });
+
+test('the fourth piece of the player piano: Unravel chosen with down three times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  await pilot.press('down');
+  await pilot.press('down');
+  await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'unravel');
+  await expect(status(page)).toHaveText('UNRAVEL, TK, LING TOSITE SIGURE, 1:27.');
+  // A: Unravel. Every voice starts on a rest; its first notes are the melody's A#5 (932 Hz) and the left hand's G4.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'unravel');
+  await expect(game(page)).toHaveAttribute('data-music', 'unravel');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([932, 392]));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
