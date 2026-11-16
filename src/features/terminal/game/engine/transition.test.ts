@@ -1,3 +1,4 @@
+import { ENTER_TICKS } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS, curtainOf, type Curtain } from './transition.ts';
@@ -81,10 +82,11 @@ describe('the way into a battle', () => {
     const last = ticks(half, WILD_TICKS / 2 - 1);
     expect(last.battle).toMatchObject({ intro: 1, shown: 0 });
     // It makes no sound of its own on the way (the one at the start is the whole of it); its last tick brings the
-    // enemy on the screen, and with it the enemy's cry.
-    expect(tick(last).cues).toEqual(['cry:rat']);
+    // battle screen up, the enemy coming in (engine/battle.test.ts), and once it is in place, its cry.
+    expect(tick(last).cues).toEqual([]);
     expect(tick(half).cues).toEqual([]);
-    const over = tick(last).state;
+    expect(tick(last).state.battle).toMatchObject({ intro: 0, enter: ENTER_TICKS, shown: 0 });
+    const over = ticks(tick(last).state, ENTER_TICKS);
     expect(over.battle).toMatchObject({ intro: 0, shown: 0 });
     // Now the line types itself, and A goes on as before.
     expect(ticks(over, 5).battle!.shown).toBe(5);

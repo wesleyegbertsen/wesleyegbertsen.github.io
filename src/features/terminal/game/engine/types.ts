@@ -305,6 +305,8 @@ export type Battle = {
    * after, for the bar that drains when the blinking is over. See hitLook in engine/battle.ts.
    */
   hit?: { who: 'foe' | 'you'; ticks: number; from: number; to: number };
+  /** Ticks left of the enemy coming in from the right once the way in is over (with motion only; enterOffset). */
+  enter?: number;
   /** A fighter fainting (with motion only): it slides down out of sight; the ticks left of it (faintLook). */
   faint?: { who: 'foe' | 'you'; ticks: number };
   /** The fighter that has fainted and is gone from the screen, for the rest of the battle. */

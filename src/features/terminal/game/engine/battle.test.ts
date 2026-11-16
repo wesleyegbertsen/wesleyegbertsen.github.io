@@ -1,4 +1,4 @@
-import { FAINT_TICKS, HIT_TICKS, SHAKE_TICKS, faintLook, hitLook, idleOffset, shakeOffset } from './battle.ts';
+import { ENTER_TICKS, FAINT_TICKS, HIT_TICKS, SHAKE_TICKS, enterOffset, faintLook, hitLook, idleOffset, shakeOffset } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState } from './types.ts';
@@ -138,25 +138,60 @@ describe('a fighter that faints', () => {
   });
 });
 
-describe('the cry of the enemy', () => {
-  it('is heard when the enemy is on the screen: at the end of the way in, or at once with reduced motion', () => {
+describe('the enemy coming in, and its cry', () => {
+  /** Into the grass with motion, up to the last tick of the way in. */
+  const intoTheGrass = () => {
     const before = play(started(), 'down');
-    // With motion: the way in first (its own sound), the cry on the tick the battle screen comes up.
     let result = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world);
     for (let i = 0; i < 40 && result.state.walk; i++) result = step(result.state, NO_INPUT, world);
-    expect(result.state.battle?.intro).toBeGreaterThan(0);
-    expect(result.cues).not.toContain('cry:rat');
-    const heard: string[] = [];
     let state = result.state;
-    for (let i = 0; i < 200 && state.battle!.intro > 0; i++) {
-      const next = step(state, NO_INPUT, world);
+    for (let i = 0; i < 200 && state.battle!.intro > 1; i++) state = step(state, NO_INPUT, world).state;
+    return { before, state };
+  };
+
+  it('slides in from the right once the way in is over, a fixed step a tick; the text and A wait, then it cries', () => {
+    const { state: last } = intoTheGrass();
+    expect(last.battle!.intro).toBe(1);
+    const over = step(last, NO_INPUT, world);
+    // No cry yet: the enemy is only now coming in.
+    expect(over.cues).toEqual([]);
+    expect(over.state.battle).toMatchObject({ intro: 0, enter: ENTER_TICKS, shown: 0 });
+    let state = over.state;
+    const heard: string[] = [];
+    const xs: number[] = [];
+    for (let i = 0; i < ENTER_TICKS; i++) {
+      xs.push(enterOffset(state.battle));
+      // A press does nothing while it comes in; the line does not type yet.
+      const next = step(state, { ...NO_INPUT, a: true }, world);
       heard.push(...next.cues);
       state = next.state;
+      if (i < ENTER_TICKS - 1) expect(state.battle!.shown).toBe(0);
     }
-    expect(heard.filter((cue) => cue.startsWith('cry:'))).toEqual(['cry:rat']);
-    // With reduced motion there is no way in: the cry comes with the line that it appeared.
+    // From the right edge of the screen (its left side at 160: just out of sight) to its place, closer every tick.
+    expect(xs[0]).toBe(160 - 124);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]!).toBeLessThan(xs[i - 1]!);
+    expect(enterOffset(state.battle)).toBe(0);
+    expect(state.battle!.enter).toBeUndefined();
+    // The cry on the tick it is in place, and only then; the line still to type, the menu still to come.
+    expect(heard).toEqual(['cry:rat']);
+    expect(state.battle).toMatchObject({ phase: 'steps', shown: 0 });
+    // And the same timing every time.
+    let again = over.state;
+    for (let i = 0; i < ENTER_TICKS; i++) again = step(again, { ...NO_INPUT, a: true }, world).state;
+    expect(again).toEqual(state);
+  });
+
+  it('is in place at once with reduced motion, and cries after the encounter sound', () => {
+    const { before, state } = intoTheGrass();
     const instant = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
     expect(instant.cues).toEqual(['encounter', 'cry:rat']);
+    expect(instant.state.battle!.enter).toBeUndefined();
+    // Switched to reduced motion halfway in: in place on the next tick, with its cry.
+    const half = step(step(state, NO_INPUT, world).state, NO_INPUT, world).state;
+    expect(half.battle!.enter).toBe(ENTER_TICKS - 1);
+    const now = step(half, NO_INPUT, world, { instant: true });
+    expect(now.state.battle!.enter).toBeUndefined();
+    expect(now.cues).toEqual(['cry:rat']);
   });
 });
 

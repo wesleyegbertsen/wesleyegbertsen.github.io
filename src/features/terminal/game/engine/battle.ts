@@ -68,6 +68,17 @@ export function shakeOffset(battle: Battle | null | undefined): number {
   return at < SHAKE_TICKS ? [2, 0, -2, 0][Math.floor(at / 2) % 4]! : 0;
 }
 
+/**
+ * How long the enemy takes to come in from the right edge of the screen to its place once the way in is over: a
+ * pixel a tick over the 36 pixels from its place (x 124) to the edge (160), 0.6 s.
+ */
+export const ENTER_TICKS = 36;
+
+/** How far right of its place the enemy is drawn now: ENTER_TICKS pixels as it starts to come in, 0 once in place. */
+export function enterOffset(battle: Battle | null | undefined): number {
+  return battle?.enter ?? 0;
+}
+
 /** How long a fainting fighter takes to slide down out of sight: a pixel a tick, about half a second. */
 export const FAINT_TICKS = 32;
 
@@ -87,7 +98,7 @@ export const BREATH_TICKS = 36;
  */
 export function idleOffset(battle: Battle, who: 'foe' | 'you'): { dx: number; dy: number } {
   const t = battle.t ?? 0;
-  if (!t || battle.hit || battle.faint || battle.intro > 0) return { dx: 0, dy: 0 };
+  if (!t || battle.hit || battle.faint || battle.enter || battle.intro > 0) return { dx: 0, dy: 0 };
   if (who === 'foe' && !battle.wild) return { dx: [0, 1, 0, -1][Math.floor(t / BREATH_TICKS) % 4]!, dy: 0 };
   const shift = who === 'foe' ? BREATH_TICKS / 2 : 0;
   return { dx: 0, dy: Math.floor((t + shift) / BREATH_TICKS) % 2 };
@@ -290,9 +301,20 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?:
 
   // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
   if (battle.intro > 0) {
-    // The way in is over on this tick: the enemy is on the screen, and calls out.
-    if (ctx.instant || battle.intro === 1) ctx.cues.push(`cry:${battle.enemy}`);
-    return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
+    // With reduced motion the enemy is in place at once, and calls out.
+    if (ctx.instant) {
+      ctx.cues.push(`cry:${battle.enemy}`);
+      return { ...state, battle: { ...battle, intro: 0 } };
+    }
+    // The way in is over on this tick: the battle screen is up (and its tune), and the enemy starts to come in.
+    if (battle.intro === 1) return { ...state, battle: { ...battle, intro: 0, enter: ENTER_TICKS } };
+    return { ...state, battle: { ...battle, intro: battle.intro - 1 } };
+  }
+  // The enemy comes in, tick by tick: the text and the menus wait, a press does nothing. In place, it calls out.
+  if (battle.enter) {
+    const enter = ctx.instant ? 0 : battle.enter - 1;
+    if (enter === 0) ctx.cues.push(`cry:${battle.enemy}`);
+    return { ...state, battle: { ...battle, enter: enter || undefined } };
   }
   if (!ctx.instant && !battle.hit && !battle.faint && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
 
