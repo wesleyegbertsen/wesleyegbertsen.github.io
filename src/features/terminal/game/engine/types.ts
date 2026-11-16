@@ -285,7 +285,7 @@ export type Learn = { move: string; cursor: number; confirm?: 0 | 1 };
 export type Shopping = { id: string; cursor: number; amount: number; note: string };
 
 /** One line of a battle. HP, XP and level values in it take effect when the line appears. */
-export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; coins?: number; cheer?: true; cue?: Cue };
+export type BattleStep = { text: string; enemyHp?: number; hp?: number; xp?: number; level?: number; coins?: number; cheer?: true; cue?: Cue; faint?: 'foe' | 'you' };
 
 export type Battle = {
   enemy: string;
@@ -305,6 +305,10 @@ export type Battle = {
    * after, for the bar that drains when the blinking is over. See hitLook in engine/battle.ts.
    */
   hit?: { who: 'foe' | 'you'; ticks: number; from: number; to: number };
+  /** A fighter fainting (with motion only): it slides down out of sight; the ticks left of it (faintLook). */
+  faint?: { who: 'foe' | 'you'; ticks: number };
+  /** The fighter that has fainted and is gone from the screen, for the rest of the battle. */
+  fainted?: 'foe' | 'you';
   /** Ticks the battle screen has been up with motion, for the breathing of the fighters (idleOffset in engine/battle.ts). */
   t?: number;
   phase: 'steps' | 'menu' | 'moves' | 'items';
@@ -436,6 +440,8 @@ export type Cue =
   | 'hurt'
   | 'miss'
   | 'faint'
+  /** A fighter falls: one sound for every enemy, and for the player. */
+  | 'fall'
   /** The cry of an enemy as it is on the screen: `cry:<id>`, one per enemy (CRIES in content/music.ts). */
   | `cry:${string}`
   | 'low'

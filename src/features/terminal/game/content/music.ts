@@ -409,6 +409,8 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   hit: { tones: [hiss(0.8, 0.09, 0.4, 0, 0.3), beep(260, 0.12, 0.3, 0, 90)] },
   hurt: { tones: [hiss(0.4, 0.16, 0.45, 0, 0.1), beep(160, 0.18, 0.3, 0, 55, 'triangle')] },
   miss: { tones: [beep(900, 0.14, 0.14, 0, 300, 'thin')] },
+  // A fighter slides down out of sight: one falling sweep, the same for every enemy, and short.
+  fall: { tones: [{ wave: 'pulse', from: 900, to: 120, duration: 0.4, volume: 0.25 }] },
   faint: { tones: [beep(620, 0.5, 0.3, 0, 70), hiss(0.2, 0.3, 0.2, 0.3, 0.05)] },
   low: { tones: [beep(1000, 0.07, 0.2, 0.25), beep(1000, 0.07, 0.2, 0.42)] },
   run: { tones: [beep(400, 0.05, 0.25), beep(600, 0.05, 0.25, 0.05), beep(800, 0.05, 0.25, 0.1), beep(1200, 0.08, 0.25, 0.15)] },

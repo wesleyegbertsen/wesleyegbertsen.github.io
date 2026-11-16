@@ -1,4 +1,4 @@
-import { HIT_TICKS, hitLook, idleOffset } from './battle.ts';
+import { FAINT_TICKS, HIT_TICKS, faintLook, hitLook, idleOffset } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState } from './types.ts';
@@ -83,6 +83,58 @@ describe('the fighters breathe, with motion', () => {
     expect(idleOffset(hit.battle, 'foe')).toEqual({ dx: 0, dy: 0 });
     const still = step(wild(), NO_INPUT, world, { instant: true }).state;
     expect(idleOffset(still.battle!, 'you')).toEqual({ dx: 0, dy: 0 });
+  });
+});
+
+describe('a fighter that faints', () => {
+  /** One tick with motion. */
+  const tick = (state: GameState, a = false) => step(state, { ...NO_INPUT, a }, world);
+
+  it('slides out of sight after the blow, with one sound for every enemy, and the win waits for it', () => {
+    // At the menu with motion, the rat at 1 HP: FIGHT, HIT. The hit blinks; then the line of the win comes.
+    const menu = wild();
+    let state: GameState = { ...menu, battle: { ...menu.battle!, enemyHp: 1 } };
+    state = tick(tick(state, true).state, true).state;
+    expect(state.battle!.hit?.who).toBe('foe');
+    for (let i = 0; i < 200 && state.battle!.hit; i++) state = tick(state).state;
+    for (let i = 0; i < 100 && state.battle!.shown < state.battle!.steps[0]!.text.length; i++) state = tick(state).state;
+    const fell = tick(state, true);
+    expect(fell.state.battle!.steps[0]!.text).toBe(world.enemies.rat!.defeat);
+    expect(fell.cues).toContain('fall');
+    expect(fell.state.battle!.faint).toEqual({ who: 'foe', ticks: FAINT_TICKS });
+    // While it slides, A waits: the coins and the XP come after it. The slide goes down a little every tick.
+    state = fell.state;
+    const drops: number[] = [];
+    for (let i = 0; i < FAINT_TICKS; i++) {
+      drops.push(faintLook(state.battle)!.dy);
+      state = tick(state, true).state;
+    }
+    expect(state.battle!.steps[0]!.text).toBe(world.enemies.rat!.defeat);
+    expect(drops[0]).toBe(0);
+    for (let i = 1; i < drops.length; i++) expect(drops[i]!).toBeGreaterThanOrEqual(drops[i - 1]!);
+    expect(drops.at(-1)!).toBeGreaterThanOrEqual(28);
+    expect(state.battle!.faint).toBeUndefined();
+    expect(state.battle!.fainted).toBe('foe');
+    expect(faintLook(state.battle)).toBeNull();
+    // Then A goes on as before: the rest of the line, then the coins.
+    for (let i = 0; i < 100 && state.battle!.shown < state.battle!.steps[0]!.text.length; i++) state = tick(state).state;
+    state = tick(state, true).state;
+    expect(state.battle!.steps[0]!.text).not.toBe(world.enemies.rat!.defeat);
+    expect(state.battle!.fainted).toBe('foe');
+  });
+
+  it('is gone at once with reduced motion, with the same sound; the player who runs out of energy slides away too', () => {
+    const menu = wild();
+    const quick = play({ ...menu, battle: { ...menu.battle!, enemyHp: 1 } }, 'a', 'a', 'a');
+    expect(quick.battle!.steps[0]!.text).toBe(world.enemies.rat!.defeat);
+    expect(quick.battle!.faint).toBeUndefined();
+    expect(quick.battle!.fainted).toBe('foe');
+    // The player, at 1 HP against an enemy that always hits: the line that ends it slides the trainer away.
+    let state: GameState = { ...menu, hp: 1 };
+    state = tick(tick(state, true).state, true).state;
+    for (let i = 0; i < 400 && !state.battle!.faint && state.battle; i++) state = tick(state, i % 2 === 0).state;
+    expect(state.battle!.faint?.who).toBe('you');
+    expect(state.battle!.steps[0]!.text).toBe('You are out of energy...');
   });
 });
 

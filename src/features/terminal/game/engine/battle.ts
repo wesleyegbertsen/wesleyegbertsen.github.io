@@ -53,6 +53,15 @@ export function hitLook(battle: Battle | null | undefined): { who: 'foe' | 'you'
   return { who: hit.who, visible: !blinking || Math.floor(at / BLINK_TICKS) % 2 === 0, spark: at < BLINK_TICKS, hp: Math.round(hit.from + (hit.to - hit.from) * drained) };
 }
 
+/** How long a fainting fighter takes to slide down out of sight: a pixel a tick, about half a second. */
+export const FAINT_TICKS = 32;
+
+/** How a faint looks at this moment: who slides, and how many pixels down it is (0 to FAINT_TICKS - 1). */
+export function faintLook(battle: Battle | null | undefined): { who: 'foe' | 'you'; dy: number } | null {
+  const faint = battle?.faint;
+  return faint ? { who: faint.who, dy: FAINT_TICKS - faint.ticks } : null;
+}
+
 /** How long one pose of the breathing lasts: 0.6 s. */
 export const BREATH_TICKS = 36;
 
@@ -63,7 +72,7 @@ export const BREATH_TICKS = 36;
  */
 export function idleOffset(battle: Battle, who: 'foe' | 'you'): { dx: number; dy: number } {
   const t = battle.t ?? 0;
-  if (!t || battle.hit || battle.intro > 0) return { dx: 0, dy: 0 };
+  if (!t || battle.hit || battle.faint || battle.intro > 0) return { dx: 0, dy: 0 };
   if (who === 'foe' && !battle.wild) return { dx: [0, 1, 0, -1][Math.floor(t / BREATH_TICKS) % 4]!, dy: 0 };
   const shift = who === 'foe' ? BREATH_TICKS / 2 : 0;
   return { dx: 0, dy: Math.floor((t + shift) / BREATH_TICKS) % 2 };
@@ -80,8 +89,12 @@ function reveal(state: GameState, ctx: Ctx): GameState {
       : !ctx.instant && step.cue === 'hurt' && step.hp !== undefined
         ? { who: 'you' as const, ticks: HIT_TICKS, from: state.hp, to: step.hp }
         : undefined;
+  // A fall: with motion the fighter slides out of sight (faintLook), with reduced motion it is gone at once.
+  const faint = step.faint && !ctx.instant ? { who: step.faint, ticks: FAINT_TICKS } : undefined;
+  const fainted = step.faint && ctx.instant ? step.faint : battle.fainted;
   ctx.events.push({ kind: 'battle', text: step.text });
   if (step.cue) ctx.cues.push(step.cue);
+  if (step.faint) ctx.cues.push('fall');
   if (step.cue === 'hurt' && step.hp !== undefined && step.hp > 0 && step.hp <= state.maxHp * LOW) ctx.cues.push('low');
   // A new level: the max energy grows, and the energy with it.
   const level = step.level ?? state.level;
@@ -96,6 +109,8 @@ function reveal(state: GameState, ctx: Ctx): GameState {
     battle: {
       ...battle,
       hit,
+      faint,
+      fainted,
       enemyHp: step.enemyHp ?? battle.enemyHp,
       cheer: battle.cheer || !!step.cheer,
       shown: ctx.instant ? step.text.length : 0,
@@ -182,7 +197,7 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
   let outcome: Battle['outcome'] = null;
   let { win } = battle;
   if (enemyHp <= 0) {
-    steps.push({ text: enemy.defeat, cheer: true });
+    steps.push({ text: enemy.defeat, cheer: true, faint: 'foe' });
     outcome = 'win';
     // It drops coins: a few for a wild one, far more for one that stood guard.
     const drop = coinsFor(battle.level, battle.wild, world);
@@ -211,7 +226,7 @@ function turn(state: GameState, choice: Choice, ctx: Ctx): GameState {
       steps.push({ text: `${enemy.name} uses ${move.name}, but misses!`, cue: 'miss' });
     }
     if (hp <= 0) {
-      steps.push({ text: 'You are out of energy...', cue: 'faint' });
+      steps.push({ text: 'You are out of energy...', cue: 'faint', faint: 'you' });
       outcome = 'lose';
     }
   }
@@ -264,13 +279,21 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?:
     if (ctx.instant || battle.intro === 1) ctx.cues.push(`cry:${battle.enemy}`);
     return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
   }
-  if (!ctx.instant && !battle.hit && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
+  if (!ctx.instant && !battle.hit && !battle.faint && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
 
   // A hit is being shown: it plays out, the line types on, and a press waits for it.
   if (battle.hit) {
     const ticks = battle.hit.ticks - 1;
     const length = battle.steps[0]?.text.length ?? 0;
     return { ...state, battle: { ...battle, hit: ticks > 0 ? { ...battle.hit, ticks } : undefined, shown: Math.min(length, battle.shown + 1) } };
+  }
+
+  // A fighter is fainting: it slides down, the line types on, and a press waits for it.
+  if (battle.faint) {
+    const ticks = battle.faint.ticks - 1;
+    const length = battle.steps[0]?.text.length ?? 0;
+    const shown = Math.min(length, battle.shown + 1);
+    return { ...state, battle: { ...battle, ...(ticks > 0 ? { faint: { ...battle.faint, ticks } } : { faint: undefined, fainted: battle.faint.who }), shown } };
   }
 
   if (battle.phase === 'steps') {
