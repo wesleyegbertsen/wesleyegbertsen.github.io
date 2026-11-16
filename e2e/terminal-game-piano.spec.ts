@@ -85,3 +85,30 @@ test('the music corner of the cafe: the selector of the piano, the Moonlight Son
   await expect(game(page)).toHaveAttribute('data-music', 'cafe');
   expect(errors).toEqual([]);
 });
+
+test('the second piece of the player piano: Scarborough Fair chosen with down, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'scarborough-fair');
+  await expect(status(page)).toHaveText('SCARBOROUGH FAIR, TRADITIONAL ENGLISH, 1:19.');
+  // A: Scarborough Fair, not the Moonlight Sonata. Its first notes: the right hand's D and A, the left hand's low D.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'scarborough-fair');
+  await expect(game(page)).toHaveAttribute('data-music', 'scarborough-fair');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining(firstOf('scarborough-fair')));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
