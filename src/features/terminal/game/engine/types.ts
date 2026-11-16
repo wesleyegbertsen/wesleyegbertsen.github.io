@@ -279,7 +279,7 @@ export type Dialogue = { pages: string[][]; page: number; shown: number };
  */
 export type Menu = { tab: 'items' | 'badges' | 'dex' | 'settings'; cursor: number; detail?: { at: number; focus: 0 | 1 } };
 /** The rows of the settings tab, in order. */
-export const SETTINGS = ['sound', 'volume', 'screen', 'mode'] as const;
+export const SETTINGS = ['sound', 'volume', 'screen', 'mode', 'light'] as const;
 /**
  * The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them.
  * `confirm` is there while the game asks whether to really forget the move under the cursor: 0 on YES, 1 on NO.
@@ -474,6 +474,8 @@ export type Cue =
   | 'louder'
   | 'sound'
   | 'screen'
-  | 'mode';
+  | 'mode'
+  /** The light of the screen: bright or dim (the LIGHT row of the settings; whoever draws the screen switches it). */
+  | 'light';
 
 export type Result = { state: GameState; events: GameEvent[]; cues: Cue[] };

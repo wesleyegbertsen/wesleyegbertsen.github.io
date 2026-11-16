@@ -493,6 +493,25 @@ describe('Game', () => {
     expect(screen.getByRole('status')).toHaveTextContent('LCD look on');
   });
 
+  it('dims the screen from the LIGHT row of the settings, and keeps it through a switch of the mode', async () => {
+    const { game, sound, user } = setup(started());
+    expect(game).toHaveAttribute('data-dim', 'off');
+    await user.keyboard('p{ArrowLeft}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
+    expect(game).toHaveAttribute('data-row', 'light');
+    await user.keyboard('z');
+    expect(sound.dim()).toBe(true);
+    expect(game).toHaveAttribute('data-dim', 'on');
+    expect(screen.getByRole('status')).toHaveTextContent('Screen dim');
+    // The mode, one row up: the light stays as it is.
+    await user.keyboard('{ArrowUp}z');
+    expect(sound.colour()).toBe(true);
+    expect(game).toHaveAttribute('data-dim', 'on');
+    await user.keyboard('{ArrowDown}z');
+    expect(sound.dim()).toBe(false);
+    expect(game).toHaveAttribute('data-dim', 'off');
+    expect(screen.getByRole('status')).toHaveTextContent('Screen bright');
+  });
+
   it('switches between Game Boy and Game Boy Color with B on the title, and says so', async () => {
     const { game, sound, user } = setup(initialGame(world));
     expect(game).toHaveAttribute('data-scene', 'title');

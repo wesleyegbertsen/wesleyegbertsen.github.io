@@ -312,8 +312,8 @@ describe('the settings of the Start menu', () => {
     expect(press(testWorld, bag(), { pressed: 'left' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 
-  it('has four rows, sound, volume, screen and mode, and reads them out as the cursor moves', () => {
-    expect(SETTINGS).toEqual(['sound', 'volume', 'screen', 'mode']);
+  it('has five rows, sound, volume, screen, mode and light, and reads them out as the cursor moves', () => {
+    expect(SETTINGS).toEqual(['sound', 'volume', 'screen', 'mode', 'light']);
     const volume = press(testWorld, settings(), { pressed: 'down' });
     expect(volume.state.menu).toEqual({ tab: 'settings', cursor: 1 });
     expect(volume.events).toEqual([{ kind: 'menu', text: 'Volume. Left and right change it.' }]);
@@ -323,7 +323,11 @@ describe('the settings of the Start menu', () => {
     expect(mode.events).toEqual([{ kind: 'menu', text: 'Mode. A switches between Game Boy and Game Boy Color.' }]);
     // A on it asks for the other mode; whoever draws the screen switches it.
     expect(press(testWorld, mode.state, { a: true }).cues).toEqual(['mode']);
-    expect(press(testWorld, mode.state, { pressed: 'down' }).state).toBe(mode.state);
+    const light = press(testWorld, mode.state, { pressed: 'down' });
+    expect(light.events).toEqual([{ kind: 'menu', text: 'Light. A switches the screen between bright and dim.' }]);
+    // A on it asks for the other light; whoever draws the screen dims it or not.
+    expect(press(testWorld, light.state, { a: true }).cues).toEqual(['light']);
+    expect(press(testWorld, light.state, { pressed: 'down' }).state).toBe(light.state);
     expect(press(testWorld, settings(), { pressed: 'up' }).state.menu).toEqual({ tab: 'settings', cursor: 0 });
   });
 

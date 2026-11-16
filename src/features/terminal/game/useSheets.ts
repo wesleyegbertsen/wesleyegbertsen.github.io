@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import fontUrl from './assets/font.png';
 import spritesUrl from './assets/sprites.png';
 import tilesUrl from './assets/tiles.png';
-import { PALETTES, recolour, type Palette, type PaletteId } from './palettes.ts';
+import { PALETTE } from './assets/atlas.ts';
+import { PALETTES, dimmed, recolour, type Palette, type PaletteId } from './palettes.ts';
 import type { Sheets } from './render.ts';
 
 function load(src: string): Promise<HTMLImageElement> {
@@ -66,5 +67,30 @@ export function withColour(sheets: Sheets): Sheets {
   });
   const made: Sheets = sets.every(Boolean) ? { ...sheets, colour: Object.fromEntries(sets as [string, NonNullable<Sheets['colour']>[PaletteId]][]) as Sheets['colour'] } : sheets;
   coloured.set(sheets, made);
+  return made;
+}
+
+const dark = new WeakMap<Sheets, Sheets>();
+
+/**
+ * The sheets with their dimmed copies for the dim LCD (palettes.ts dim): the Game Boy's three in the dimmed
+ * greens, and one set per palette of Game Boy Color mode in its dimmed colours. Made the first time the dim screen
+ * is asked for and kept for the page; where they cannot be made, the sheets as they are (the screen stays bright).
+ */
+export function withDim(sheets: Sheets): Sheets {
+  const known = dark.get(sheets);
+  if (known) return known;
+  const copy = (palette: Palette) => {
+    const [tiles, sprites, font] = [sheets.tiles, sheets.sprites, sheets.font].map((image) => tinted(image, dimmed(palette)));
+    return tiles && sprites && font ? { tiles, sprites, font } : null;
+  };
+  const gb = copy(PALETTE as unknown as Palette);
+  const sets = Object.entries(PALETTES).map(([id, palette]) => {
+    const set = copy(palette);
+    return set ? ([id, set] as const) : null;
+  });
+  const colour = sets.every(Boolean) ? (Object.fromEntries(sets as [string, NonNullable<Sheets['colour']>[PaletteId]][]) as Sheets['colour']) : undefined;
+  const made: Sheets = gb ? { ...sheets, dim: { gb, colour } } : sheets;
+  dark.set(sheets, made);
   return made;
 }

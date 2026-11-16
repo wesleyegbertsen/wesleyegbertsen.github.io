@@ -7,7 +7,7 @@ import { BLINK_TICKS, BREATH_TICKS, ENTER_TICKS, FAINT_TICKS, HIT_TICKS } from '
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
-import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
+import { PALETTES, dimmed, paletteOf, type Palette, type PaletteId } from './palettes.ts';
 import { FOE_AT, FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
 import { execFileSync } from 'node:child_process';
 import { education } from '../../../data/education.ts';
@@ -671,21 +671,24 @@ describe('the Start menu', () => {
   it('shows the settings: the sound, the volume wheel, the look of the screen and the mode, with the cursor on one', () => {
     const settings = (cursor: number, hud: Hud = on) => drawn({ ...there(), menu: { tab: 'settings' as const, cursor } }, hud, shop);
     const first = settings(0);
-    // Four rows with room between them: twelve pixels apart, the last above what was collected (94).
-    expect(textAt(first.draws, 46)).toBe('>SOUNDON');
-    expect(textAt(first.draws, 58)).toBe('VOLUME50%');
-    expect(textAt(first.draws, 70)).toBe('SCREENLCD');
-    expect(textAt(first.draws, 82)).toBe('MODEGB');
-    expect(textAt(settings(3, { ...on, colour: true }).draws, 82)).toBe('>MODEGBC');
+    // Five rows where the bag has its rows, ten pixels apart, the last a line above what was collected (94).
+    expect(textAt(first.draws, 42)).toBe('>SOUNDON');
+    expect(textAt(first.draws, 52)).toBe('VOLUME50%');
+    expect(textAt(first.draws, 62)).toBe('SCREENLCD');
+    expect(textAt(first.draws, 72)).toBe('MODEGB');
+    expect(textAt(first.draws, 82)).toBe('LIGHTBRIGHT');
+    expect(textAt(settings(4, { ...on, dim: true }).draws, 82)).toBe('>LIGHTDIM');
+    expect([110, 120, 130].map((y) => textAt(settings(4).draws, y))).toEqual(['Aswitchesthescreen:', 'bright,ordimlikean', 'oldLCD.']);
+    expect(textAt(settings(3, { ...on, colour: true }).draws, 72)).toBe('>MODEGBC');
     expect(textAt(settings(3).draws, 110)).toBe('AswitchesbetweenGame');
     expect(textAt(first.draws, 110)).toBe('Aswitchesthesoundoff');
-    expect(textAt(settings(1).draws, 58)).toBe('>VOLUME50%');
+    expect(textAt(settings(1).draws, 52)).toBe('>VOLUME50%');
     expect(textAt(settings(1).draws, 110)).toBe('Leftandrightchange');
-    expect(textAt(settings(2).draws, 70)).toBe('>SCREENLCD');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 46)).toBe('>SOUNDOFF');
-    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 70)).toBe('SCREENPLAIN');
-    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 58)).toBe('>VOLUME100%');
-    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 58)).toBe('>VOLUME0%');
+    expect(textAt(settings(2).draws, 62)).toBe('>SCREENLCD');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 42)).toBe('>SOUNDOFF');
+    expect(textAt(settings(0, { muted: true, volume: 5, lcd: false }).draws, 62)).toBe('SCREENPLAIN');
+    expect(textAt(settings(1, { muted: false, volume: 10 }).draws, 52)).toBe('>VOLUME100%');
+    expect(textAt(settings(1, { muted: false, volume: 0 }).draws, 52)).toBe('>VOLUME0%');
     // What each row is for fits the three lines of the note: the last word is on the screen.
     expect([120, 130].map((y) => textAt(settings(0).draws, y))).toEqual(['oron.SodoestheM', 'key.']);
     expect(textAt(settings(1).draws, 120)).toBe('thevolume.');
@@ -694,7 +697,7 @@ describe('the Start menu', () => {
 
   it('draws the volume wheel as ten steps that grow, filled up to the level, dimmed while the sound is off', () => {
     const steps = (hud: Hud) =>
-      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 57 && fill.y <= 65);
+      drawn({ ...there(), menu: { tab: 'settings' as const, cursor: 1 } }, hud, shop).fills.filter((fill) => fill.w === 3 && fill.x >= 64 && fill.x < 104 && fill.y >= 51 && fill.y <= 59);
     const half = steps({ muted: false, volume: 5 });
     expect(half).toHaveLength(VOLUME_STEPS);
     const filled = half.filter((fill) => fill.shade === PALETTE[3]);
@@ -1375,5 +1378,57 @@ describe('the ending screen', () => {
     const record = recorder();
     drawGame(record.ctx, coloured, end(ENDING_HOLD), world, { muted: false, volume: 5, colour: true });
     expect(record.draws.filter((draw) => draw.y === 102 && draw.sheet.startsWith('font')).length).toBe('>KEEP EXPLORING'.replace(/ /g, '').length);
+  });
+});
+
+describe('the dim LCD', () => {
+  const ids = Object.keys(PALETTES) as PaletteId[];
+  const set = (suffix: string) => ({ tiles: `tiles${suffix}`, sprites: `sprites${suffix}`, font: `font${suffix}` });
+  const all = {
+    ...sheets,
+    colour: Object.fromEntries(ids.map((id) => [id, set(`:${id}`)])),
+    dim: { gb: set('~dim'), colour: Object.fromEntries(ids.map((id) => [id, set(`:${id}~dim`)])) },
+  } as unknown as Sheets;
+  const paint = (state: GameState, hud: Hud, on: World = world) => {
+    const record = recorder();
+    drawGame(record.ctx, all, state, on, hud);
+    return record;
+  };
+  const menu = (): GameState => ({ ...started(), menu: { tab: 'items', cursor: 0 } });
+
+  it('draws GB from the dimmed sheet and in the dimmed shades when on, and as before when off', () => {
+    // The map (tiles and sprites) and the menu (text, boxes and bars).
+    const sheetsOf = (hud: Hud) => new Set([...paint(started(), hud).draws, ...paint(menu(), hud).draws].map((draw) => draw.sheet));
+    expect(sheetsOf({ muted: false, volume: 5 })).toEqual(new Set(['tiles', 'sprites', 'font']));
+    expect(sheetsOf({ muted: false, volume: 5, dim: true })).toEqual(new Set(['tiles~dim', 'sprites~dim', 'font~dim']));
+    const off = paint(menu(), { muted: false, volume: 5 });
+    for (const fill of off.fills) expect(PALETTE).toContain(fill.shade);
+    const on = paint(menu(), { muted: false, volume: 5, dim: true });
+    const shades = dimmed(PALETTE as unknown as Palette);
+    for (const fill of on.fills) expect(shades).toContain(fill.shade);
+    expect(on.fills.some((fill) => fill.shade === shades[3])).toBe(true);
+  });
+
+  it('draws GBC from the dimmed copies of each palette and the boxes in the dimmed colours when on', () => {
+    const on = paint(menu(), { muted: false, volume: 5, colour: true, dim: true });
+    for (const draw of [...on.draws, ...paint(started(), { muted: false, volume: 5, colour: true, dim: true }).draws]) expect(draw.sheet).toMatch(/^(tiles|sprites|font):[a-z]+~dim$/);
+    const ui = dimmed(PALETTES.ui);
+    for (const fill of on.fills) expect([...ui, ...dimmed(PALETTES.cave)]).toContain(fill.shade);
+    const off = paint(menu(), { muted: false, volume: 5, colour: true });
+    for (const draw of off.draws) expect(draw.sheet).toMatch(/^(tiles|sprites|font):[a-z]+$/);
+  });
+
+  it('keeps the dark of a cave the darkest dimmed shade, in GB and GBC', () => {
+    const night = (hud: Hud) => {
+      // The town of the test world, dark beyond a cell around the player.
+      const dark: World = { ...world, maps: { ...world.maps, main: { ...world.maps.main!, dark: 1 } } };
+      const { fills } = paint(started(), hud, dark);
+      return fills.filter((fill) => fill.w === TILE && fill.h === TILE).map((fill) => fill.shade);
+    };
+    const gb = night({ muted: false, volume: 5, dim: true });
+    expect(gb.length).toBeGreaterThan(0);
+    expect(new Set(gb)).toEqual(new Set([dimmed(PALETTE as unknown as Palette)[3]]));
+    const gbc = night({ muted: false, volume: 5, dim: true, colour: true });
+    expect(new Set(gbc)).toEqual(new Set([dimmed(PALETTES.cave)[3]]));
   });
 });

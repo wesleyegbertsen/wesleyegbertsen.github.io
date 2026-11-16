@@ -422,6 +422,8 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   screen: { tones: [beep(520, 0.03, 0.2), beep(780, 0.05, 0.2, 0.03)] },
   // Game Boy and Game Boy Color: a little chime up.
   mode: { tones: [beep(660, 0.04, 0.2), beep(880, 0.04, 0.2, 0.04), beep(1320, 0.08, 0.2, 0.08)] },
+  // The light of the screen, bright or dim: the screen switch going down.
+  light: { tones: [beep(780, 0.03, 0.2), beep(520, 0.05, 0.2, 0.03)] },
   // The volume wheel: one step down, one step up. They sound at the new volume, so the step can be heard.
   quieter: { tones: [beep(740, 0.05, 0.25), beep(587, 0.07, 0.25, 0.05)] },
   louder: { tones: [beep(740, 0.05, 0.25), beep(988, 0.07, 0.25, 0.05)] },

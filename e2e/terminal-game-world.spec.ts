@@ -80,8 +80,8 @@ test.describe('the volume wheel', () => {
     await pilot.press('start');
     await pilot.press('left');
     await pilot.press('down');
-    // The ten steps of the wheel sit at 64..104 by 59..67 on the 160 x 144 screen.
-    const wheel = () => darkIn(page, 64, 59, 40, 8);
+    // The ten steps of the wheel sit at 64..104 by 53..61 on the 160 x 144 screen (the second row of the Settings tab).
+    const wheel = () => darkIn(page, 64, 53, 40, 8);
     const half = (await wheel()).dark;
     expect(half).toBeGreaterThan(0);
     for (let i = 0; i < 5; i++) await pilot.press('right');
@@ -172,6 +172,44 @@ test.describe('the settings', () => {
     await pilot.press('down');
     await expect(game(page)).toHaveAttribute('data-menu', 'items');
     await expect(game(page)).toHaveAttribute('data-row', '');
+  });
+
+  test('LIGHT dims the screen, in GB and in GBC, and BRIGHT brings it back: the LCD look is left alone', async ({ page }) => {
+    const { pilot, errors } = await play(page);
+    await pilot.start();
+    /** The light of a part of the screen: the sum of the channels of its pixels (the box of the Settings tab). */
+    const light = () =>
+      canvas(page).evaluate((el) => {
+        const { data } = (el as HTMLCanvasElement).getContext('2d')!.getImageData(100, 40, 50, 10);
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) sum += data[i]! + data[i + 1]! + data[i + 2]!;
+        return sum;
+      });
+    // Start, left: the Settings tab; down four times: LIGHT.
+    await pilot.press('start');
+    await pilot.press('left');
+    for (let i = 0; i < 4; i++) await pilot.press('down');
+    await expect(game(page)).toHaveAttribute('data-row', 'light');
+    await expect(game(page)).toHaveAttribute('data-dim', 'off');
+    for (const mode of ['gb', 'gbc'] as const) {
+      await expect(game(page)).toHaveAttribute('data-mode', mode);
+      const bright = await light();
+      await pilot.press('a');
+      await expect(game(page)).toHaveAttribute('data-dim', 'on');
+      await expect(status(page)).toHaveText('Screen dim');
+      await expect.poll(light).toBeLessThan(bright * 0.9);
+      await expect(game(page)).toHaveAttribute('data-lcd', 'on');
+      await pilot.press('a');
+      await expect(game(page)).toHaveAttribute('data-dim', 'off');
+      await expect.poll(light).toBe(bright);
+      // On to Game Boy Color: MODE, one row up, and back to LIGHT.
+      if (mode === 'gb') {
+        await pilot.press('up');
+        await pilot.press('a');
+        await pilot.press('down');
+      }
+    }
+    expect(errors).toEqual([]);
   });
 
   test('the screen has an LCD look laid over it, which SCREEN switches off and on', async ({ page, isMobile }) => {

@@ -1,4 +1,4 @@
-import { VOLUME_MAX, VOLUME_START, createSettingsStore } from './settingsStore.ts';
+import { DIM_START, VOLUME_MAX, VOLUME_START, createSettingsStore } from './settingsStore.ts';
 
 describe('the settings store', () => {
   it('starts with the sound on, unless told otherwise', () => {
@@ -85,6 +85,25 @@ describe('the settings store', () => {
     store.setColour(true);
     expect(store.colour()).toBe(true);
     expect(heard).toHaveBeenCalledTimes(1);
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
+
+  it('starts with the bright screen (DIM_START: off), dims it, tells its listeners, keeps it apart from the mode', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    const store = createSettingsStore();
+    expect(DIM_START).toBe(false);
+    expect(store.dim()).toBe(DIM_START);
+    const heard = vi.fn();
+    store.subscribe(heard);
+    store.setDim(false);
+    expect(heard).not.toHaveBeenCalled();
+    store.setDim(true);
+    expect(store.dim()).toBe(true);
+    expect(heard).toHaveBeenCalledTimes(1);
+    store.setColour(true);
+    store.setColour(false);
+    expect(store.dim()).toBe(true);
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
   });

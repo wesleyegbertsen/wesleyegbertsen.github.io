@@ -266,7 +266,7 @@ function stepDexPage(state: GameState, input: Input, ctx: Ctx): GameState {
   }
   return state;
 }
-const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.', mode: 'Mode. A switches between Game Boy and Game Boy Color.' };
+const SETTING_NAMES = { sound: 'Sound. A switches it.', volume: 'Volume. Left and right change it.', screen: 'Screen. A switches the LCD look.', mode: 'Mode. A switches between Game Boy and Game Boy Color.', light: 'Light. A switches the screen between bright and dim.' };
 
 /** A move in a few words, for the offer of a new one: on the screen and in the status region. */
 export function describeMove(move: MoveDef): string {

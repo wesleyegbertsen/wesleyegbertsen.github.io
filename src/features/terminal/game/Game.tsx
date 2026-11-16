@@ -10,7 +10,7 @@ import { layout } from './scale.ts';
 import { useGameLoop, type Button } from './useGameLoop.ts';
 import type { SettingsStore } from './settingsStore.ts';
 import { useGameSound } from './useGameSound.ts';
-import { useSheets, withColour } from './useSheets.ts';
+import { useSheets, withColour, withDim } from './useSheets.ts';
 
 const DIRS: Record<string, Dir> = {
   ArrowUp: 'up',
@@ -86,14 +86,19 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
   const lcd = useSyncExternalStore(settingsStore.subscribe, settingsStore.lcd);
   /** Game Boy Color mode: the picture in colour and the console around it in its colours. */
   const colour = useSyncExternalStore(settingsStore.subscribe, settingsStore.colour);
+  /** The dim LCD (LIGHT on the Settings tab): the picture darker and less colourful. */
+  const dim = useSyncExternalStore(settingsStore.subscribe, settingsStore.dim);
   /** What the data attributes were last set from, so a frame that changes none of them writes nothing. */
   const shown = useRef('');
   const cueCount = useRef(0);
 
   const paint = (state: GameState, muted = settingsStore.muted(), volume = settingsStore.volume()) => {
     const ctx = sheets && canvasRef.current?.getContext('2d');
+    if (!ctx || !sheets) return;
     const inColour = settingsStore.colour();
-    if (ctx) drawGame(ctx, inColour ? withColour(sheets) : sheets, state, world, { muted, volume, lcd: settingsStore.lcd(), colour: inColour });
+    const dark = settingsStore.dim();
+    const base = inColour ? withColour(sheets) : sheets;
+    drawGame(ctx, dark ? withDim(base) : base, state, world, { muted, volume, lcd: settingsStore.lcd(), colour: inColour, dim: dark });
   };
   const onFrame = (state: GameState) => {
     paint(state);
@@ -182,6 +187,10 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       else if (cue === 'screen') {
         settingsStore.setLcd(!settingsStore.lcd());
         onEvents([{ kind: 'menu', text: settingsStore.lcd() ? 'LCD look on' : 'LCD look off' }]);
+        if (storeRef.current) paint(storeRef.current);
+      } else if (cue === 'light') {
+        settingsStore.setDim(!settingsStore.dim());
+        onEvents([{ kind: 'menu', text: settingsStore.dim() ? 'Screen dim' : 'Screen bright' }]);
         if (storeRef.current) paint(storeRef.current);
       } else if (cue === 'mode') {
         settingsStore.setColour(!settingsStore.colour());
@@ -286,6 +295,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}
       data-lcd={lcd ? 'on' : 'off'}
+      data-dim={dim ? 'on' : 'off'}
       data-mode={colour ? 'gbc' : 'gb'}
       // Which way the game runs right now: it follows the reduced-motion setting live, also in the middle of a game.
       data-motion={reducedMotion ? 'reduced' : 'full'}

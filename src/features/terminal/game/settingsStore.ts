@@ -1,6 +1,6 @@
 /**
- * The settings of the game: whether its sound is off, how loud it is, whether the screen has its LCD look, and
- * whether it is a Game Boy or a Game Boy Color. A tiny store that lives in the terminal's session, beside
+ * The settings of the game: whether its sound is off, how loud it is, whether the screen has its LCD look, whether
+ * it is a Game Boy or a Game Boy Color, and whether the screen is dim (the LIGHT row). A tiny store that lives in the terminal's session, beside
  * the game's progress: in memory only, so the choices outlast leaving the game and visiting another page, and a
  * reload starts with the sound on at half volume again. Nothing is written to storage.
  */
@@ -18,6 +18,9 @@ export type SettingsStore = {
   /** Whether the game runs as a Game Boy Color: in colour, in a coloured console. Off (a Game Boy) at the start. */
   colour(): boolean;
   setColour(on: boolean): void;
+  /** Whether the screen is dim, like a Game Boy Color without a frontlight (palettes.ts `dim`). DIM_START at the start. */
+  dim(): boolean;
+  setDim(on: boolean): void;
   /** Calls `listener` after every change; returns how to stop. */
   subscribe(listener: () => void): () => void;
 };
@@ -25,12 +28,15 @@ export type SettingsStore = {
 /** The wheel has ten steps of 10%; it starts in the middle. */
 export const VOLUME_MAX = 10;
 export const VOLUME_START = 5;
+/** Whether the screen starts dim. Off: the bright screen, as before the setting existed. */
+export const DIM_START = false;
 
 export function createSettingsStore(muted = false, volume = VOLUME_START): SettingsStore {
   let off = muted;
   let step = volume;
   let grid = true;
   let colours = false;
+  let dark = DIM_START;
   const listeners = new Set<() => void>();
   const tell = () => listeners.forEach((listener) => listener());
   return {
@@ -57,6 +63,12 @@ export function createSettingsStore(muted = false, volume = VOLUME_START): Setti
     setColour(next) {
       if (next === colours) return;
       colours = next;
+      tell();
+    },
+    dim: () => dark,
+    setDim(next) {
+      if (next === dark) return;
+      dark = next;
       tell();
     },
     subscribe(listener) {

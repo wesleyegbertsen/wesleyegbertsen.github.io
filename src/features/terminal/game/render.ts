@@ -10,7 +10,7 @@ import { curtainOf, type Curtain } from './engine/transition.ts';
 import { SETTINGS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
-import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
+import { PALETTES, dimmed, paletteOf, type Palette, type PaletteId } from './palettes.ts';
 
 /** The Game Boy's screen, in pixels. */
 export const SCREEN_W = 160;
@@ -29,13 +29,26 @@ export type Sheets = {
   font: CanvasImageSource;
   /** The same three, recoloured once per palette of Game Boy Color mode (palettes.ts). Made when colour is first asked for. */
   colour?: Record<PaletteId, { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }>;
+  /**
+   * The same, dimmed (palettes.ts `dim`) for the dim LCD: the Game Boy's three, and one set per palette of Game Boy
+   * Color mode. Made when the dim screen is first asked for.
+   */
+  dim?: { gb: { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }; colour?: Record<PaletteId, { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }> };
 };
 
 /** What the renderer needs of a 2D context, so a test can hand it a recorder. */
 export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
 
 /** What is shown on top of the game that is not part of its state: whether the sound is off, and how loud it is (0 to 10). */
-export type Hud = { muted: boolean; volume: number; lcd?: boolean; /** Game Boy Color mode: drawn in colour. */ colour?: boolean };
+export type Hud = {
+  muted: boolean;
+  volume: number;
+  lcd?: boolean;
+  /** Game Boy Color mode: drawn in colour. */
+  colour?: boolean;
+  /** The dim LCD (LIGHT: DIM): drawn from the dimmed sheets, the boxes and bars in the dimmed shades. */
+  dim?: boolean;
+};
 
 /** The volume wheel has this many steps. */
 export const VOLUME_STEPS = 10;
@@ -64,8 +77,8 @@ const BAG_ROWS = 5;
 /** The line of the things to collect, under the list. */
 const COLLECT_Y = 94;
 /** The settings: where the first row is, and how far apart they are. */
-const SETTINGS_Y = 46;
-const SETTINGS_LINE = 12;
+const SETTINGS_Y = 42;
+const SETTINGS_LINE = 10;
 /** The most coins the menu has room to show beside the energy: four digits. The purse itself has no limit. */
 const COINS_SHOWN = 9999;
 /** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
@@ -341,17 +354,20 @@ function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): 
   drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
   drawText(ctx, sheets, 'SCREEN', 18, row('screen'));
   drawText(ctx, sheets, 'MODE', 18, row('mode'));
+  drawText(ctx, sheets, 'LIGHT', 18, row('light'));
   if (hud) {
     drawText(ctx, sheets, hud.muted ? 'OFF' : 'ON', 64, row('sound'));
     drawVolume(ctx, 64, row('volume') - 1, hud);
     drawText(ctx, sheets, `${hud.volume * 10}%`, 110, row('volume'));
     drawText(ctx, sheets, hud.lcd === false ? 'PLAIN' : 'LCD', 64, row('screen'));
     drawText(ctx, sheets, hud.colour ? 'GBC' : 'GB', 64, row('mode'));
+    drawText(ctx, sheets, hud.dim ? 'DIM' : 'BRIGHT', 64, row('light'));
   }
   if (at === 'sound') return 'A switches the sound off or on. So does the M key.';
   if (at === 'volume') return 'Left and right change the volume.';
   if (at === 'screen') return 'A switches the LCD look: a pixel grid, as on the real thing.';
-  return 'A switches between Game Boy and Game Boy Color.';
+  if (at === 'mode') return 'A switches between Game Boy and Game Boy Color.';
+  return 'A switches the screen: bright, or dim like an old LCD.';
 }
 
 /**
@@ -712,9 +728,13 @@ function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World
 export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   ctx.imageSmoothingEnabled = false;
   // Game Boy Color: every picture from the copy of its sheet in its palette, the boxes and lines in the `ui` one.
-  tint = hud?.colour && sheets.colour ? sheets.colour : null;
-  [LIGHTEST, , DARK, DARKEST] = (tint ? PALETTES.ui : PALETTE) as readonly [string, string, string, string];
-  NIGHT = (tint ? PALETTES.cave : PALETTE)[3];
+  // The dim LCD: the dimmed copies of the sheets and the dimmed shades, where they have been made.
+  const dark = hud?.dim && sheets.dim ? sheets.dim : null;
+  tint = hud?.colour && sheets.colour ? (dark ? (dark.colour ?? sheets.colour) : sheets.colour) : null;
+  if (dark && !tint) sheets = { ...sheets, ...dark.gb };
+  const shades = (palette: readonly string[]) => (dark ? dimmed(palette as unknown as Palette) : palette);
+  [LIGHTEST, , DARK, DARKEST] = shades(tint ? PALETTES.ui : PALETTE) as readonly [string, string, string, string];
+  NIGHT = shades(tint ? PALETTES.cave : PALETTE)[3]!;
   if (state.scene === 'title') {
     drawTitle(ctx, sheets, world);
     if (hud) drawSpeaker(ctx, hud.muted);

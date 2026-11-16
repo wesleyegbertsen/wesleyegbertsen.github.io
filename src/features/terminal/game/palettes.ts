@@ -102,6 +102,27 @@ export function recolour(data: Uint8ClampedArray, to: Palette, from: readonly st
   }
 }
 
+/**
+ * The dim LCD (LIGHT: DIM on the Settings tab), like a Game Boy Color screen without a frontlight, or the LCD
+ * filters of emulators. HOW TO EDIT: DIM_SATURATION is how much colour is kept (1 all of it, 0 grey), DIM_DARK how
+ * much light (1 all of it). Each channel goes towards the colour's own luma, then the whole is darkened:
+ * c' = DIM_DARK * (Y + DIM_SATURATION * (c - Y)), with Y = 0.299 R + 0.587 G + 0.114 B. Black stays black, white
+ * becomes a light grey, and the order of the shades holds (tests in palettes.test.ts, with the readability floors).
+ */
+export const DIM_SATURATION = 0.75;
+export const DIM_DARK = 0.82;
+
+/** A colour as the dim LCD shows it. */
+export function dim(hex: string): string {
+  const [r, g, b] = rgb(hex);
+  const y = 0.299 * r + 0.587 * g + 0.114 * b;
+  const channel = (c: number) => Math.max(0, Math.min(255, Math.round(DIM_DARK * (y + DIM_SATURATION * (c - y)))));
+  return `#${[r, g, b].map((c) => channel(c).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** A palette as the dim LCD shows it. */
+export const dimmed = (palette: Palette): Palette => palette.map(dim) as unknown as Palette;
+
 /** The relative luminance of a colour (WCAG), 0 for black to 1 for white. */
 export function luminance(hex: string): number {
   const [r, g, b] = rgb(hex).map((channel) => {
