@@ -26,11 +26,12 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
     expect(piece.loop).toBe(false);
   });
 
-  it('is fourteen bars of triplets and a held last chord, at 56 quarter notes a minute: about a minute', () => {
-    // One step of the score is one triplet eighth: twelve to a bar of four beats.
-    expect(piece.bpm).toBe(42);
-    expect(60 / stepSeconds(piece) / 3).toBeCloseTo(56, 6);
-    expect(trackSteps(piece)).toBe(14 * 12 + 8);
+  it('is fourteen bars and a held last chord, at 56 quarter notes a minute: about a minute', () => {
+    // One step of the score is a twelfth of a beat: a triplet eighth is 4 steps, a dotted eighth and a sixteenth
+    // are 9 and 3, a bar of four beats is 48.
+    expect(piece.bpm).toBe(168);
+    expect(60 / stepSeconds(piece) / 12).toBeCloseTo(56, 6);
+    expect(trackSteps(piece)).toBe(14 * 48 + 32);
     const { length } = flatten(piece);
     expect(length).toBeGreaterThanOrEqual(60);
     expect(length).toBeLessThanOrEqual(65);
@@ -50,8 +51,8 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
       expect(note.pluck).toBe(true);
     }
     // The triplets: the right hand runs on every step of the first bar, three notes over and over.
-    const first = parseVoice(piece.voices[1]!.notes).notes.filter((note) => note.step < 12);
-    expect(first.map((note) => note.step)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    const first = parseVoice(piece.voices[1]!.notes).notes.filter((note) => note.step < 48);
+    expect(first.map((note) => note.step)).toEqual([0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44]);
   });
 
   it('is softer than the other tunes at its loudest', () => {
@@ -83,5 +84,49 @@ describe('the player piano in the cafe', () => {
     // The piano is faced from the one cell beside it.
     const route = routeTo(world, { ...at, x: 4, y: 7 }, 'cafe:k')!;
     expect(route.at(-1)).toBe('right');
+  });
+});
+
+/**
+ * The first fourteen bars as the score has them (a Creative Commons BY-SA 2.5 engraving of Op. 27 No. 2), bar by
+ * bar: the twelve triplet eighths (right hand, or the left hand where it takes them over), the bass (the lowest note
+ * of the left hand; its lengths in steps of a twelfth of a beat) and the melody (with its lengths: a dotted eighth
+ * and a sixteenth are 9 and 3). The last entry is the held chord the piece ends on.
+ */
+const SCORE: { bar: number; triplets: string; bass: string; melody: string }[] = [
+  { bar: 1, triplets: 'G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4', bass: 'C#2:48', melody: '-:48' },
+  { bar: 2, triplets: 'G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4', bass: 'B1:48', melody: '-:48' },
+  { bar: 3, triplets: 'A3 C#4 E4 A3 C#4 E4 A3 D4 F#4 A3 D4 F#4', bass: 'A1:24 F#1:24', melody: '-:48' },
+  { bar: 4, triplets: 'G#3 B#3 F#4 G#3 C#4 E4 G#3 C#4 D#4 F#3 B#3 D#4', bass: 'G#1:48', melody: '-:48' },
+  { bar: 5, triplets: 'E3 G#3 C#4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4', bass: 'C#2:48', melody: '-:36 G#4:9 G#4:3' },
+  { bar: 6, triplets: 'G#3 D#4 F#4 G#3 D#4 F#4 G#3 D#4 F#4 G#3 D#4 F#4', bass: 'B#1:48', melody: 'G#4:36 G#4:9 G#4:3' },
+  { bar: 7, triplets: 'G#3 C#4 E4 G#3 C#4 E4 A3 C#4 F#4 A3 C#4 F#4', bass: 'C#2:24 F#1:24', melody: 'G#4:24 A4:24' },
+  { bar: 8, triplets: 'G#3 B3 E4 G#3 B3 E4 A3 B3 D#4 A3 B3 D#4', bass: 'B1:48', melody: 'G#4:24 F#4:12 B4:12' },
+  { bar: 9, triplets: 'G#3 B3 E4 G#3 B3 E4 G#3 B3 E4 G#3 B3 E4', bass: 'E2:48', melody: 'E4:12 -:36' },
+  { bar: 10, triplets: 'G3 B3 E4 G3 B3 E4 G3 B3 E4 G3 B3 E4', bass: 'E2:48', melody: '-:36 G4:9 G4:3' },
+  { bar: 11, triplets: 'G3 B3 F4 G3 B3 F4 G3 B3 F4 G3 B3 F4', bass: 'D2:48', melody: 'G4:36 G4:9 G4:3' },
+  { bar: 12, triplets: 'G3 C4 E4 G3 B3 E4 G3 C#4 E4 F#3 C#4 E4', bass: 'C2:12 B1:12 A#1:24', melody: 'G4:36 F#4:12' },
+  { bar: 13, triplets: 'F#3 B3 D4 F#3 B3 D4 G3 B3 C#4 E3 B3 C#4', bass: 'B1:24 E2:12 G2:12', melody: 'F#4:24 G4:12 E4:12' },
+  { bar: 14, triplets: 'F#3 B3 D4 F#3 B3 D4 F#3 A#3 C#4 F#3 A#3 C#4', bass: 'F#2:24 F#1:24', melody: 'F#4:24 F#4:24' },
+];
+/** The end: the F sharp major chord of the half cadence at the end of bar 14, held. */
+const HELD = { triplets: 'A#3:32', bass: 'F#1:32', melody: 'F#4:32' };
+
+describe('the notes of the Moonlight Sonata, against the score', () => {
+  const piece = TRACKS.moonlight!;
+  /** A voice's bars, as written between the bar lines, each one's tokens joined by a space. */
+  const bars = (voice: number) => piece.voices[voice]!.notes.split('|').map((bar) => bar.trim().split(/\s+/).join(' '));
+  const [melody, triplets, bass] = [bars(0), bars(1), bars(2)];
+
+  it.each(SCORE)('bar $bar: the triplets, the bass and the melody as the score has them', ({ bar, triplets: expected, bass: low, melody: tune }) => {
+    // Every triplet eighth is 4 steps.
+    expect(triplets[bar - 1]).toBe(expected.split(' ').map((note) => `${note}:4`).join(' '));
+    expect(bass[bar - 1]).toBe(low);
+    expect(melody[bar - 1]).toBe(tune);
+  });
+
+  it('ends on the held F sharp major chord of the half cadence, and has nothing more', () => {
+    expect([triplets[14], bass[14], melody[14]]).toEqual([HELD.triplets, HELD.bass, HELD.melody]);
+    expect([triplets.length, bass.length, melody.length]).toEqual([15, 15, 15]);
   });
 });
