@@ -45,7 +45,7 @@ export const RULES: [RegExp, PaletteId][] = [
   [/^shade-|^cave|^rubble|^stalagmite|^crack|^plate|^hole|^scratches|^notice/, 'cave'],
   // A rock or a boulder: grey stone, drawn see-through on whatever ground its cell has.
   [/^(rock|boulder)$/, 'stone'],
-  [/^(brazier|star|chest|sparkle)/, 'gold'],
+  [/^(brazier|star|chest|sparkle|spark)/, 'gold'],
   [/^mug/, 'wood'],
   [/^(ice|water|lily|duck|reeds|stones|jetty|float|fountain|well)/, 'water'],
   [/^fence/, 'fence'],

@@ -294,6 +294,11 @@ export type Battle = {
   intro: number;
   /** This boss follows another one at once: the way in is the short one (QUICK_TICKS), with the sound `round`. */
   quick?: true;
+  /**
+   * A hit that is being shown (with motion only): who was hit, the ticks left of it, and the energy before and
+   * after, for the bar that drains when the blinking is over. See hitLook in engine/battle.ts.
+   */
+  hit?: { who: 'foe' | 'you'; ticks: number; from: number; to: number };
   phase: 'steps' | 'menu' | 'moves' | 'items';
   steps: BattleStep[];
   shown: number;

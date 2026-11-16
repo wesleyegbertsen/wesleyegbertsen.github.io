@@ -32,10 +32,38 @@ function show(state: GameState, battle: Battle, steps: BattleStep[], ctx: Ctx): 
   return reveal({ ...state, battle: { ...battle, phase: 'steps', steps: folded, cursor: 0 } }, ctx);
 }
 
+/** How long one blink of a hit lasts, half dark and half shown: two blinks take 0.8 s, under three a second. */
+export const BLINK_TICKS = 12;
+/** How long the bar takes to drain once the blinking is over. */
+export const DRAIN_TICKS = 20;
+/** A whole hit: two blinks (the first with a spark), then the bar drains. */
+export const HIT_TICKS = 4 * BLINK_TICKS + DRAIN_TICKS;
+
+/**
+ * How a hit looks at this moment: whether the one hit is shown or blinked away, whether the spark is on it (the
+ * first blink), and the energy its bar shows: the old one while it blinks, then draining to the new one. Null
+ * when no hit is being shown.
+ */
+export function hitLook(battle: Battle | null | undefined): { who: 'foe' | 'you'; visible: boolean; spark: boolean; hp: number } | null {
+  const hit = battle?.hit;
+  if (!hit) return null;
+  const at = HIT_TICKS - hit.ticks;
+  const blinking = at < 4 * BLINK_TICKS;
+  const drained = blinking ? 0 : Math.min(1, (at - 4 * BLINK_TICKS + 1) / DRAIN_TICKS);
+  return { who: hit.who, visible: !blinking || Math.floor(at / BLINK_TICKS) % 2 === 0, spark: at < BLINK_TICKS, hp: Math.round(hit.from + (hit.to - hit.from) * drained) };
+}
+
 /** Applies the line that is now on top. */
 function reveal(state: GameState, ctx: Ctx): GameState {
   const battle = state.battle!;
   const step = battle.steps[0]!;
+  // A hit or a hurt, with motion: the one hit blinks, with a spark, and its bar drains after (hitLook).
+  const hit =
+    !ctx.instant && step.cue === 'hit' && step.enemyHp !== undefined
+      ? { who: 'foe' as const, ticks: HIT_TICKS, from: battle.enemyHp, to: step.enemyHp }
+      : !ctx.instant && step.cue === 'hurt' && step.hp !== undefined
+        ? { who: 'you' as const, ticks: HIT_TICKS, from: state.hp, to: step.hp }
+        : undefined;
   ctx.events.push({ kind: 'battle', text: step.text });
   if (step.cue) ctx.cues.push(step.cue);
   if (step.cue === 'hurt' && step.hp !== undefined && step.hp > 0 && step.hp <= state.maxHp * LOW) ctx.cues.push('low');
@@ -51,6 +79,7 @@ function reveal(state: GameState, ctx: Ctx): GameState {
     coins: step.coins ?? state.coins,
     battle: {
       ...battle,
+      hit,
       enemyHp: step.enemyHp ?? battle.enemyHp,
       cheer: battle.cheer || !!step.cheer,
       shown: ctx.instant ? step.text.length : 0,
@@ -212,6 +241,13 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
   if (battle.intro > 0) return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
+
+  // A hit is being shown: it plays out, the line types on, and a press waits for it.
+  if (battle.hit) {
+    const ticks = battle.hit.ticks - 1;
+    const length = battle.steps[0]?.text.length ?? 0;
+    return { ...state, battle: { ...battle, hit: ticks > 0 ? { ...battle.hit, ticks } : undefined, shown: Math.min(length, battle.shown + 1) } };
+  }
 
   if (battle.phase === 'steps') {
     const length = battle.steps[0]?.text.length ?? 0;

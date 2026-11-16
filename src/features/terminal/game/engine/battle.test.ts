@@ -1,3 +1,4 @@
+import { HIT_TICKS, hitLook } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState } from './types.ts';
@@ -8,6 +9,43 @@ const started = (seed = 7) => play(initialGame(world, seed), 'a', 'a');
 const wild = (seed = 7) => play(started(seed), 'down', 'right', 'a');
 /** In the boss battle with the rat, at its menu. */
 const bossFight = () => play(started(), 'down', 'down', 'right', 'a', 'a', 'a');
+
+describe('a hit in a battle, with motion', () => {
+  /** One tick with motion, A held or not. */
+  const tick = (state: GameState, a = false) => step(state, { ...NO_INPUT, a }, world).state;
+
+  it('blinks the one that is hit with a spark, then drains the bar; A waits for it; a miss shows nothing', () => {
+    // At the menu with motion: FIGHT, HIT. The first line is the hit, revealed with its cue.
+    const menu = wild();
+    const moves = tick(menu, true);
+    const hitting = tick(moves, true);
+    const hit = hitting.battle!.hit!;
+    expect(hit).toMatchObject({ who: 'foe', ticks: HIT_TICKS, from: 10, to: hitting.battle!.enemyHp });
+    const looks: ReturnType<typeof hitLook>[] = [];
+    let state = hitting;
+    for (let i = 0; i < HIT_TICKS && state.battle?.hit; i++) {
+      looks.push(hitLook(state.battle));
+      // A is pressed all along: it does not cut the blink short.
+      state = tick(state, true);
+    }
+    expect(looks).toHaveLength(HIT_TICKS);
+    expect(state.battle!.hit).toBeUndefined();
+    expect(state.battle!.steps[0]!.text).toMatch(/^You use HIT!/);
+    // Hidden twice, each time for BLINK_TICKS: two blinks, under three a second (60 ticks).
+    const hidden = looks.map((look, i) => (!look!.visible && (i === 0 || looks[i - 1]!.visible) ? i : -1)).filter((i) => i >= 0);
+    expect(hidden).toHaveLength(2);
+    expect(hidden[1]! - hidden[0]!).toBeGreaterThanOrEqual(20);
+    // The spark at the start only; the bar stands at the old energy through the blinks, then drains to the new.
+    expect(looks[0]!.spark).toBe(true);
+    expect(looks.at(-1)!.spark).toBe(false);
+    expect(looks[hidden[1]!]!.hp).toBe(10);
+    expect(looks.at(-1)!.hp).toBeLessThanOrEqual(hit.to + 1);
+    for (let i = 1; i < looks.length; i++) expect(looks[i]!.hp).toBeLessThanOrEqual(looks[i - 1]!.hp);
+    // With reduced motion there is none of it: just the change of the bar.
+    expect(play(wild(), 'a', 'a').battle!.hit).toBeUndefined();
+    expect(hitLook(null)).toBeNull();
+  });
+});
 
 describe('battles', () => {
   it('starts a wild battle in tall grass and announces it', () => {

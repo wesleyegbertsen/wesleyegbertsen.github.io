@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
-import { BATTLE_MENU, usableItems } from './engine/battle.ts';
+import { BATTLE_MENU, hitLook, usableItems } from './engine/battle.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
@@ -474,6 +474,11 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   // side and along the bottom. The enemy's is top left with the bracket on its left, the player's bottom right
   // with the bracket on its right. Labels, bars and rows are the same in both.
   const { enemy: foe, you } = HUD;
+  // A hit being shown (with motion): the one hit blinks with a spark on it, and its bar holds, then drains.
+  const look = hitLook(battle);
+  const shown = (who: 'foe' | 'you') => !look || look.who !== who || look.visible;
+  const enemyHp = look?.who === 'foe' ? look.hp : battle.enemyHp;
+  const hp = look?.who === 'you' ? look.hp : state.hp;
 
   // The enemy: no numbers, its picture on the right. The longest name at Lv10 (19 characters) ends before it.
   rect(ctx, foe.x, foe.y, 2, 22, DARKEST);
@@ -481,19 +486,21 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   rect(ctx, foe.x + 94, foe.y + 21, 4, 1, DARKEST);
   drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, foe.x + 5, foe.y);
   drawText(ctx, sheets, 'HP', foe.x + 5, foe.y + HUD.row);
-  hpBar(ctx, foe.x + 19, foe.y + HUD.row + 2, HUD.bar, battle.enemyHp, battle.enemyMax, 5);
-  drawSprite(ctx, sheets, enemy.sprite, 124, 6);
+  hpBar(ctx, foe.x + 19, foe.y + HUD.row + 2, HUD.bar, enemyHp, battle.enemyMax, 5);
+  if (shown('foe')) drawSprite(ctx, sheets, enemy.sprite, 124, 6);
+  if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', 132, 14);
   rect(ctx, 118, 40, 40, 2, DARK);
 
   // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
   // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.
-  drawSprite(ctx, sheets, 'trainer-back', 12, 60);
+  if (shown('you')) drawSprite(ctx, sheets, 'trainer-back', 12, 60);
+  if (look?.who === 'you' && look.spark) drawSprite(ctx, sheets, 'spark', 20, 68);
   rect(ctx, 4, 92, 48, 2, DARK);
-  const energy = `${state.hp}/${state.maxHp}`;
+  const energy = `${hp}/${state.maxHp}`;
   const end = you.x + 14 + HUD.bar;
   drawText(ctx, sheets, `YOU Lv${state.level}`, you.x, you.y);
   drawText(ctx, sheets, 'HP', you.x, you.y + HUD.row);
-  hpBar(ctx, you.x + 14, you.y + HUD.row + 2, HUD.bar, state.hp, state.maxHp, 5);
+  hpBar(ctx, you.x + 14, you.y + HUD.row + 2, HUD.bar, hp, state.maxHp, 5);
   drawText(ctx, sheets, energy, rightAligned(energy, end), you.y + 2 * HUD.row - 1);
   drawText(ctx, sheets, 'XP', you.x, you.y + 3 * HUD.row - 1);
   xpBar(ctx, you.x + 14, you.y + 33, HUD.bar + 2, state, world, 3);

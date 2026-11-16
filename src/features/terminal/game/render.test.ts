@@ -3,6 +3,7 @@ import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
+import { BLINK_TICKS, HIT_TICKS } from './engine/battle.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -1113,5 +1114,27 @@ describe('the rest at the cafe', () => {
     expect(end.fills).toContainEqual(expect.objectContaining({ x: 51, y: 56, w: 74, h: 4 }));
     // No rest, no tray.
     expect(count(drawn(started()).draws, 'mug')).toBe(0);
+  });
+});
+
+describe('a hit in a battle', () => {
+  it('blinks the one hit with a spark, holds its bar and then drains it; nothing of it without a hit', () => {
+    const battle = play(started(), 'down', 'right', 'a');
+    const sparks = (draws: Draw[]) => draws.filter((draw) => draw.sheet === 'tiles' && draw.sx === tiles.spark[0] && draw.sy === tiles.spark[1]);
+    const foe = (ticks: number) => drawn({ ...battle, battle: { ...battle.battle!, enemyHp: 4, hit: { who: 'foe', ticks, from: 10, to: 4 } } });
+    // The first blink: shown, with the spark on it; the bar still full.
+    const first = foe(HIT_TICKS);
+    expect(spriteDraws(first.draws, 'bug')).toHaveLength(1);
+    expect(sparks(first.draws)).toEqual([expect.objectContaining({ x: 132, y: 14 })]);
+    expect(first.fills).toContainEqual(expect.objectContaining({ x: 24, y: 19, w: 60, h: 3 }));
+    // Blinked away a moment later.
+    expect(spriteDraws(foe(HIT_TICKS - BLINK_TICKS).draws, 'bug')).toHaveLength(0);
+    // At the end the bar has drained to the new energy (4 of 10 of 60 pixels: 24).
+    expect(foe(1).fills).toContainEqual(expect.objectContaining({ x: 24, y: 19, w: 24, h: 3 }));
+    // The trainer blinks when it is the player who is hit.
+    const you = drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who: 'you', ticks: HIT_TICKS - BLINK_TICKS, from: 20, to: 12 } } });
+    expect(spriteDraws(you.draws, 'trainer-back')).toHaveLength(0);
+    expect(textAt(you.draws, 77)).toBe('20/20');
+    expect(sparks(drawn(battle).draws)).toHaveLength(0);
   });
 });
