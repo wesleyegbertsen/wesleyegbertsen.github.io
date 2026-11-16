@@ -54,11 +54,12 @@ export const OUTDOORS: Record<string, TileDef> = {
   f: { sprite: 'fence', solid: true, join: true }, // joins its neighbours: runs across, up and down, corners and ends
   // Water
   '~': { sprite: 'water', solid: true, animated: true },
-  '^': { sprite: 'lily', solid: true, animated: true },
-  d: { sprite: 'duck', solid: true, animated: true },
-  '*': { sprite: 'reeds', solid: true, animated: true }, // at the edge of a pond, in the water
-  _: { sprite: 'jetty', solid: false, animated: true }, // planks out into the water: walk on it from the shore, north or south
-  t: { sprite: 'stones', solid: false, animated: true }, // a stepping stone: a way across the water
+  // These stand in or on the water, drawn over it (`under`): the water moves under them.
+  '^': { sprite: 'lily', under: 'water', solid: true, animated: true },
+  d: { sprite: 'duck', under: 'water', solid: true, animated: true },
+  '*': { sprite: 'reeds', under: 'water', solid: true, animated: true }, // at the edge of a pond, in the water
+  _: { sprite: 'jetty', under: 'water', solid: false, animated: true }, // planks out into the water: walk on it from the shore, north or south
+  t: { sprite: 'stones', under: 'water', solid: false, animated: true }, // a stepping stone: a way across the water
   // Street furniture (the capital stands on the plaza)
   i: { sprite: 'lamp', under: 'grass', solid: true },
   I: { sprite: 'lamp', under: 'cobble', solid: true },

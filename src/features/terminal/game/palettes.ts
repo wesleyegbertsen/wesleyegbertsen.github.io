@@ -47,7 +47,13 @@ export const RULES: [RegExp, PaletteId][] = [
   [/^(rock|boulder)$/, 'stone'],
   [/^(brazier|star|chest|sparkle|spark)/, 'gold'],
   [/^mug/, 'wood'],
-  [/^(ice|water|lily|duck|reeds|stones|jetty|float|fountain|well)/, 'water'],
+  // In and on the water: green plants, a white duck with a yellow bill, wooden planks, grey stones. They are drawn
+  // over the water of their cell, so only the water is blue.
+  [/^(lily|reeds)/, 'grass'],
+  [/^duck/, 'gold'],
+  [/^jetty/, 'wood'],
+  [/^stones/, 'stone'],
+  [/^(ice|water|float|fountain|well)/, 'water'],
   [/^fence/, 'fence'],
   [/^(flowers|flowerbed)/, 'flower'],
   [/^(grass|tallgrass|rustle|tree|pine|bush|hedge|plant)/, 'grass'],

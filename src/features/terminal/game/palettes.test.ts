@@ -39,6 +39,14 @@ describe('the palettes of Game Boy Color mode', () => {
     expect(paletteOf('cliff')).toBe('earth');
     expect(paletteOf('rock')).toBe('stone');
     expect(paletteOf('boulder')).toBe('stone');
+    // What stands in or on the water has colours of its own: green plants, a white duck, wooden planks, grey stones.
+    // Only the water around them is blue (they are drawn over the water of their cell).
+    expect(paletteOf('lily')).toBe('grass');
+    expect(paletteOf('lily-b')).toBe('grass');
+    expect(paletteOf('reeds')).toBe('grass');
+    expect(paletteOf('duck')).not.toBe('water');
+    expect(paletteOf('jetty')).toBe('wood');
+    expect(paletteOf('stones')).toBe('stone');
     // Every palette is used by something.
     const used = new Set(SHEET_NAMES.map(paletteOf));
     for (const id of Object.keys(PALETTES)) if (id !== 'ui') expect(used, id).toContain(id);

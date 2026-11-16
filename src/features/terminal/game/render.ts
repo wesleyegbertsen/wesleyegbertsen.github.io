@@ -201,7 +201,8 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     for (let cx = Math.max(0, Math.floor(camX / TILE)); cx < map.width && cx * TILE < camX + SCREEN_W; cx++) {
       const tile = map.tiles[map.cells[cy]![cx]!];
       if (!tile) continue;
-      if (tile.under) drawSprite(ctx, sheets, tile.under, cx * TILE - camX, cy * TILE - camY);
+      // The ground under it moves with it when it has a second picture (the water under the lily pads).
+      if (tile.under) drawSprite(ctx, sheets, tile.animated && drawable(`${tile.under}-b`) ? frameOf(tile.under, true, state.clock) : tile.under, cx * TILE - camX, cy * TILE - camY);
       drawSprite(ctx, sheets, frameOf(tile.look ?? tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
     }
   }
