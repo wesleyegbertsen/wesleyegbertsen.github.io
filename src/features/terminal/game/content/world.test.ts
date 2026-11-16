@@ -255,6 +255,10 @@ describe('a whole playthrough', () => {
     expect(run.state.moves.some((id) => Object.values(world.learn).includes(id))).toBe(true);
     expect(run.events.some((event) => /^You grew to Lv/.test(event.text))).toBe(true);
     expect(run.state.maxHp).toBe(world.baseHp + world.hpPerBadge * world.badges.length + world.levels.hpPerLevel * (run.state.level - 1) + 10);
+    // The DEX filled itself on the way (it gates nothing): every boss, and some of what lives in the grass.
+    const seen = run.state.seen ?? [];
+    for (const entry of world.dex!.filter((entry) => entry.boss)) expect(seen, entry.enemy).toContain(entry.enemy);
+    expect(seen.length).toBeGreaterThan(world.dex!.filter((entry) => entry.boss).length);
   });
 
   it('can be finished without a single project in the data', () => {
