@@ -232,6 +232,14 @@ describe('the rest in the cafe', () => {
 });
 
 describe('the cries of the monsters', () => {
+  it('never sounds twice at once: pressed again while it sounds (CRY in the DEX), it is skipped, and so is its pause', () => {
+    for (const id of Object.keys(CRIES)) {
+      const effect = EFFECTS[`cry:${id}`]!;
+      expect(effect.gap, id).toBe(effect.hush);
+      expect(effect.hush, id).toBe(CRIES[id]!.duration);
+    }
+  });
+
   it('gives every enemy a cry of its own: short, heard, and no two the same', () => {
     const ids = Object.keys(ENEMIES);
     expect(Object.keys(CRIES).sort()).toEqual([...ids].sort());

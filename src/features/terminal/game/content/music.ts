@@ -529,8 +529,9 @@ function cryEffect(cry: Cry): Effect {
   });
   if (cry.noise !== undefined) tones.push({ wave: 'noise', at: 0, from: cry.noise, to: cry.noise, duration: cry.duration, volume: 0.15 });
   // The music pauses for the cry, as long as the cry is, and carries on after it. The cry is as loud as its peak
-  // may be, or as its fullness may be, whichever is less.
-  return { tones, hush: cry.duration, gain: Math.min(CRY_PEAK / peakOf(tones), CRY_LOUDNESS / levelOf(tones)) };
+  // may be, or as its fullness may be, whichever is less. Asked for again while it sounds (CRY in the DEX), it is
+  // skipped, pause and all: the `gap`.
+  return { tones, hush: cry.duration, gap: cry.duration, gain: Math.min(CRY_PEAK / peakOf(tones), CRY_LOUDNESS / levelOf(tones)) };
 }
 
 for (const [id, cry] of Object.entries(CRIES)) EFFECTS[`cry:${id}`] = cryEffect(cry);
