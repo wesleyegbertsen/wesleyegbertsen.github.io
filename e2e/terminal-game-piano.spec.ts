@@ -39,7 +39,7 @@ test('the music corner of the cafe: the selector of the piano, the Moonlight Son
   // A: the selector, on the Moonlight Sonata. B: closed, and nothing plays.
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
-  await expect(status(page)).toContainText('MOONLIGHT SONATA, L. VAN BEETHOVEN, 1:03.');
+  await expect(status(page)).toContainText('MOONLIGHT SONATA, L. VAN BEETHOVEN, 4:57.');
   await pilot.press('b');
   await expect(game(page)).toHaveAttribute('data-pick', '');
   await expect(game(page)).toHaveAttribute('data-piano', 'off');
