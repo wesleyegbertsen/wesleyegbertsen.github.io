@@ -159,8 +159,8 @@ describe('the sprite sheets', () => {
   });
 
   it('walk sideways with straight legs from the hips and an arm that swings beside the body, the body still', () => {
-    const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2', 'player-down-0'].map((name) => characters[name]))))";
-    const [standing, forward, back, front] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[], string[]];
+    const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2'].map((name) => characters[name]))))";
+    const [standing, forward, back] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[]];
     // The head and the torso stand still: down to the shoulders exactly the standing picture.
     for (const frame of [forward, back]) expect(frame.slice(0, 10)).toEqual(standing.slice(0, 10));
     const filled = (row: string) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [x]));
