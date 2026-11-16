@@ -39,8 +39,9 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
     for (const voice of piece.voices) expect(parseVoice(voice.notes).steps, voice.notes.slice(0, 20)).toBe(trackSteps(piece));
   });
 
-  it('has three plucked voices and no drums, every note on a piano', () => {
-    expect(piece.voices).toHaveLength(3);
+  it('has five plucked voices and no drums, every note on a piano', () => {
+    // Five since round 31: the octaves of the left hand and the inner chord notes were added.
+    expect(piece.voices).toHaveLength(5);
     for (const voice of piece.voices) {
       expect(voice.wave).not.toBe('noise');
       expect(voice.pluck).toBe(true);
@@ -161,5 +162,45 @@ describe('the notes of the Moonlight Sonata, against the score', () => {
   it('ends on the held F sharp major chord of the half cadence, and has nothing more', () => {
     expect([triplets[14], bass[14], melody[14]]).toEqual([HELD.triplets, HELD.bass, HELD.melody]);
     expect([triplets.length, bass.length, melody.length]).toEqual([15, 15, 15]);
+  });
+});
+
+/**
+ * The two voices added in round 31, bar by bar: the upper note of the left hand's octaves (a rest where it plays one
+ * note), and the inner notes of the left hand's chords (bars 5 and 6) and of the held last chord.
+ */
+const LOW: { bar: number; octave: string; inner: string }[] = [
+  { bar: 1, octave: 'C#3:48', inner: '-:48' },
+  { bar: 2, octave: 'B2:48', inner: '-:48' },
+  { bar: 3, octave: 'A2:24 F#2:24', inner: '-:48' },
+  { bar: 4, octave: 'G#2:48', inner: '-:48' },
+  { bar: 5, octave: 'C#3:48', inner: 'G#2:48' },
+  { bar: 6, octave: 'B#2:48', inner: 'G#2:48' },
+  { bar: 7, octave: 'C#3:24 F#2:24', inner: '-:48' },
+  { bar: 8, octave: 'B2:48', inner: '-:48' },
+  { bar: 9, octave: 'E3:48', inner: '-:48' },
+  { bar: 10, octave: 'E3:48', inner: '-:48' },
+  { bar: 11, octave: 'D3:48', inner: '-:48' },
+  { bar: 12, octave: 'C3:12 B2:12 A#2:24', inner: '-:48' },
+  { bar: 13, octave: 'B2:24 -:24', inner: '-:48' },
+  { bar: 14, octave: '-:24 F#2:24', inner: '-:48' },
+];
+
+describe('the left hand of the Moonlight Sonata, fuller', () => {
+  const piece = TRACKS.moonlight!;
+  const bars = (voice: number) => piece.voices[voice]?.notes.split('|').map((bar) => bar.trim().split(/\s+/).join(' ')) ?? [];
+
+  it('has five plucked voices now: the octaves of the left hand and the inner notes too', () => {
+    expect(piece.voices).toHaveLength(5);
+    for (const voice of piece.voices) expect(voice.pluck).toBe(true);
+  });
+
+  it.each(LOW)('bar $bar: the upper note of the octave and the inner note as the score has them', ({ bar, octave, inner }) => {
+    expect(bars(3)[bar - 1]).toBe(octave);
+    expect(bars(4)[bar - 1]).toBe(inner);
+  });
+
+  it('ends on the whole F sharp major chord: F#1 and F#2 in the bass, A#3 and C#3 in the middle, F#4 on top', () => {
+    expect([bars(0)[14], bars(1)[14], bars(2)[14], bars(3)[14], bars(4)[14]]).toEqual(['F#4:32', 'A#3:32', 'F#1:32', 'F#2:32', 'C#3:32']);
   });
 });
