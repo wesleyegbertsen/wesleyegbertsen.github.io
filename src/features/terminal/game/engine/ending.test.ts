@@ -10,12 +10,20 @@ const ended = () => {
 const tick = (state: GameState, input: Partial<Input> = {}, instant = true) => step(state, { ...NO_INPUT, ...input }, world, { instant });
 
 describe('the ending screen', () => {
-  it('holds for a second, counted in ticks with or without motion, and takes no press meanwhile', () => {
+  it('with reduced motion (no clock runs, one key is one move) holds for one press, which it does not take', () => {
+    const end = ended();
+    const first = tick(end, { a: true });
+    expect(first.state).toMatchObject({ scene: 'ending', ending: { ticks: ENDING_HOLD } });
+    expect(first.cues).toEqual([]);
+    expect(tick(first.state, { a: true }).state.scene).toBe('world');
+  });
+
+  it('with motion holds for a second of ticks, and takes no press meanwhile', () => {
     const end = ended();
     expect(end).toMatchObject({ scene: 'ending', finished: true, ending: { ticks: 0 } });
     let state = end;
     for (let i = 0; i < ENDING_HOLD - 1; i++) {
-      state = tick(state, i % 2 === 0 ? { a: true } : { start: true }, i % 3 === 0).state;
+      state = tick(state, i % 2 === 0 ? { a: true } : { start: true }, false).state;
       expect(state.scene, `tick ${i}`).toBe('ending');
     }
     expect(state.ending).toEqual({ ticks: ENDING_HOLD - 1 });

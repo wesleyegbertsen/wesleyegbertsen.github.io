@@ -153,8 +153,9 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
 }
 
 /**
- * How long the ending screen stands before it takes a press: a second. An A that was already on its way when the last
- * text box closed would else leave it at once. Ticks, not motion: the same with reduced motion.
+ * How long the ending screen stands before it takes a press: a second of ticks. An A that was already on its way when
+ * the last text box closed would else leave it at once. With reduced motion no clock runs (one key is one move): the
+ * hold is then one press, which is not taken as KEEP EXPLORING.
  */
 export const ENDING_HOLD = 60;
 
@@ -167,7 +168,7 @@ export const startsAgain = (state: GameState | null | undefined): boolean => !st
 /** The ending screen: it holds, then A or Start is KEEP EXPLORING, back where the player stood with everything kept. */
 function stepEnding(state: GameState, input: Input, ctx: Ctx): GameState {
   const ticks = state.ending?.ticks ?? 0;
-  if (ticks < ENDING_HOLD) return { ...state, ending: { ticks: ticks + 1 } };
+  if (ticks < ENDING_HOLD) return { ...state, ending: { ticks: ctx.instant ? ENDING_HOLD : ticks + 1 } };
   if (!input.a && !input.start) return state;
   ctx.cues.push('confirm');
   ctx.events.push({ kind: 'place', text: ctx.world.maps[state.map]!.name });
