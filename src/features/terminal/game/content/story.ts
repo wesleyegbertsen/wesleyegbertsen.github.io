@@ -777,6 +777,8 @@ export function buildMaps(data: FsData): BuiltMap[] {
       B: barista(),
       V: shopkeeper('maker', 'cafe', CAFE_TEXT.shop),
       '1': person('dev', CAFE_TEXT.regular(who)),
+      // The player piano on the right wall: A starts the Moonlight Sonata, or stops it. It says nothing.
+      k: { sprite: 'piano', solid: true, trigger: 'interact', branches: [{ do: [{ piano: true }] }] },
       m: exitTo('X'),
     },
   };

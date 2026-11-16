@@ -1,5 +1,14 @@
 import { flatten, parseVoice, stepSeconds, trackSteps } from '../audio/score.ts';
+import { education } from '../../../../data/education.ts';
+import { experience } from '../../../../data/experience.ts';
+import { profile } from '../../../../data/profile.ts';
+import { projects } from '../../../../data/projects.ts';
+import { skills } from '../../../../data/skills.ts';
+import { routeTo } from '../engine/bot.ts';
+import { initialGame } from '../engine/engine.ts';
+import type { GameState } from '../engine/types.ts';
 import { MUSIC, TRACKS } from './music.ts';
+import { buildWorld } from './world.ts';
 
 /** The summed volume of the voices that sound at each step (as in audio/levels.test.ts). */
 const peakOf = (name: string) => {
@@ -50,5 +59,29 @@ describe('the Moonlight Sonata on the player piano of the cafe', () => {
     const quietest = Math.min(...others.map(peakOf));
     expect(peakOf('moonlight')).toBeLessThan(quietest);
     expect(peakOf('moonlight')).toBeGreaterThanOrEqual(0.6);
+  });
+});
+
+describe('the player piano in the cafe', () => {
+  const world = buildWorld({ profile, skills, experience, education, projects });
+  const cafe = world.maps.cafe!;
+
+  it('knows how long the piece is, in ticks of the game', () => {
+    expect(MUSIC.pianoTicks).toBe(Math.round(flatten(TRACKS.moonlight!).length * 60));
+  });
+
+  it('stands on the right wall, in the pocket between the table and the plant, and starts and stops the piece', () => {
+    const piano = cafe.objects.find((object) => object.id === 'cafe:k')!;
+    expect(piano).toMatchObject({ x: 8, y: 5, sprite: 'piano', solid: true, trigger: 'interact' });
+    expect(piano.branches).toEqual([{ do: [{ piano: true }] }]);
+  });
+
+  it('is in nobody\'s way: from the door every other thing of the cafe can still be reached, and the piano too', () => {
+    // Just inside the door (m at 4,8).
+    const at: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', x: 4, y: 7 };
+    for (const object of cafe.objects) expect(routeTo(world, { ...at, x: 4, y: 7 }, object.id), object.id).not.toBeNull();
+    // The piano is faced from the one cell beside it.
+    const route = routeTo(world, { ...at, x: 4, y: 7 }, 'cafe:k')!;
+    expect(route.at(-1)).toBe('right');
   });
 });

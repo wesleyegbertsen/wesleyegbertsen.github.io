@@ -1,5 +1,5 @@
 import type { Effect, Tone } from '../audio/player.ts';
-import type { Track, Wave } from '../audio/score.ts';
+import { flatten, type Track, type Wave } from '../audio/score.ts';
 import type { Cue, World } from '../engine/types.ts';
 
 /**
@@ -396,8 +396,9 @@ export const MUSIC: NonNullable<World['music']> = {
   victory: 'victory',
   indoors: 'indoors',
   maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', deep: 'cave', cafe: 'cafe' },
-  // The player piano in the cafe, while it plays.
+  // The player piano in the cafe, while it plays, and how long its piece is in ticks (60 a second).
   piano: 'moonlight',
+  pianoTicks: Math.round(flatten(TRACKS.moonlight!).length * 60),
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------

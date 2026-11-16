@@ -435,7 +435,7 @@ export const CAFE = [
   'XnnBnnVnnX',
   'X________X',
   'Xoh____hoX',
-  'X________X',
+  'X_______kX',
   'Xso1____yX',
   'X__===___X',
   'XXXXmXXXXX',

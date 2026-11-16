@@ -1067,6 +1067,34 @@ const globe = [
   '................',
   '................',
 ];
+/**
+ * The player piano in the cafe, an upright one as in a western saloon: a wooden case with a dark outline, a window
+ * with the paper roll in it, the keys (white with black between) and two legs. While it plays (`piano-play` and
+ * `piano-play-b` in turn) the holes of the roll move on and other keys go down; `piano-play` alone is the still
+ * picture for reduced motion. Drawn over the floor (the dots are see-through).
+ */
+const pianoWith = (roll, keys) => [
+  '................',
+  '.33333333333333.',
+  '.32222222222223.',
+  '.32111111111123.',
+  '.32100000000123.',
+  `.321${roll}123.`,
+  '.32100000000123.',
+  '.32111111111123.',
+  '.33333333333333.',
+  '.30303003030303.',
+  '.30303003030303.',
+  `.3${keys}3.`,
+  '.33333333333333.',
+  '.32..........23.',
+  '.32..........23.',
+  '.33..........33.',
+];
+const piano = pianoWith('00000000', '000000000000');
+const pianoPlay = pianoWith('03003003', '010000100100');
+const pianoPlayB = pianoWith('30030030', '000100001000');
+
 /** A shelf of cups on the wall behind the counter of the cafe. */
 const cupshelf = [
   '................',
@@ -1564,6 +1592,9 @@ export const scenery = {
   globe,
   counter,
   cupshelf: on(tiles.iwall, cupshelf),
+  piano,
+  'piano-play': pianoPlay,
+  'piano-play-b': pianoPlayB,
   cliff,
   ...cliffFaces,
   'cliff-rock-0': rocks[0].map((row) => row.join('')),
