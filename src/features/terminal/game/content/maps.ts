@@ -426,7 +426,8 @@ export const LIBRARY = [
 /**
  * The Cafe. B is the barista (restores energy and moves; a defeat anywhere wakes the player up in front of her),
  * V the shopkeeper (opens the shop), both in the counter. 1 is a regular at a table by the sofa. e is the big
- * coffee machine and u the cups, behind the counter where nobody but the staff gets. The tables stand against the
+ * coffee machine and u the cups, behind the counter where nobody but the staff gets. k is the player piano on the
+ * right wall, in the pocket between a table and the plant (it plays the Moonlight Sonata; story.ts). The tables stand against the
  * walls: the way from the door (m) up to the counter stays free (a test checks every room for that).
  */
 export const CAFE = [
