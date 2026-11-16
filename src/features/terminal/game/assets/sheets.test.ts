@@ -146,15 +146,25 @@ describe('the sprite sheets', () => {
     const frames = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as Record<string, string[]>;
     // Rows 9 to 12 hold the shoulders, the arms and the hands; the legs are below.
     const arms = (name: string) => frames[name]!.slice(9, 13).join('/');
-    const head = (name: string) => frames[name]!.slice(0, 9).join('/');
     for (const direction of ['up', 'down', 'left', 'right']) {
       const [standing, one, two] = [0, 1, 2].map((frame) => `player-${direction}-${frame}`) as [string, string, string];
       expect(arms(one), one).not.toBe(arms(standing));
       expect(arms(two), two).not.toBe(arms(standing));
       expect(arms(one), direction).not.toBe(arms(two));
-      // The head stays where it is, as in the walk up and down: no bob.
-      expect(head(one), one).toBe(head(standing));
-      expect(head(two), two).toBe(head(standing));
+      // The head sways a pixel with the step, the same in every direction: the rows above the collar (0 to 7) are
+      // the standing head moved one pixel to one side in one frame and to the other side in the other. The collar
+      // (row 8) stays, and the head always touches it.
+      const shifted = (rows: string[], dx: number) => rows.slice(0, 8).map((row) => (dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
+      const sway = (name: string) => [-1, 1].find((dx) => shifted(frames[standing]!, dx).join('/') === frames[name]!.slice(0, 8).join('/'));
+      expect(sway(one), one).toBeDefined();
+      expect(sway(two), two).toBeDefined();
+      expect(sway(one), direction).not.toBe(sway(two));
+      for (const name of [one, two]) {
+        expect(frames[name]![8], name).toBe(frames[standing]![8]);
+        const above = [...frames[name]![7]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
+        const collar = [...frames[name]![8]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
+        expect(above.some((x) => collar.includes(x)), `${name}: the head touches the collar`).toBe(true);
+      }
     }
   });
 
@@ -162,7 +172,8 @@ describe('the sprite sheets', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2'].map((name) => characters[name]))))";
     const [standing, forward, back] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[]];
     // The head and the torso stand still: down to the shoulders exactly the standing picture.
-    for (const frame of [forward, back]) expect(frame.slice(0, 10)).toEqual(standing.slice(0, 10));
+    // The collar and the shoulders stay (the head sways: another test).
+    for (const frame of [forward, back]) expect(frame.slice(8, 10)).toEqual(standing.slice(8, 10));
     const filled = (row: string) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [x]));
     const torso = { left: Math.min(...filled(standing[12]!)), right: Math.max(...filled(standing[12]!)) };
     // The arm: the light pixels in the torso rows. It overlaps the torso in both frames and reaches no further than

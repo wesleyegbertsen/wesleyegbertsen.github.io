@@ -7,6 +7,12 @@
 /** The same picture from the shoulders down: rows 9 to 14 replaced (the arms and the legs of a step). */
 const step = (rows, ...below) => [...rows.slice(0, 9), ...below, '................'];
 
+/**
+ * The head sways with the step: the rows above the collar (0 to 7) moved `dx` pixels sideways, the collar and all
+ * below it where they are, so the head always rests on the collar. The same pixel in every direction.
+ */
+const sway = (rows, dx) => rows.map((row, y) => (y >= 8 ? row : dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
+
 
 const down = [
   '................',
@@ -68,7 +74,7 @@ const left = [
 export const characters = {
   'player-down-0': down,
   // One foot forward, the arm on the other side swung down and the near one up. Frame 2 is the mirror.
-  'player-down-1': step(
+  'player-down-1': sway(step(
     down,
     '..33212222123...',
     '..301222222113..',
@@ -76,9 +82,9 @@ export const characters = {
     '...33222222303..',
     '....322333333...',
     '....333.........',
-  ),
+  ), -1),
   'player-up-0': up,
-  'player-up-1': step(
+  'player-up-1': sway(step(
     up,
     '...32222222233..',
     '..322222222203..',
@@ -86,13 +92,13 @@ export const characters = {
     '..30322222233...',
     '...333333223....',
     '.........333....',
-  ),
+  ), -1),
   'player-left-0': left,
   // A step seen from the side. The head and the torso stand still. The arm is the one of the standing picture
   // (two pixels wide, the hand under it), moved a pixel forward and then a pixel back. The legs are straight, two
   // pixels of trouser each on a small shoe: the near leg (light trouser) a pixel forward with the far one (dark)
   // under the hips, then the far one a pixel forward and the near one under the hips.
-  'player-left-1': step(
+  'player-left-1': sway(step(
     left,
     '....32222223....',
     '....30022223....',
@@ -100,8 +106,8 @@ export const characters = {
     '....31122223....',
     '...3223.3333....',
     '...333..333.....',
-  ),
-  'player-left-2': step(
+  ), -1),
+  'player-left-2': sway(step(
     left,
     '....32222223....',
     '....32200223....',
@@ -109,7 +115,7 @@ export const characters = {
     '....32211223....',
     '...3333.3223....',
     '...333..333.....',
-  ),
+  ), 1),
   teacher: [
     '................',
     '.....333333.....',
