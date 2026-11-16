@@ -71,7 +71,7 @@ describe('Scarborough Fair on the player piano, against the score', () => {
     }
   });
 
-  it.each(PLAYED.map((bar, i) => ({ played: i + 1, bar, ...SCORE[bar - 1]! })))(
+  it.each(PLAYED.map((bar, i) => ({ ...SCORE[bar - 1]!, played: i + 1 })))(
     'played bar $played (score bar $bar): the five voices as the score has them',
     ({ played, melody, upper, bass, octave, lower }) => {
       expect(bars(0)[played - 1]).toBe(melody);
