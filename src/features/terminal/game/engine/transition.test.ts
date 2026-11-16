@@ -80,8 +80,10 @@ describe('the way into a battle', () => {
     expect(half.battle).toMatchObject({ intro: WILD_TICKS / 2, shown: 0, phase: 'steps' });
     const last = ticks(half, WILD_TICKS / 2 - 1);
     expect(last.battle).toMatchObject({ intro: 1, shown: 0 });
-    // It makes no sound of its own on the way: the one at the start is the whole of it.
-    expect(tick(last).cues).toEqual([]);
+    // It makes no sound of its own on the way (the one at the start is the whole of it); its last tick brings the
+    // enemy on the screen, and with it the enemy's cry.
+    expect(tick(last).cues).toEqual(['cry:rat']);
+    expect(tick(half).cues).toEqual([]);
     const over = tick(last).state;
     expect(over.battle).toMatchObject({ intro: 0, shown: 0 });
     // Now the line types itself, and A goes on as before.

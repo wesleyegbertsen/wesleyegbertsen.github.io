@@ -131,7 +131,10 @@ export function startBattle(state: GameState, enemyId: string, win: Action[], wi
   };
   const intro = wild ? `A wild ${enemy.name} appeared!` : `${enemy.name} wants to battle!`;
   // The line is told (and its sound asked for) at once; on the screen it waits for the transition.
-  return show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : quick ? 'round' : 'showdown' }], ctx);
+  const shown = show({ ...state, walk: null, menu: null }, battle, [{ text: intro, cue: wild ? 'encounter' : quick ? 'round' : 'showdown' }], ctx);
+  // With reduced motion there is no way in: the enemy is there at once, and so is its cry.
+  if (ctx.instant) ctx.cues.push(`cry:${enemyId}`);
+  return shown;
 }
 
 type Choice = { move: MoveDef; id?: string } | { item: string };
@@ -256,7 +259,11 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?:
   const press = input.a || input.b;
 
   // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
-  if (battle.intro > 0) return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
+  if (battle.intro > 0) {
+    // The way in is over on this tick: the enemy is on the screen, and calls out.
+    if (ctx.instant || battle.intro === 1) ctx.cues.push(`cry:${battle.enemy}`);
+    return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
+  }
   if (!ctx.instant && !battle.hit && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
 
   // A hit is being shown: it plays out, the line types on, and a press waits for it.

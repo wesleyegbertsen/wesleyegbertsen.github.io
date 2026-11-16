@@ -436,6 +436,8 @@ export type Cue =
   | 'hurt'
   | 'miss'
   | 'faint'
+  /** The cry of an enemy as it is on the screen: `cry:<id>`, one per enemy (CRIES in content/music.ts). */
+  | `cry:${string}`
   | 'low'
   | 'run'
   | 'encounter'

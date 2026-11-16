@@ -453,6 +453,56 @@ export const EFFECTS: Partial<Record<Cue, Effect>> = {
   },
 };
 
+/**
+ * The cry of every enemy, heard when it is on the screen (the cue `cry:<enemy id>`). HOW TO EDIT: `wave` and a sweep
+ * of the pitch from `from` to `to` (Hz) over `duration` seconds; `trill` splits it into that many short calls going
+ * back and forth; `noise` lays a hiss of that brightness (0.05 a rumble, 1 a hiss) under it. Keep them short (a test
+ * wants under 0.75 s) and every one different: a test fails for an enemy without a cry, or for two that sound the same.
+ */
+export type Cry = { wave: Wave; from: number; to: number; duration: number; trill?: number; noise?: number };
+export const CRIES: Record<string, Cry> = {
+  bug: { wave: 'pulse', from: 900, to: 1400, duration: 0.2, trill: 2 },
+  typo: { wave: 'thin', from: 1200, to: 700, duration: 0.18 },
+  lint: { wave: 'pulse', from: 600, to: 650, duration: 0.25, trill: 3 },
+  todo: { wave: 'triangle', from: 300, to: 500, duration: 0.3 },
+  popup: { wave: 'pulse', from: 1500, to: 1800, duration: 0.2, trill: 2 },
+  spam: { wave: 'thin', from: 800, to: 800, duration: 0.3, trill: 4 },
+  lag: { wave: 'triangle', from: 500, to: 200, duration: 0.45 },
+  update: { wave: 'pulse', from: 400, to: 900, duration: 0.35 },
+  flaky: { wave: 'thin', from: 1000, to: 600, duration: 0.25, trill: 3 },
+  debt: { wave: 'triangle', from: 180, to: 120, duration: 0.4, noise: 0.1 },
+  meeting: { wave: 'pulse', from: 350, to: 300, duration: 0.5 },
+  memleak: { wave: 'triangle', from: 220, to: 440, duration: 0.4, trill: 2 },
+  nullptr: { wave: 'thin', from: 1300, to: 200, duration: 0.3 },
+  race: { wave: 'pulse', from: 1100, to: 1300, duration: 0.2, trill: 4 },
+  droptable: { wave: 'triangle', from: 260, to: 90, duration: 0.45, noise: 0.2 },
+  error500: { wave: 'pulse', from: 500, to: 250, duration: 0.3, noise: 0.4 },
+  friday: { wave: 'thin', from: 700, to: 1400, duration: 0.3, trill: 2 },
+  diskfull: { wave: 'triangle', from: 150, to: 150, duration: 0.35, noise: 0.3 },
+  exam: { wave: 'pulse', from: 700, to: 500, duration: 0.4, trill: 2 },
+  legacy: { wave: 'triangle', from: 120, to: 90, duration: 0.55, noise: 0.15 },
+  scope: { wave: 'thin', from: 600, to: 1000, duration: 0.4, trill: 3 },
+  deadline: { wave: 'pulse', from: 1000, to: 1000, duration: 0.3, trill: 4 },
+  interview: { wave: 'pulse', from: 440, to: 330, duration: 0.5, trill: 2 },
+  review: { wave: 'thin', from: 523, to: 392, duration: 0.5, trill: 3 },
+  impostor: { wave: 'triangle', from: 300, to: 150, duration: 0.6, noise: 0.05 },
+  outage: { wave: 'pulse', from: 200, to: 100, duration: 0.6, noise: 0.5 },
+};
+
+/** A cry as an effect: the calls of the sweep (back and forth when it trills) and the hiss under them. */
+function cryEffect(cry: Cry): Effect {
+  const calls = cry.trill ?? 1;
+  const each = cry.duration / calls;
+  const tones: Tone[] = Array.from({ length: calls }, (_, i) => {
+    const [from, to] = i % 2 === 0 ? [cry.from, cry.to] : [cry.to, cry.from];
+    return { wave: cry.wave, at: i * each, from, to, duration: each * (calls > 1 ? 0.8 : 1), volume: cry.wave === 'triangle' ? 0.35 : 0.25 };
+  });
+  if (cry.noise !== undefined) tones.push({ wave: 'noise', at: 0, from: cry.noise, to: cry.noise, duration: cry.duration, volume: 0.15 });
+  return { tones };
+}
+
+for (const [id, cry] of Object.entries(CRIES)) EFFECTS[`cry:${id}`] = cryEffect(cry);
+
 /** Cues that play a track of TRACKS once, over the music, instead of an effect. */
 export const JINGLES: Partial<Record<Cue, string>> = { badge: 'badge', levelup: 'levelup', rest: 'rest' };
 

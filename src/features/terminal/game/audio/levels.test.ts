@@ -1,4 +1,5 @@
-import { EFFECTS, JINGLES, REST_TICKS, TRACKS } from '../content/music.ts';
+import { CRIES, EFFECTS, JINGLES, REST_TICKS, TRACKS } from '../content/music.ts';
+import { ENEMIES } from '../content/battles.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import { VOLUME_MAX } from '../settingsStore.ts';
 import { gainFor, MAX_GAIN } from '../useGameSound.ts';
@@ -222,5 +223,23 @@ describe('the rest in the cafe', () => {
     // The last note is held: the longest by far.
     const last = melody.at(-1)!;
     for (const note of melody.slice(0, -1)) expect(last.steps).toBeGreaterThanOrEqual(note.steps * 2);
+  });
+});
+
+describe('the cries of the monsters', () => {
+  it('gives every enemy a cry of its own: short, heard, and no two the same', () => {
+    const ids = Object.keys(ENEMIES);
+    expect(Object.keys(CRIES).sort()).toEqual([...ids].sort());
+    const seen = new Set<string>();
+    for (const id of ids) {
+      const effect = EFFECTS[`cry:${id}`];
+      expect(effect, id).toBeDefined();
+      // Short: under three quarters of a second; and within the limits every effect keeps (the test above).
+      expect(lengthOf(effect!), id).toBeLessThanOrEqual(0.75);
+      expect(lengthOf(effect!), id).toBeGreaterThanOrEqual(0.15);
+      const key = JSON.stringify(effect!.tones);
+      expect(seen.has(key), id).toBe(false);
+      seen.add(key);
+    }
   });
 });

@@ -86,6 +86,28 @@ describe('the fighters breathe, with motion', () => {
   });
 });
 
+describe('the cry of the enemy', () => {
+  it('is heard when the enemy is on the screen: at the end of the way in, or at once with reduced motion', () => {
+    const before = play(started(), 'down');
+    // With motion: the way in first (its own sound), the cry on the tick the battle screen comes up.
+    let result = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world);
+    for (let i = 0; i < 40 && result.state.walk; i++) result = step(result.state, NO_INPUT, world);
+    expect(result.state.battle?.intro).toBeGreaterThan(0);
+    expect(result.cues).not.toContain('cry:rat');
+    const heard: string[] = [];
+    let state = result.state;
+    for (let i = 0; i < 200 && state.battle!.intro > 0; i++) {
+      const next = step(state, NO_INPUT, world);
+      heard.push(...next.cues);
+      state = next.state;
+    }
+    expect(heard.filter((cue) => cue.startsWith('cry:'))).toEqual(['cry:rat']);
+    // With reduced motion there is no way in: the cry comes with the line that it appeared.
+    const instant = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true });
+    expect(instant.cues).toEqual(['encounter', 'cry:rat']);
+  });
+});
+
 describe('battles', () => {
   it('starts a wild battle in tall grass and announces it', () => {
     const before = play(started(), 'down');

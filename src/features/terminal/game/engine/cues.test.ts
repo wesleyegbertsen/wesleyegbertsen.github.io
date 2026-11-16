@@ -71,7 +71,7 @@ describe('cues', () => {
 
   it('whooshes into a battle, and every line of it has its sound', () => {
     const before = play(started(), 'down');
-    expect(cues(before, dir('right'))).toEqual(['encounter']);
+    expect(cues(before, dir('right'))).toEqual(['encounter', 'cry:rat']);
     const menu = play(before, 'right', 'a');
     expect(cues(menu, dir('down'))).toEqual(['cursor']);
     expect(cues(menu, { a: true })).toEqual(['confirm']);
@@ -84,7 +84,7 @@ describe('cues', () => {
 
   it('wins the badge with a jingle, and faints when beaten', () => {
     // A boss steps up with a sound of its own.
-    expect(cues(play(started(), 'down', 'down', 'right', 'a'), { a: true })).toEqual(['confirm', 'showdown']);
+    expect(cues(play(started(), 'down', 'down', 'right', 'a'), { a: true })).toEqual(['confirm', 'showdown', 'cry:rat']);
     const boss = play(started(), 'down', 'down', 'right', 'a', 'a');
     const won = fight(boss);
     expect(won.state.badges).toEqual(['one']);

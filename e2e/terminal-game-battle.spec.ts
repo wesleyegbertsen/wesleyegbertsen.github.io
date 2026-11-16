@@ -180,7 +180,8 @@ test.describe('the way into a battle', () => {
     await expect(game(page)).toHaveAttribute('data-battle', 'exam');
     await expect(game(page)).toHaveAttribute('data-transition', '');
     await expect(game(page)).toHaveAttribute('data-music', 'boss');
-    await expect(game(page)).toHaveAttribute('data-cue', 'showdown');
+    // The showdown, and on the same tick (no way in with reduced motion) the cry of the examiner: the last sound.
+    await expect(game(page)).toHaveAttribute('data-cue', 'cry:exam');
     await page.waitForTimeout(300);
     const frames = await recorded(page);
     expect(frames.length).toBeGreaterThan(5);
