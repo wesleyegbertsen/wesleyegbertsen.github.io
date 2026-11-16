@@ -1185,3 +1185,17 @@ describe('where the enemy stands', () => {
     }
   });
 });
+
+describe('the head on the walk', () => {
+  it('keeps the head at rest for two steps and a pixel over for the next two: the picture follows the pace', () => {
+    const walking = (pace: number) => ({ ...started(), x: 3, dir: 'right' as const, pace, walk: { fromX: 2, fromY: 2, t: WALK_TICKS / 2 } });
+    const name = (pace: number) => {
+      const draw = drawn(walking(pace)).draws.find((candidate) => candidate.sheet === 'sprites' && Object.entries(sprites).some(([key, at]) => key.startsWith('player-right-') && at[0] === candidate.sx && at[1] === candidate.sy));
+      return Object.entries(sprites).find(([key, at]) => key.startsWith('player-right-') && at[0] === draw?.sx && at[1] === draw?.sy)?.[0];
+    };
+    // Cell 3,2: the second stride, whatever the pace; the head: at rest on steps 0 and 1, over on 2 and 3, then again.
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map(name)).toEqual(['player-right-2', 'player-right-2', 'player-right-2s', 'player-right-2s', 'player-right-2', 'player-right-2', 'player-right-2s', 'player-right-2s']);
+    // Standing: the head at rest.
+    expect(spriteDraws(drawn({ ...started(), pace: 2 }).draws, 'player-down-0')).toHaveLength(1);
+  });
+});

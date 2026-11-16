@@ -328,6 +328,11 @@ export type GameState = {
    * number is how many cells the press that began it has moved the player once this step is done.
    */
   walk: { fromX: number; fromY: number; t: number; jump?: true; slide?: number } | null;
+  /**
+   * Steps taken in the walk under way, counted from 0 for the first step after standing: the head sways slowly by
+   * it (two steps at rest, two a pixel over; render.ts).
+   */
+  pace?: number;
   hp: number;
   maxHp: number;
   /** 1 to `world.levels.max`, and the XP gathered so far. */

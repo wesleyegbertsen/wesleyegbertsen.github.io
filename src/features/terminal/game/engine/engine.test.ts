@@ -328,3 +328,23 @@ describe('the menu and the hint', () => {
     expect(play({ ...started(), badges: ['one'] }, 'select').dialogue?.pages).toEqual([['Go to the door.']]);
   });
 });
+
+describe('the steps of a walk', () => {
+  it('counts the steps of one walk (pace), from 0 on the first step after standing, and starts again after a stop', () => {
+    // From the start of the test world, with motion: hold right, and count the steps as they begin.
+    let state = { ...play(fresh(), 'a', 'a'), x: 1, y: 2 } as GameState;
+    const paces: number[] = [];
+    for (let i = 0; i < 3 * WALK_TICKS + 1; i++) {
+      const before = state.walk;
+      state = tick(state, { ...NO_INPUT, dir: 'right', pressed: i === 0 ? 'right' : null }).state;
+      if (state.walk && state.walk !== before && state.walk.t === 0) paces.push(state.pace ?? 0);
+    }
+    expect(paces.slice(0, 3)).toEqual([0, 1, 2]);
+    // Let go: the walk ends; the next press starts at 0 again.
+    for (let i = 0; i < WALK_TICKS + 2; i++) state = tick(state).state;
+    expect(state.walk).toBeNull();
+    const again = tick(state, { ...NO_INPUT, dir: 'down', pressed: 'down' }).state;
+    expect(again.walk).not.toBeNull();
+    expect(again.pace ?? 0).toBe(0);
+  });
+});
