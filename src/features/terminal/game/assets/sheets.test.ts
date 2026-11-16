@@ -97,6 +97,14 @@ describe('the sprite sheets', () => {
     // Turned towards the enemy: not the same left and right (an enemy is a mirrored half).
     expect(rows.filter((row) => row !== [...row].reverse().join('')).length).toBeGreaterThanOrEqual(24);
     for (const shade of ['0', '1', '2', '3']) expect(rows.join(''), shade).toContain(shade);
+    // A person from head to feet: the cap starts at the top, two feet stand apart on the bottom row, and the head
+    // (down to the neck, the first row that narrows under it) is about a third of the height.
+    expect(rows.findIndex((row) => /[^.]/.test(row))).toBeLessThanOrEqual(2);
+    expect(rows[31]!.split(/\.+/).filter(Boolean)).toHaveLength(2);
+    const width = (row: string) => row.replace(/^\.+|\.+$/g, '').length;
+    const neck = rows.findIndex((row, y) => y > 6 && width(row) > 0 && width(row) < 10);
+    expect(neck).toBeGreaterThanOrEqual(9);
+    expect(neck).toBeLessThanOrEqual(13);
   });
 
   it('use four shades, lightest first', () => {
