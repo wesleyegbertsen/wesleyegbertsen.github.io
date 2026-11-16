@@ -28,6 +28,8 @@ const EFFECTS: Record<string, Effect> = {
   beep: { tones: [{ wave: 'pulse', from: 880, duration: 0.05, volume: 0.2 }] },
   slide: { tones: [{ wave: 'triangle', from: 400, to: 100, duration: 0.2, volume: 0.3, at: 0.1 }] },
   thud: { tones: [{ wave: 'noise', from: 0.5, to: 0.1, duration: 0.1, volume: 0.4 }], gap: 0.3 },
+  // A cry: the tune pauses for it, 0.3 s.
+  cry: { tones: [{ wave: 'pulse', from: 900, to: 500, duration: 0.2, volume: 0.2 }, { wave: 'pulse', from: 500, to: 900, at: 0.15, duration: 0.15, volume: 0.2 }], hush: 0.3 },
 };
 
 function setup(fake: FakeOptions = {}, options: Partial<SoundOptions> = {}) {
@@ -213,6 +215,51 @@ describe('the sound player', () => {
     sound.effect('beep');
     sound.effect('beep');
     expect(audio.oscillators).toHaveLength(2);
+  });
+
+  it('pauses the tune while a cry plays and carries it on from where it was, for as long as the cry lasts', () => {
+    const { audio, sound, pass } = setup();
+    // Through the music bus: what of the tune sounds at a time.
+    const tune = (time: number) => audio.sounding(time).filter((source) => (source.bus as { to: unknown[] }).to.includes(audio.buses[0]));
+    sound.music('walk');
+    sound.unlock();
+    pass(0.1);
+    pass(0.1);
+    // At 0.2 s the A and the bass under it sound.
+    expect(tune(0.2)).toHaveLength(2);
+    sound.effect('cry');
+    // The cry (0.3 s, from its tones) sounds on the effect bus; the tune is silent for exactly that long.
+    expect(audio.sounding(0.25).filter((source) => source.bus === audio.buses[1])).toHaveLength(1);
+    for (const time of [0.21, 0.3, 0.4, 0.49]) expect(tune(time), `${time}`).toHaveLength(0);
+    for (let i = 0; i < 4; i++) pass(0.1);
+    // Then it carries on: the bass that was cut off sounds again (what was left of it).
+    expect(tune(0.55).length).toBeGreaterThan(0);
+    // The E that was due at 0.86 s comes 0.3 s later (and round the loop, 1.6 s on). The A: cut off at 0.2 s, the rest
+    // of it at 0.5 s, and round the loop 0.3 s later than it was; no note twice, none lost.
+    for (let i = 0; i < 20; i++) pass(0.1);
+    const e5 = audio.oscillators.filter((oscillator) => Math.round(oscillator.frequency.first ?? 0) === 659 && (oscillator.stopAt ?? 1e9) > oscillator.startAt!);
+    expect(e5.map((oscillator) => +oscillator.startAt!.toFixed(2))).toEqual([1.16, 2.76]);
+    const a4 = audio.oscillators.filter((oscillator) => Math.round(oscillator.frequency.first ?? 0) === 440 && (oscillator.stopAt ?? 1e9) > oscillator.startAt!);
+    expect(a4.map((oscillator) => +oscillator.startAt!.toFixed(2))).toEqual([0.06, 0.5, 1.96]);
+    // An effect that does not ask for it leaves the tune alone.
+    const before = tune(audio.currentTime).length;
+    sound.effect('beep');
+    expect(tune(audio.currentTime + 0.01)).toHaveLength(before);
+  });
+
+  it('starts a tune asked for during a cry only when the cry is over, and pauses nothing while muted', () => {
+    const { audio, sound } = setup();
+    sound.unlock();
+    audio.currentTime = 1;
+    sound.effect('cry');
+    sound.music('walk');
+    expect(Math.min(...audio.oscillators.filter((oscillator) => oscillator.bus !== audio.buses[1]).map((oscillator) => oscillator.startAt!))).toBeGreaterThanOrEqual(1.3);
+    const muted = setup({}, { muted: true });
+    muted.sound.music('walk');
+    muted.sound.unlock();
+    muted.sound.effect('cry');
+    muted.sound.setMuted(false);
+    expect(Math.min(...muted.audio.oscillators.map((oscillator) => oscillator.startAt!))).toBeCloseTo(0.06, 6);
   });
 
   it('plays a jingle over the tune, which steps back for it and returns', () => {

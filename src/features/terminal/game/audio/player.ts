@@ -40,7 +40,8 @@ export type AudioLike = {
 };
 
 export type Tone = { wave: Wave; at?: number; from: number; to?: number; duration: number; volume: number };
-export type Effect = { tones: Tone[]; gap?: number };
+/** `hush`: the tune pauses for so many seconds (a cry: its length), and carries on from where it was after it. */
+export type Effect = { tones: Tone[]; gap?: number; hush?: number };
 
 export type Timer = { set(tick: () => void, ms: number): unknown; clear(id: unknown): void };
 
@@ -92,7 +93,9 @@ const defaultTimer: Timer = {
   clear: (id) => clearInterval(id as ReturnType<typeof setInterval>),
 };
 
-type Playing = { id: string; sequencer: Sequencer; startAt: number; gain: GainLike; sources: { node: SourceLike; end: number }[] };
+/** A note handed to the context: when it starts, and what it is, so a pause can hand it again later. */
+type Scheduled = { node: SourceLike; end: number; item: Note; at: number };
+type Playing = { id: string; sequencer: Sequencer; startAt: number; gain: GainLike; sources: Scheduled[] };
 
 export function createSound(options: SoundOptions): Sound {
   const timer = options.timer ?? defaultTimer;
@@ -109,6 +112,8 @@ export function createSound(options: SoundOptions): Sound {
   let wanted: string | null = null;
   let playing: Playing | null = null;
   let ticking: unknown = null;
+  /** The tune is paused until then (context time): a cry is sounding. */
+  let heldUntil = 0;
   const lastPlayed = new Map<string, number>();
 
   /** Runs something that touches the context; a failure there must never reach the game. */
@@ -218,11 +223,43 @@ export function createSound(options: SoundOptions): Sound {
   }
 
   /** A note of a score, `at` seconds on the context's clock. */
-  function note(item: Note, at: number, bus: GainLike): { node: SourceLike; end: number } | null {
+  function note(item: Note, at: number, bus: GainLike, from = at): Scheduled | null {
     const drum = item.drum ? DRUMS[item.drum] : null;
-    const duration = drum ? Math.min(item.duration, drum.ring) : item.duration * 0.92;
-    const node = sound(item.wave, drum ? drum.rate : item.frequency, undefined, at, duration, item.volume, bus, !drum && item.wave !== 'pulse');
-    return node ? { node, end: at + duration + 0.05 } : null;
+    const whole = drum ? Math.min(item.duration, drum.ring) : item.duration * 0.92;
+    // `from`: a note carried on after a pause sounds only for what was left of it.
+    const duration = whole - (from - at);
+    if (duration <= 0) return null;
+    const node = sound(item.wave, drum ? drum.rate : item.frequency, undefined, from, duration, item.volume, bus, !drum && item.wave !== 'pulse');
+    return node ? { node, end: from + duration + 0.05, item, at } : null;
+  }
+
+  /**
+   * Pauses the tune for `length` seconds from now, and carries it on from where it was: what sounds is cut off and
+   * sounds again (what was left of it) after the pause, what was handed on for later comes that much later, and so
+   * does the rest of the tune. A tune that starts during the pause waits for its end.
+   */
+  function hush(length: number) {
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const from = Math.max(now, heldUntil);
+    const until = Math.max(heldUntil, now + length);
+    const shift = until - from;
+    if (shift <= 0) return;
+    heldUntil = until;
+    const track = playing;
+    if (!track) return;
+    const handed = track.sources;
+    track.sources = [];
+    track.startAt += shift;
+    safely(() => {
+      for (const source of handed) {
+        if (source.end <= now) continue;
+        source.node.stop(now);
+        // Its place in the tune moves on by the pause; a note cut off in the middle sounds for what was left of it.
+        const again = note(source.item, source.at + shift, track.gain, Math.max(source.at + shift, until));
+        if (again) track.sources.push(again);
+      }
+    });
   }
 
   function silence(track: Playing, fade: number) {
@@ -273,7 +310,7 @@ export function createSound(options: SoundOptions): Sound {
       const gain = ctx!.createGain();
       gain.gain.value = 1;
       gain.connect(musicBus!);
-      playing = { id, sequencer: createSequencer(score), startAt: ctx!.currentTime + LEAD_IN, gain, sources: [] };
+      playing = { id, sequencer: createSequencer(score), startAt: Math.max(ctx!.currentTime + LEAD_IN, heldUntil), gain, sources: [] };
     });
     pump();
     if (ticking === null) ticking = timer.set(pump, TICK_MS);
@@ -320,6 +357,7 @@ export function createSound(options: SoundOptions): Sound {
       safely(() => {
         for (const tone of effect.tones) sound(tone.wave, tone.from, tone.to, now + (tone.at ?? 0), tone.duration, tone.volume, effectBus!, false);
       });
+      if (effect.hush) hush(effect.hush);
     },
 
     setMuted(next) {
