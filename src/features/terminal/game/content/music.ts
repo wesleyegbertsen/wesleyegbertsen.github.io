@@ -492,11 +492,27 @@ export const CRIES: Record<string, Cry> = {
 };
 
 /**
- * How loud a cry is at its peak: as loud as the loudest battle tune at its own (1.46, all its voices together), as
- * a monster's cry is in Pokémon Gold. A tone is never written above half, so a cry gets there by a gain of its own.
- * A test holds it between the battle tunes' peak and a tenth over it.
+ * How loud a cry may be at its peak: the loudest battle tune's own (1.46, all its voices together), and no more, as
+ * a monster's cry stands up to the music in Pokémon Gold. A tone is never written above half, so a cry gets there
+ * by a gain of its own. A test holds every cry at or under the tunes' peak, most within a tenth under it.
  */
-const CRY_PEAK = 1.5;
+const CRY_PEAK = 1.46;
+
+/**
+ * How loud a cry is over its length (an RMS level: the mean power of its tones, each wave's RMS at full scale
+ * below). At the same peak a square is about 5 dB fuller than a triangle or the thin pulse, so the square cries
+ * sounded louder than the rest; a cry is turned down to this level when its peak alone would make it fuller.
+ * It is what a plain triangle or thin cry has at CRY_PEAK; a test keeps every cry within 3 dB of the loudest.
+ */
+const CRY_LOUDNESS = 0.84;
+/** The RMS of each wave at full scale: a square 1; the browser-normalised 25% pulse, a triangle and white noise about 0.577. */
+const WAVE_RMS: Record<Wave, number> = { pulse: 1, thin: Math.sqrt(1 / 3), triangle: Math.sqrt(1 / 3), noise: Math.sqrt(1 / 3) };
+
+/** The RMS level of a list of tones over its length (unrelated sources: their powers add). */
+function levelOf(tones: Tone[]): number {
+  const length = Math.max(...tones.map((tone) => (tone.at ?? 0) + tone.duration));
+  return Math.sqrt(tones.reduce((sum, tone) => sum + (tone.volume * WAVE_RMS[tone.wave]) ** 2 * tone.duration, 0) / length);
+}
 
 /** The most a list of tones adds up to at one moment: those that overlap, checked where each one starts. */
 function peakOf(tones: Tone[]): number {
@@ -512,8 +528,9 @@ function cryEffect(cry: Cry): Effect {
     return { wave: cry.wave, at: i * each, from, to, duration: each * (calls > 1 ? 0.8 : 1), volume: cry.wave === 'triangle' ? 0.35 : 0.25 };
   });
   if (cry.noise !== undefined) tones.push({ wave: 'noise', at: 0, from: cry.noise, to: cry.noise, duration: cry.duration, volume: 0.15 });
-  // The music pauses for the cry, as long as the cry is, and carries on after it.
-  return { tones, hush: cry.duration, gain: CRY_PEAK / peakOf(tones) };
+  // The music pauses for the cry, as long as the cry is, and carries on after it. The cry is as loud as its peak
+  // may be, or as its fullness may be, whichever is less.
+  return { tones, hush: cry.duration, gain: Math.min(CRY_PEAK / peakOf(tones), CRY_LOUDNESS / levelOf(tones)) };
 }
 
 for (const [id, cry] of Object.entries(CRIES)) EFFECTS[`cry:${id}`] = cryEffect(cry);

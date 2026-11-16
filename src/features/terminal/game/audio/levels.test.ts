@@ -250,15 +250,39 @@ describe('the cries of the monsters', () => {
 });
 
 describe('how loud a cry is', () => {
-  it('peaks at least as loud as the loudest battle tune, by a gain of its own; no other effect has one', () => {
-    const tunes = [MUSIC.wild, MUSIC.boss, ...Object.values(ENEMIES).flatMap((enemy) => (enemy.tune ? [enemy.tune] : []))];
-    const music = Math.max(...tunes.map((name) => loudest(TRACKS[name]!).peak));
-    for (const id of Object.keys(CRIES)) {
-      const cry = EFFECTS[`cry:${id}`]!;
-      expect(loudestOf(cry), id).toBeGreaterThanOrEqual(music);
-      // No louder than it needs to be: within a tenth of the music.
-      expect(loudestOf(cry), id).toBeLessThanOrEqual(music * 1.1);
+  const tunes = [MUSIC.wild, MUSIC.boss, ...Object.values(ENEMIES).flatMap((enemy) => (enemy.tune ? [enemy.tune] : []))];
+  const music = Math.max(...tunes.map((name) => loudest(TRACKS[name]!).peak));
+  const cries = Object.keys(CRIES).map((id) => ({ id, effect: EFFECTS[`cry:${id}`]! }));
+
+  /**
+   * How loud a cry is over its length, not only at its peak: the mean power of its tones (each wave's RMS at full
+   * scale: a square 1; the browser-normalised 25% pulse, a triangle and white noise about 0.577), as an RMS level.
+   * Tones and noise are unrelated, so their powers add. A square cry at the same peak as a triangle one has about
+   * 5 dB more of it, which is what the ear hears as louder.
+   */
+  const WAVE_RMS: Record<string, number> = { pulse: 1, thin: Math.sqrt(1 / 3), triangle: Math.sqrt(1 / 3), noise: Math.sqrt(1 / 3) };
+  const levelOf = (effect: Effect) => {
+    const gain = effect.gain ?? 1;
+    const energy = effect.tones.reduce((sum, tone) => sum + (gain * tone.volume * WAVE_RMS[tone.wave]!) ** 2 * tone.duration, 0);
+    return Math.sqrt(energy / lengthOf(effect));
+  };
+  const db = (value: number) => 20 * Math.log10(value);
+
+  it('never peaks above the loudest battle tune, and most are within a tenth under it', () => {
+    expect(music).toBeCloseTo(1.46, 6);
+    for (const { id, effect } of cries) {
+      expect(loudestOf(effect), id).toBeLessThanOrEqual(music + 1e-9);
+      // Turned down for its energy instead: still well heard, over half the music's peak.
+      expect(loudestOf(effect), id).toBeGreaterThan(music * 0.5);
     }
+    // Most of them are held back by their peak alone: at most the music, and within a tenth under it.
+    expect(cries.filter(({ effect }) => loudestOf(effect) >= music * 0.9).length).toBeGreaterThan(cries.length / 2);
     for (const row of EFFECT_ROWS.filter((row) => !row.name.startsWith('cry:'))) expect(row.effect.gain, row.name).toBeUndefined();
+  });
+
+  it('is about as loud as every other cry over its length: within 3 dB of the loudest', () => {
+    const levels = cries.map(({ id, effect }) => ({ id, level: levelOf(effect) }));
+    const top = Math.max(...levels.map((row) => row.level));
+    for (const { id, level } of levels) expect(db(top) - db(level), id).toBeLessThanOrEqual(3);
   });
 });
