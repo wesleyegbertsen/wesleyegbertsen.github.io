@@ -1,4 +1,5 @@
 import { EFFECTS, JINGLES, MUSIC, TRACKS } from '../content/music.ts';
+import { PIECES } from '../content/pieces.ts';
 import { JUMP_TICKS } from '../engine/engine.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from '../engine/transition.ts';
 import type { Cue } from '../engine/types.ts';
@@ -140,10 +141,13 @@ describe('the scores of the game', () => {
     expect(track.bpm).toBeLessThanOrEqual(200);
   });
 
-  it.each(Object.entries(TRACKS))('%s: uses the four voices of a Game Boy, within hearing and at a sane level', (_name, track) => {
-    expect(track.voices.length).toBeLessThanOrEqual(4);
-    expect(track.voices.filter((voice) => voice.wave === 'noise').length).toBeLessThanOrEqual(1);
-    expect(track.voices.filter((voice) => voice.wave === 'triangle').length).toBeLessThanOrEqual(1);
+  it.each(Object.entries(TRACKS))('%s: uses the four voices of a Game Boy (a piece of the player piano up to six), within hearing and at a sane level', (name, track) => {
+    // The tunes keep to the Game Boy's four channels; a piece of the player piano (PIECES) is a piano with more
+    // fingers: up to six voices and two triangles. The player itself has no limit (every note is an oscillator).
+    const piano = PIECES.some((piece) => piece.track === name);
+    expect(track.voices.length).toBeLessThanOrEqual(piano ? 6 : 4);
+    expect(track.voices.filter((voice) => voice.wave === 'noise').length).toBeLessThanOrEqual(piano ? 0 : 1);
+    expect(track.voices.filter((voice) => voice.wave === 'triangle').length).toBeLessThanOrEqual(piano ? 2 : 1);
     for (const note of flatten(track).notes) {
       expect(note.volume).toBeGreaterThan(0);
       expect(note.volume).toBeLessThanOrEqual(1);
@@ -214,5 +218,43 @@ describe('the scores of the game', () => {
     // The quiet ones stay quiet: the bump and the typewriter must not nag.
     expect(EFFECTS.blip!.tones[0]!.volume).toBeLessThanOrEqual(0.1);
     expect(EFFECTS.bump!.gap).toBeGreaterThanOrEqual(0.2);
+  });
+});
+
+/**
+ * What every tune but the pieces of the player piano plays, as a fingerprint of its flattened notes (how many, the
+ * length in ms, a checksum of times, lengths, pitches, volumes and voices), taken before the pieces got more voices
+ * (round 31): a change to the format or to these tracks shows up here.
+ */
+const FINGERPRINTS: Record<string, string> = {
+  title: '111:17143:528221150',
+  town: '409:29091:570898032',
+  route: '231:13333:873330769',
+  hills: '79:20870:573999134',
+  cave: '31:26667:581261095',
+  indoors: '73:20000:834961975',
+  cafe: '152:18462:857717817',
+  battle: '292:13500:700500899',
+  boss: '322:11163:229421693',
+  victory: '25:3200:193551878',
+  badge: '19:1714:439052934',
+  final: '314:11429:474834890',
+  rest: '15:2857:369098112',
+  levelup: '19:1600:289819308',
+  ending: '121:19200:382529446',
+};
+
+describe('the tunes that are not piano pieces', () => {
+  it('play exactly what they played before the piano pieces got more voices', () => {
+    const piano = new Set(PIECES.map((piece) => piece.track));
+    const now: Record<string, string> = {};
+    for (const [name, track] of Object.entries(TRACKS)) {
+      if (piano.has(name)) continue;
+      const { notes, length } = flatten(track);
+      let sum = 0;
+      for (const n of notes) sum = (sum * 31 + Math.round(n.time * 1000) * 7 + Math.round(n.duration * 1000) * 3 + Math.round(n.frequency * 100) + Math.round(n.volume * 1000) + n.voice) % 1000000007;
+      now[name] = `${notes.length}:${Math.round(length * 1000)}:${sum}`;
+    }
+    expect(now).toEqual(FINGERPRINTS);
   });
 });
