@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, enterOffset, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
-import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene, rustles } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -222,7 +222,8 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   // grass and under everyone on it.
   for (const cell of state.trail ?? []) {
     const age = state.clock - cell.at;
-    if (cell.map !== map.id || age < 0 || age >= TRAIL_TICKS) continue;
+    // Only where the ground is tall grass: a rustle is a picture of grass, out of place in the rubble of a cave.
+    if (cell.map !== map.id || age < 0 || age >= TRAIL_TICKS || !rustles(map.tiles[map.cells[cell.y]?.[cell.x] ?? ''])) continue;
     drawSprite(ctx, sheets, age < TRAIL_TICKS / 2 ? 'rustle' : 'rustle-b', cell.x * TILE - camX, cell.y * TILE - camY);
   }
   for (const object of map.objects) {

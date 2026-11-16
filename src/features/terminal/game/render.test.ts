@@ -10,6 +10,12 @@ import { parseMap } from './engine/world.ts';
 import { PALETTES, paletteOf, type PaletteId } from './palettes.ts';
 import { FOE_AT, FRAME_TICKS, HOP_PIXELS, SCREEN_H, SCREEN_W, VOLUME_STEPS, camera, drawGame, drawText, facingSprite, hopHeight, type Hud, type Painter, type Sheets } from './render.ts';
 import { execFileSync } from 'node:child_process';
+import { education } from '../../../data/education.ts';
+import { experience } from '../../../data/experience.ts';
+import { profile } from '../../../data/profile.ts';
+import { projects } from '../../../data/projects.ts';
+import { skills } from '../../../data/skills.ts';
+import { buildWorld } from './content/world.ts';
 import { fitScale, layout } from './scale.ts';
 
 type Draw = { sheet: string; sx: number; sy: number; sw: number; sh: number; x: number; y: number; w: number; h: number };
@@ -1262,5 +1268,46 @@ describe('the enemy coming in', () => {
     expect(where(undefined)).toEqual([[FOE_AT.x, FOE_AT.y]]);
     // The ground under it does not move.
     expect(at(ENTER_TICKS).fills).toContainEqual(expect.objectContaining({ x: FOE_AT.x - 6, y: FOE_AT.y + 34, w: 40, h: 2 }));
+  });
+});
+
+describe('the trail on the ground where wild things hide', () => {
+  // The game's own world: every map, every cell where a wild enemy can appear.
+  const game = buildWorld({ profile, skills, experience, education, projects });
+  const ids = Object.keys(PALETTES) as PaletteId[];
+  const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;
+  const cells = Object.values(game.maps).flatMap((map) =>
+    map.cells.flatMap((row, y) => [...row].flatMap((key, x) => (map.tiles[key]?.grass ? [{ map, x, y, tile: map.tiles[key]! }] : []))),
+  );
+
+  it('rustles in the tall grass only: the rubble of the cave keeps its own look walked on, in GB and in GBC', () => {
+    const kinds = new Set(cells.map(({ map, tile }) => `${map.id}:${tile.sprite}`));
+    // Every kind there is: the tall grass of three maps outdoors, and the rubble of the cave. (No room, the Library
+    // included, and no floor of the deep cave has ground where wild things hide.)
+    expect([...kinds].sort()).toEqual(['cave:rubble', 'east:tallgrass', 'town:tallgrass', 'west:tallgrass']);
+    const seen = new Set<string>();
+    for (const { map, x, y, tile } of cells) {
+      const kind = `${map.id}:${tile.sprite}`;
+      if (seen.has(kind)) continue;
+      seen.add(kind);
+      const state: GameState = { ...initialGame(game), scene: 'world', map: map.id, x, y, clock: 100, trail: [{ map: map.id, x, y, at: 100 }] };
+      const sx = x * TILE - camera(x * TILE + TILE / 2, map.width * TILE, SCREEN_W);
+      const sy = y * TILE - camera(y * TILE + TILE / 2, map.height * TILE, SCREEN_H);
+      for (const colour of [false, true]) {
+        const record = recorder();
+        drawGame(record.ctx, colour ? coloured : sheets, state, game, { muted: false, volume: 5, colour });
+        const here = record.draws.filter((draw) => draw.x === sx && draw.y === sy && draw.sheet.startsWith('tiles'));
+        const rustles = here.filter((draw) => (['rustle', 'rustle-b'] as const).some((name) => draw.sx === tiles[name][0] && draw.sy === tiles[name][1]));
+        if (paletteOf(tile.sprite) === 'grass') {
+          // Outdoors, as before: the tall grass rustles.
+          expect(rustles, `${kind} ${colour ? 'GBC' : 'GB'}`).toHaveLength(1);
+        } else {
+          // Anywhere else: no rustle, nothing in the grass's colours; the tile in its own.
+          expect(rustles, `${kind} ${colour ? 'GBC' : 'GB'}`).toHaveLength(0);
+          if (colour) expect(here.map((draw) => draw.sheet), kind).not.toContain('tiles:grass');
+          if (colour) expect(here.map((draw) => draw.sheet), kind).toContain(`tiles:${paletteOf(tile.sprite)}`);
+        }
+      }
+    }
   });
 });

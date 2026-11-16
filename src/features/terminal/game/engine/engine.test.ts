@@ -83,6 +83,15 @@ describe('the trail through the tall grass', () => {
     expect(tick({ ...before, x: 1, y: 2 }, { ...NO_INPUT, dir: 'right', pressed: 'right' }).state.trail ?? []).toEqual([]);
     expect(step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true }).state.trail ?? []).toEqual([]);
   });
+
+  it('leaves no trail on other ground where wild things hide: the rubble of a cave is not grass', () => {
+    const main = world.maps.main!;
+    const cave = { ...world, maps: { ...world.maps, main: { ...main, tiles: { ...main.tiles, '"': { sprite: 'rubble', solid: false, grass: true } } } } };
+    const before = { ...started(), x: 2, y: 3, dir: 'right' as const, clock: 100 };
+    const into = step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, cave).state;
+    expect(into.walk).not.toBeNull();
+    expect(into.trail ?? []).toEqual([]);
+  });
 });
 
 describe('the title and dialogue', () => {

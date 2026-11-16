@@ -5,7 +5,7 @@ import { covered, loose, platesDown, putBack, roomFor } from './push.ts';
 import { random } from './rng.ts';
 import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
-import { SETTINGS, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
+import { SETTINGS, type TileDef, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { placeOf, stroll } from './wander.ts';
 import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -399,11 +399,17 @@ function glide(state: GameState, ctx: Ctx, moved: number): GameState {
 }
 
 /**
+ * Whether walking on a tile leaves a rustle: tall grass only. Other ground where wild things hide (the rubble of
+ * the cave) keeps its own look, walked on or not.
+ */
+export const rustles = (tile: TileDef | undefined): boolean => !!tile?.grass && (tile.look ?? tile.sprite) === 'tallgrass';
+
+/**
  * The trail through the tall grass: the cells of a step that are tall grass rustle from now on (an older rustle of
  * the same cell is replaced), and rustles that are over are dropped.
  */
 function rustle(state: GameState, map: GameMap, cells: { x: number; y: number }[]): NonNullable<GameState['trail']> {
-  const fresh = cells.filter((cell) => tileAt(map, cell.x, cell.y).grass).map((cell) => ({ map: map.id, x: cell.x, y: cell.y, at: state.clock }));
+  const fresh = cells.filter((cell) => rustles(tileAt(map, cell.x, cell.y))).map((cell) => ({ map: map.id, x: cell.x, y: cell.y, at: state.clock }));
   const kept = (state.trail ?? []).filter((old) => state.clock - old.at < TRAIL_TICKS && !fresh.some((cell) => cell.map === old.map && cell.x === old.x && cell.y === old.y));
   return [...kept, ...fresh];
 }
