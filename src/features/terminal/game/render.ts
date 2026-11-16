@@ -478,10 +478,41 @@ function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
 /** Where the two boxes of the battle screen stand, the pitch of their rows and the width of an energy bar. */
 const HUD = { enemy: { x: 4, y: 6 }, you: { x: 76, y: 58 }, row: 10, bar: 62 } as const;
 
-function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+/**
+ * A painter that draws everything `dy` pixels lower (higher when negative): the whole battle screen shaken. What
+ * goes past the edge of the canvas is cut off by the canvas itself; the frame around the screen does not move.
+ */
+function shifted(ctx: Painter, dy: number): Painter {
+  if (dy === 0) return ctx;
+  const draw = ctx.drawImage.bind(ctx) as (image: CanvasImageSource, ...args: number[]) => void;
+  return {
+    get fillStyle() {
+      return ctx.fillStyle;
+    },
+    set fillStyle(value) {
+      ctx.fillStyle = value;
+    },
+    get imageSmoothingEnabled() {
+      return ctx.imageSmoothingEnabled;
+    },
+    set imageSmoothingEnabled(value) {
+      ctx.imageSmoothingEnabled = value;
+    },
+    fillRect: (x, y, w, h) => ctx.fillRect(x, y + dy, w, h),
+    // The place on the screen is the last four numbers (or the last two): only its y moves.
+    drawImage: ((image: CanvasImageSource, ...args: number[]) => {
+      const at = args.length === 8 ? 5 : 1;
+      draw(image, ...args.map((value, i) => (i === at ? value + dy : value)));
+    }) as Painter['drawImage'],
+  };
+}
+
+function drawBattle(screen: Painter, sheets: Sheets, state: GameState, world: World) {
   const battle = state.battle!;
   const enemy = world.enemies[battle.enemy]!;
-  rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  rect(screen, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  // The player hit: the whole battle screen shakes up and down, every part of it by the same pixels (shakeOffset).
+  const ctx = shifted(screen, shakeOffset(battle));
 
   // Each fighter has a box in one style: the name and the level, the energy under it, and a bracket down one
   // side and along the bottom. The enemy's is top left with the bracket on its left, the player's bottom right
@@ -499,8 +530,6 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
     if (fall?.who === who) drawSpriteTop(ctx, sheets, name as keyof typeof sprites, x, y + fall.dy, 32 - fall.dy);
     else drawSprite(ctx, sheets, name, x, y);
   };
-  // The player hit: the player's side (the trainer, its ground and its box) shakes up and down; the enemy's stays.
-  const shake = shakeOffset(battle);
 
   // The enemy: no numbers, its picture on the right. The longest name at Lv10 (19 characters) ends before it.
   rect(ctx, foe.x, foe.y, 2, 22, DARKEST);
@@ -519,19 +548,18 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
 
   // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
   // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.
-  if (shown('you')) fighter('you', 'trainer-back', 12 + youAt.dx, 60 - youAt.dy + shake);
-  if (look?.who === 'you' && look.spark) drawSprite(ctx, sheets, 'spark', 20, 68 + shake);
-  rect(ctx, 4, 92 + shake, 48, 2, DARK);
+  if (shown('you')) fighter('you', 'trainer-back', 12 + youAt.dx, 60 - youAt.dy);
+  if (look?.who === 'you' && look.spark) drawSprite(ctx, sheets, 'spark', 20, 68);
+  rect(ctx, 4, 92, 48, 2, DARK);
   const energy = `${hp}/${state.maxHp}`;
   const end = you.x + 14 + HUD.bar;
-  const youTop = you.y + shake;
-  drawText(ctx, sheets, `YOU Lv${state.level}`, you.x, youTop);
-  drawText(ctx, sheets, 'HP', you.x, youTop + HUD.row);
-  hpBar(ctx, you.x + 14, youTop + HUD.row + 2, HUD.bar, hp, state.maxHp, 5);
-  drawText(ctx, sheets, energy, rightAligned(energy, end), youTop + 2 * HUD.row - 1);
-  drawText(ctx, sheets, 'XP', you.x, youTop + 3 * HUD.row - 1);
-  xpBar(ctx, you.x + 14, youTop + 33, HUD.bar + 2, state, world, 3);
-  rect(ctx, end + 2, youTop, 2, 36, DARKEST);
+  drawText(ctx, sheets, `YOU Lv${state.level}`, you.x, you.y);
+  drawText(ctx, sheets, 'HP', you.x, you.y + HUD.row);
+  hpBar(ctx, you.x + 14, you.y + HUD.row + 2, HUD.bar, hp, state.maxHp, 5);
+  drawText(ctx, sheets, energy, rightAligned(energy, end), you.y + 2 * HUD.row - 1);
+  drawText(ctx, sheets, 'XP', you.x, you.y + 3 * HUD.row - 1);
+  xpBar(ctx, you.x + 14, you.y + 33, HUD.bar + 2, state, world, 3);
+  rect(ctx, end + 2, you.y, 2, 36, DARKEST);
 
   if (battle.phase === 'steps') {
     box(ctx, 0, BOX_Y, SCREEN_W, SCREEN_H - BOX_Y);

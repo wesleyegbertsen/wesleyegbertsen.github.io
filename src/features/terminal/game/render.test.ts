@@ -1207,25 +1207,47 @@ describe('a fighter that faints', () => {
 });
 
 describe('the player hit', () => {
-  it("shakes the player's side up and down while the enemy and its box stay put; not when the enemy is hit", () => {
+  it('shakes the whole battle screen up and down together, the same pixels for all; nothing when the enemy is hit', () => {
     const battle = play(started(), 'down', 'right', 'a');
-    const hit = (who: 'foe' | 'you', ticks: number) => drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who, ticks, from: 20, to: 12 } } }).draws;
-    const ys = (who: 'foe' | 'you') =>
-      Array.from({ length: HIT_TICKS }, (_, i) => {
-        const draws = hit(who, HIT_TICKS - i);
-        // The energy numbers of the player (always drawn, also while the trainer blinks), and the enemy's name.
-        return [draws.find((draw) => draw.sheet === 'font' && draw.x >= 77 && draw.y > 60 && draw.y < 100)?.y, draws.find((draw) => draw.sheet === 'font' && draw.x === 9)?.y];
+    const hit = (who: 'foe' | 'you', ticks: number) => drawn({ ...battle, hp: 12, battle: { ...battle.battle!, hit: { who, ticks, from: 20, to: 12 } } });
+    // Where a part of each side and the text box is: the enemy's name, its picture and its ground; the player's
+    // energy row and ground; the line in the text box (the enemy blinks, so its picture is looked for when shown).
+    const parts = (who: 'foe' | 'you', ticks: number) => {
+      const { draws, fills } = hit(who, ticks);
+      const font = (test: (draw: Draw) => boolean) => draws.find((draw) => draw.sheet === 'font' && test(draw))?.y;
+      return {
+        name: font((draw) => draw.x === 9),
+        foe: spriteDraws(draws, 'bug')[0]?.y,
+        foeGround: fills.find((fill) => fill.x === FOE_AT.x - 6 && fill.w === 40)?.y,
+        energy: font((draw) => draw.x >= 77 && draw.y > 60 && draw.y < 100),
+        ground: fills.find((fill) => fill.x === 4 && fill.w === 48)?.y,
+        text: font((draw) => draw.y > 104),
+      };
+    };
+    const still = parts('foe', 1);
+    const offsets = new Set<number>();
+    for (let i = 0; i < HIT_TICKS; i++) {
+      const now = parts('you', HIT_TICKS - i);
+      const dy = now.name! - still.name!;
+      offsets.add(dy);
+      // Every part by the same pixels (the trainer blinks, the enemy does not when the player is hit).
+      expect({ ...now, foe: now.foe! - dy }, 'tick ' + i).toEqual({
+        name: still.name! + dy,
+        foe: still.foe,
+        foeGround: still.foeGround! + dy,
+        energy: still.energy! + dy,
+        ground: still.ground! + dy,
+        text: still.text! + dy,
       });
-    const you = ys('you');
-    const shaken = new Set(you.map(([y]) => y));
-    expect(shaken.size).toBeGreaterThan(1);
-    // Up and down from its place, a couple of pixels, and back in its place at the end.
-    const still = ys('foe')[0]![0]!;
-    expect(Math.max(...you.map(([y]) => y!)) - still).toBeLessThanOrEqual(2);
-    expect(still - Math.min(...you.map(([y]) => y!))).toBeLessThanOrEqual(2);
-    expect(you.at(-1)![0]).toBe(still);
-    // The enemy's box does not move; and when the enemy is hit, nothing shakes.
-    expect(new Set(you.map(([, y]) => y)).size).toBe(1);
-    expect(new Set(ys('foe').flat()).size).toBe(2);
+      expect(now.foe).toBe(still.foe! + dy);
+    }
+    // Up and down, two pixels at most, and at rest by the end of the hit.
+    expect([...offsets].sort((x, y) => x - y)).toEqual([-2, 0, 2]);
+    expect(parts('you', 1)).toEqual(still);
+    // The enemy hit: nothing moves at any tick (its own look, the blink and the spark, is apart).
+    for (let i = 0; i < HIT_TICKS; i++) {
+      const now = parts('foe', HIT_TICKS - i);
+      expect([now.name, now.foeGround, now.energy, now.ground, now.text]).toEqual([still.name, still.foeGround, still.energy, still.ground, still.text]);
+    }
   });
 });
