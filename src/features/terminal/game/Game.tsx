@@ -7,7 +7,7 @@ import { placeOf } from './engine/wander.ts';
 import styles from './Game.module.css';
 import { SCREEN_H, SCREEN_W, drawGame } from './render.ts';
 import { layout } from './scale.ts';
-import { useGameLoop, type Button } from './useGameLoop.ts';
+import { STEP_MS, useGameLoop, type Button } from './useGameLoop.ts';
 import type { SettingsStore } from './settingsStore.ts';
 import { useGameSound } from './useGameSound.ts';
 import { useSheets, withColour, withDim } from './useSheets.ts';
@@ -98,10 +98,60 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     const inColour = settingsStore.colour();
     const dark = settingsStore.dim();
     const base = inColour ? withColour(sheets) : sheets;
-    drawGame(ctx, dark ? withDim(base) : base, state, world, { muted, volume, lcd: settingsStore.lcd(), colour: inColour, dim: dark });
+    drawGame(ctx, dark ? withDim(base) : base, state, world, { muted, volume, lcd: settingsStore.lcd(), colour: inColour, dim: dark, still: reducedMotion });
   };
+  /**
+   * With reduced motion the engine has no clock: while the player piano plays, a timer here waits for the rest of
+   * its piece and then tells the engine the ticks went by (it stops it). A hidden tab tells what went by so far and
+   * waits again when it shows (the audio clock stands still meanwhile too).
+   */
+  const piano = useRef<{ id: ReturnType<typeof setTimeout>; since: number } | null>(null);
+  const loopRef = useRef<{ elapse: (ticks: number) => void } | null>(null);
+  const stopPianoTimer = () => {
+    if (!piano.current) return 0;
+    clearTimeout(piano.current.id);
+    const passed = Math.floor((performance.now() - piano.current.since) / STEP_MS);
+    piano.current = null;
+    return passed;
+  };
+  const followPiano = (state: GameState) => {
+    if (!reducedMotion || !state.piano) {
+      stopPianoTimer();
+      return;
+    }
+    if (piano.current || document.hidden) return;
+    const ticks = state.piano.ticks;
+    piano.current = {
+      since: performance.now(),
+      id: setTimeout(() => {
+        piano.current = null;
+        loopRef.current?.elapse(storeRef.current?.piano?.ticks ?? ticks);
+      }, ticks * STEP_MS),
+    };
+  };
+  // The latest of these for the listener below, which is added once.
+  const pianoRefs = useRef({ follow: followPiano, stop: stopPianoTimer });
+  useEffect(() => {
+    pianoRefs.current = { follow: followPiano, stop: stopPianoTimer };
+  });
+  useEffect(() => {
+    const visibility = () => {
+      if (document.hidden) {
+        const passed = pianoRefs.current.stop();
+        if (passed > 0) loopRef.current?.elapse(passed);
+      } else if (storeRef.current) pianoRefs.current.follow(storeRef.current);
+    };
+    document.addEventListener('visibilitychange', visibility);
+    const timers = pianoRefs.current;
+    return () => {
+      document.removeEventListener('visibilitychange', visibility);
+      timers.stop();
+    };
+  }, [storeRef]);
+
   const onFrame = (state: GameState) => {
     paint(state);
+    followPiano(state);
     // The contact lines show on the ending screen; KEEP EXPLORING brings the keys back (the game stays finished).
     setFinished(state.scene === 'ending');
     const music = sound.follow(state) ?? '';
@@ -115,7 +165,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     // The ending screen takes a press (KEEP EXPLORING) once it has held for a moment.
     const keep = state.scene === 'ending' && (state.ending?.ticks ?? 0) >= ENDING_HOLD;
     const root = focusRef.current;
-    const key = [keep, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [keep, state.piano?.map, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -161,6 +211,8 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         hp: String(state.hp),
         finished: String(state.finished),
         keep: String(keep),
+        // The player piano: whether it plays.
+        piano: state.piano ? 'on' : 'off',
       });
     }
   };
@@ -206,6 +258,9 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
   };
 
   const loop = useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents, onCues });
+  useEffect(() => {
+    loopRef.current = loop;
+  });
 
   // The sheets arrive after the first frame, and a still game does not draw again by itself.
   useEffect(() => {

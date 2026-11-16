@@ -98,6 +98,19 @@ export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents,
     [advance, emit, reducedMotion],
   );
 
+  /**
+   * With reduced motion no clock runs: the page says that this many ticks went by (the player piano's piece is
+   * over). One step of the game with `elapsed`, and a redraw.
+   */
+  const elapse = useCallback(
+    (ticks: number) => {
+      if (!reducedMotion || ticks <= 0) return;
+      pending.current = { ...pending.current, elapsed: ticks };
+      emit(advance(true));
+    },
+    [advance, emit, reducedMotion],
+  );
+
   useEffect(() => {
     emit(NOTHING);
     if (reducedMotion) return;
@@ -146,5 +159,5 @@ export function useGameLoop({ world, storeRef, reducedMotion, onFrame, onEvents,
     };
   }, [advance, emit, reducedMotion, release]);
 
-  return useMemo(() => ({ dir, button, release }), [dir, button, release]);
+  return useMemo(() => ({ dir, button, release, elapse }), [dir, button, release, elapse]);
 }

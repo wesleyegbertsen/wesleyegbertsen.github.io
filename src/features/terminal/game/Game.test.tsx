@@ -573,3 +573,34 @@ describe('KEEP EXPLORING', () => {
     expect(screen.getByRole('button', { name: 'Up' })).toBeInTheDocument();
   });
 });
+
+describe('the player piano on the page', () => {
+  // The test world's coffee machine (5,1) as a piano, and a piece of 12 ticks (a fifth of a second).
+  const main = world.maps.main!;
+  const pianoWorld: World = {
+    ...world,
+    maps: { ...world.maps, main: { ...main, objects: main.objects.map((object) => (object.id === 'main:k' ? { ...object, sprite: 'piano', branches: [{ do: [{ piano: true as const }] }] } : object)) } },
+    music: { title: 't', ending: 'e', wild: 'w', boss: 'b', victory: 'v', indoors: 'in', maps: {}, piano: 'moonlight', pianoTicks: 12 },
+  };
+  const atPiano = () => playIn(pianoWorld, playIn(pianoWorld, initialGame(pianoWorld, 7), 'a', 'a'), 'right', 'right', 'up', 'right');
+
+  it('shows whether it plays (data-piano), and A turns it off again', async () => {
+    const { game, user } = setup(atPiano(), false, false, pianoWorld);
+    expect(game).toHaveAttribute('data-piano', 'off');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-piano', 'on');
+    expect(game).toHaveAttribute('data-music', 'moonlight');
+    expect(screen.getByRole('status')).toHaveTextContent('The player piano plays.');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-piano', 'off');
+  });
+
+  it('with reduced motion turns itself off when the piece has had its time (the page tells the engine)', async () => {
+    const { game, user } = setup(atPiano(), false, false, pianoWorld);
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-piano', 'on');
+    await new Promise((done) => setTimeout(done, 400));
+    expect(game).toHaveAttribute('data-piano', 'off');
+    expect(screen.getByRole('status')).toHaveTextContent('The player piano stops.');
+  });
+});
