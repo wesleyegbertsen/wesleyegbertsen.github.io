@@ -271,9 +271,18 @@
   overflow-wrap: anywhere;
 }
 
+/* The ending: the contact lines (they scroll when long), and on a touch screen the button under them. */
+.ended {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* The A of the ending screen on a touch screen (there is no D-pad there): KEEP EXPLORING. At least 44px to touch. */
 .keep {
   display: block;
+  flex: 0 0 auto;
+  align-self: flex-start;
   min-height: 44px;
   margin-top: 8px;
   padding: 0 16px;

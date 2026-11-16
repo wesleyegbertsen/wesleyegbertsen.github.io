@@ -5,7 +5,7 @@ import { profile } from '../src/data/profile.ts';
 import { skills } from '../src/data/skills.ts';
 import { buildWorld } from '../src/features/terminal/game/content/world.ts';
 import { routeTo, routeToCell } from '../src/features/terminal/game/engine/bot.ts';
-import { initialGame, step } from '../src/features/terminal/game/engine/engine.ts';
+import { ENDING_HOLD, initialGame, step } from '../src/features/terminal/game/engine/engine.ts';
 import { solve } from '../src/features/terminal/game/engine/solve.ts';
 import { NO_INPUT, type GameState, type Input } from '../src/features/terminal/game/engine/types.ts';
 import { placeOf } from '../src/features/terminal/game/engine/wander.ts';
@@ -232,6 +232,27 @@ export class Pilot {
       this.sim({ dir: 'down', pressed: 'down' });
       this.sim({ a: true });
     }
+  }
+
+  /**
+   * KEEP EXPLORING on the ending screen: waits until the screen takes a press (data-keep: after a second with motion,
+   * after one press with reduced motion), then presses A (or pick, the Keep exploring button on a touch screen), on
+   * the page and in the copy.
+   */
+  async keepExploring(pick: () => Promise<void> = () => this.page.keyboard.press(KEYS.a)) {
+    const game = gameOf(this.page);
+    await expect(game).toHaveAttribute('data-scene', 'ending');
+    // With reduced motion the hold is one press (B, which the ending screen never takes); with motion a second.
+    if ((await game.getAttribute('data-keep')) !== 'true' && (await game.getAttribute('data-motion')) === 'reduced') {
+      await this.page.keyboard.press(KEYS.b);
+      this.sim({ b: true });
+    }
+    await expect(game).toHaveAttribute('data-keep', 'true');
+    await pick();
+    await expect(game).toHaveAttribute('data-scene', 'world');
+    for (let i = 0; i < ENDING_HOLD && this.state.scene === 'ending'; i++) this.sim({});
+    this.sim({ a: true });
+    expect(this.state.scene).toBe('world');
   }
 
   /**

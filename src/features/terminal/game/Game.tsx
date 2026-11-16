@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
+import { ENDING_HOLD } from './engine/engine.ts';
 import { bannerText } from './engine/banner.ts';
 import { pageLength } from './engine/text.ts';
 import { SETTINGS, type Cue, type Dir, type GameEvent, type GameState, type World } from './engine/types.ts';
@@ -106,8 +107,10 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     // Whether the page of the open text box is typed out to the end (with motion it types itself).
     const page = state.dialogue?.pages[state.dialogue.page];
     const typed = !page || state.dialogue!.shown >= pageLength(page);
+    // The ending screen takes a press (KEEP EXPLORING) once it has held for a moment.
+    const keep = state.scene === 'ending' && (state.ending?.ticks ?? 0) >= ENDING_HOLD;
     const root = focusRef.current;
-    const key = [!!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [keep, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -152,6 +155,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         badges: String(state.badges.length),
         hp: String(state.hp),
         finished: String(state.finished),
+        keep: String(keep),
       });
     }
   };
@@ -333,11 +337,13 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
               )}
             </div>
             {finished ? (
-              <div className={styles.contact}>
-                {contact.map((line) => (
-                  <div key={line}>{line}</div>
-                ))}
-                {/* No D-pad on the ending screen: this is its A, for KEEP EXPLORING. */}
+              <div className={styles.ended}>
+                <div className={styles.contact}>
+                  {contact.map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+                {/* No D-pad on the ending screen: this is its A, for KEEP EXPLORING, outside the lines that scroll. */}
                 {touch && (
                   <button type="button" className={styles.keep} {...tap('a')}>
                     Keep exploring
