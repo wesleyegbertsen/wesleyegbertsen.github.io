@@ -53,6 +53,22 @@ export function hitLook(battle: Battle | null | undefined): { who: 'foe' | 'you'
   return { who: hit.who, visible: !blinking || Math.floor(at / BLINK_TICKS) % 2 === 0, spark: at < BLINK_TICKS, hp: Math.round(hit.from + (hit.to - hit.from) * drained) };
 }
 
+/** How long one pose of the breathing lasts: 0.6 s. */
+export const BREATH_TICKS = 36;
+
+/**
+ * Where a fighter stands now, a pixel or two from its place: the trainer and a wild enemy bob a pixel up every
+ * other BREATH_TICKS, half a breath apart; a boss sways sideways, 0, 1, 2, 1 pixels. Still on the way in, during a
+ * hit, and with reduced motion (the battle clock `t` only runs with motion).
+ */
+export function idleOffset(battle: Battle, who: 'foe' | 'you'): { dx: number; dy: number } {
+  const t = battle.t ?? 0;
+  if (!t || battle.hit || battle.intro > 0) return { dx: 0, dy: 0 };
+  if (who === 'foe' && !battle.wild) return { dx: [0, 1, 2, 1][Math.floor(t / BREATH_TICKS) % 4]!, dy: 0 };
+  const shift = who === 'foe' ? BREATH_TICKS / 2 : 0;
+  return { dx: 0, dy: Math.floor((t + shift) / BREATH_TICKS) % 2 };
+}
+
 /** Applies the line that is now on top. */
 function reveal(state: GameState, ctx: Ctx): GameState {
   const battle = state.battle!;
@@ -233,7 +249,7 @@ function move(cursor: number, input: Input, count: number, ctx: Ctx): number {
 }
 
 /** One tick of a battle. When it returns a state without a battle, the engine carries on with the script. */
-export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState {
+export function stepBattle(state: GameState, input: Input, ctx: Ctx & { ticked?: true }): GameState {
   const { world } = ctx;
   const battle = state.battle!;
   const enemy = world.enemies[battle.enemy]!;
@@ -241,6 +257,7 @@ export function stepBattle(state: GameState, input: Input, ctx: Ctx): GameState 
 
   // The way in: the transition plays over the map, tick by tick. A press does not skip it, and nothing else moves.
   if (battle.intro > 0) return { ...state, battle: { ...battle, intro: ctx.instant ? 0 : battle.intro - 1 } };
+  if (!ctx.instant && !battle.hit && !ctx.ticked) return stepBattle({ ...state, battle: { ...battle, t: (battle.t ?? 0) + 1 } }, input, { ...ctx, ticked: true });
 
   // A hit is being shown: it plays out, the line types on, and a press waits for it.
   if (battle.hit) {

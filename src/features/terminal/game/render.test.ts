@@ -3,7 +3,7 @@ import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
-import { BLINK_TICKS, HIT_TICKS } from './engine/battle.ts';
+import { BLINK_TICKS, BREATH_TICKS, HIT_TICKS } from './engine/battle.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
 import { STROLL_TICKS } from './engine/wander.ts';
 import { parseMap } from './engine/world.ts';
@@ -1136,5 +1136,21 @@ describe('a hit in a battle', () => {
     expect(spriteDraws(you.draws, 'trainer-back')).toHaveLength(0);
     expect(textAt(you.draws, 77)).toBe('20/20');
     expect(sparks(drawn(battle).draws)).toHaveLength(0);
+  });
+});
+
+describe('the fighters breathing', () => {
+  it('draws the trainer and the enemy a pixel higher on their breath in, a boss to the side, and still without motion', () => {
+    const battle = play(started(), 'down', 'right', 'a');
+    const at = (t: number | undefined, wild = true) => drawn({ ...battle, battle: { ...battle.battle!, t, wild } }).draws;
+    const where = (draws: Draw[], name: 'bug' | 'trainer-back') => spriteDraws(draws, name).map((draw) => [draw.x, draw.y]);
+    expect(where(at(undefined), 'bug')).toEqual([[124, 6]]);
+    expect(where(at(undefined), 'trainer-back')).toEqual([[12, 60]]);
+    // Half a breath in: the enemy is up, the trainer not yet; a breath in: the trainer is up.
+    expect(where(at(BREATH_TICKS / 2 + 1), 'bug')).toEqual([[124, 5]]);
+    expect(where(at(BREATH_TICKS / 2 + 1), 'trainer-back')).toEqual([[12, 60]]);
+    expect(where(at(BREATH_TICKS + 1), 'trainer-back')).toEqual([[12, 59]]);
+    // A boss sways.
+    expect(where(at(2 * BREATH_TICKS + 1, false), 'bug')).toEqual([[126, 6]]);
   });
 });

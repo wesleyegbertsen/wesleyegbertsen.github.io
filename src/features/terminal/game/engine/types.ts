@@ -305,6 +305,8 @@ export type Battle = {
    * after, for the bar that drains when the blinking is over. See hitLook in engine/battle.ts.
    */
   hit?: { who: 'foe' | 'you'; ticks: number; from: number; to: number };
+  /** Ticks the battle screen has been up with motion, for the breathing of the fighters (idleOffset in engine/battle.ts). */
+  t?: number;
   phase: 'steps' | 'menu' | 'moves' | 'items';
   steps: BattleStep[];
   shown: number;

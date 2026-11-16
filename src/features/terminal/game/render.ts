@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
-import { BATTLE_MENU, hitLook, usableItems } from './engine/battle.ts';
+import { BATTLE_MENU, hitLook, idleOffset, usableItems } from './engine/battle.ts';
 import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
@@ -488,13 +488,16 @@ function drawBattle(ctx: Painter, sheets: Sheets, state: GameState, world: World
   drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, foe.x + 5, foe.y);
   drawText(ctx, sheets, 'HP', foe.x + 5, foe.y + HUD.row);
   hpBar(ctx, foe.x + 19, foe.y + HUD.row + 2, HUD.bar, enemyHp, battle.enemyMax, 5);
-  if (shown('foe')) drawSprite(ctx, sheets, enemy.sprite, 124, 6);
+  // The fighters breathe (with motion): a pixel up and down, a boss swaying sideways.
+  const foeAt = idleOffset(battle, 'foe');
+  const youAt = idleOffset(battle, 'you');
+  if (shown('foe')) drawSprite(ctx, sheets, enemy.sprite, 124 + foeAt.dx, 6 - foeAt.dy);
   if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', 132, 14);
   rect(ctx, 118, 40, 40, 2, DARK);
 
   // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
   // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.
-  if (shown('you')) drawSprite(ctx, sheets, 'trainer-back', 12, 60);
+  if (shown('you')) drawSprite(ctx, sheets, 'trainer-back', 12 + youAt.dx, 60 - youAt.dy);
   if (look?.who === 'you' && look.spark) drawSprite(ctx, sheets, 'spark', 20, 68);
   rect(ctx, 4, 92, 48, 2, DARK);
   const energy = `${hp}/${state.maxHp}`;

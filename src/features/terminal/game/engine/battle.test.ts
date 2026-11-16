@@ -1,4 +1,4 @@
-import { HIT_TICKS, hitLook } from './battle.ts';
+import { HIT_TICKS, hitLook, idleOffset } from './battle.ts';
 import { initialGame, step } from './engine.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { NO_INPUT, type GameState } from './types.ts';
@@ -44,6 +44,45 @@ describe('a hit in a battle, with motion', () => {
     // With reduced motion there is none of it: just the change of the bar.
     expect(play(wild(), 'a', 'a').battle!.hit).toBeUndefined();
     expect(hitLook(null)).toBeNull();
+  });
+});
+
+describe('the fighters breathe, with motion', () => {
+  const tick = (state: GameState) => step(state, NO_INPUT, world).state;
+  const run = (state: GameState, ticks: number) => {
+    const seen: GameState[] = [];
+    let current = state;
+    for (let i = 0; i < ticks; i++) {
+      current = tick(current);
+      seen.push(current);
+    }
+    return seen;
+  };
+
+  it('bobs the trainer and a wild enemy a pixel, out of step, and sways a boss; never fast, never during a hit', () => {
+    const states = run(wild(), 160);
+    const you = states.map((state) => idleOffset(state.battle!, 'you'));
+    const foe = states.map((state) => idleOffset(state.battle!, 'foe'));
+    for (const offset of [...you, ...foe]) {
+      expect(offset.dx).toBe(0);
+      expect([0, 1]).toContain(offset.dy);
+    }
+    // Both move, and not together.
+    expect(new Set(you.map((offset) => offset.dy)).size).toBe(2);
+    expect(you.some((offset, i) => offset.dy !== foe[i]!.dy)).toBe(true);
+    // Slowly: each pose is held for at least half a second (30 ticks) before it changes.
+    const changes = you.flatMap((offset, i) => (i > 0 && offset.dy !== you[i - 1]!.dy ? [i] : []));
+    for (let i = 1; i < changes.length; i++) expect(changes[i]! - changes[i - 1]!).toBeGreaterThanOrEqual(30);
+    // A boss sways sideways by one or two pixels.
+    const boss = run(bossFight(), 200).map((state) => idleOffset(state.battle!, 'foe'));
+    expect(new Set(boss.map((offset) => offset.dx))).toEqual(new Set([0, 1, 2]));
+    for (const offset of boss) expect(offset.dy).toBe(0);
+    // Still during a hit, and with reduced motion (one key is one whole move): no breathing at all.
+    const hit = { ...states[50]!, battle: { ...states[50]!.battle!, hit: { who: 'foe' as const, ticks: 30, from: 10, to: 5 } } };
+    expect(idleOffset(hit.battle, 'you')).toEqual({ dx: 0, dy: 0 });
+    expect(idleOffset(hit.battle, 'foe')).toEqual({ dx: 0, dy: 0 });
+    const still = step(wild(), NO_INPUT, world, { instant: true }).state;
+    expect(idleOffset(still.battle!, 'you')).toEqual({ dx: 0, dy: 0 });
   });
 });
 
