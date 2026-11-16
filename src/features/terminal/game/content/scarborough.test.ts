@@ -99,14 +99,15 @@ describe('Scarborough Fair on the player piano, against the score', () => {
   });
 });
 
-describe('the selector with two pieces', () => {
+describe('the selector, its first two pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
 
   it('lists the Moonlight Sonata and Scarborough Fair, with the length of each from its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'scarborough-fair')).toEqual({ id: 'scarborough-fair', name: 'SCARBOROUGH FAIR', artist: 'TRADITIONAL ENGLISH', track: 'scarborough-fair' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(['moonlight', 'scarborough-fair']);
+    // The first two of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 2)).toEqual(['moonlight', 'scarborough-fair']);
     const fair = world.pieces![1]!;
     expect(fair.ticks).toBe(Math.round(flatten(TRACKS['scarborough-fair']!).length * 60));
     expect(fair.ticks).not.toBe(world.pieces![0]!.ticks);

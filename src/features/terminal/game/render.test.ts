@@ -1500,18 +1500,24 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the two real pieces, and the second one\'s artist whole and inside the box at the foot', () => {
+  it('lists the three real pieces, and the second and third ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
     // The longest name a row holds (22 characters, the first movement's) stays inside the box.
     const row = draws.filter((draw) => draw.sheet === 'font' && draw.y === 24);
     expect(Math.max(...row.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
-    expect(textAt(draws, 44)).toBe('');
+    expect(textAt(draws, 44)).toBe('ALWAYSINMYHEART');
+    expect(textAt(draws, 54)).toBe('');
     expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
     expect(textAt(draws, 120)).toBe('2:31A:playB:back');
     const artist = draws.filter((draw) => draw.sheet === 'font' && draw.y === 110);
     expect(Math.max(...artist.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
+    // The third, converted from a MIDI: its row, its composer and its length at the foot.
+    const third = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 2 } }, undefined, real).draws;
+    expect(textAt(third, 44)).toBe('>ALWAYSINMYHEART');
+    expect(textAt(third, 110)).toBe('KATOTATSUYA');
+    expect(textAt(third, 120)).toBe('3:46A:playB:back');
   });
 
   it('is drawn in the colours of the boxes in GBC', () => {
