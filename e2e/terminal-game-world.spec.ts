@@ -553,7 +553,9 @@ test.describe('beyond the town', () => {
     await expect(game(page)).toHaveAttribute('data-map', 'west');
     await pilot.goTo('west:D');
     await expect(game(page)).toHaveAttribute('data-map', 'west');
-    await expect(status(page)).toContainText('Come back at Lv 3');
+    // Turned away: the door says so in a text box (the level it asks for is on its last page).
+    await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
+    await expect(status(page)).toContainText('Cold air');
   });
 
   test('a ledge across the road is a wall on the way out and a hop on the way back, which stays out of the grass', async ({ page }) => {

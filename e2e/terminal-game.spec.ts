@@ -126,7 +126,7 @@ test.describe('the adventure in the terminal', () => {
 
     await pilot.press('a');
     await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
-    await expect(status(page)).toContainText('Welcome to Career Town!');
+    await expect(status(page)).toContainText('Career Town.');
     await pilot.read();
 
     await pilot.goTo('town:A');
@@ -143,7 +143,7 @@ test.describe('the adventure in the terminal', () => {
     await pilot.start();
     await pilot.goTo('town:O');
     await expect(game(page)).toHaveAttribute('data-map', 'town');
-    await expect(status(page)).toContainText('THE OFFICE only hires graduates.');
+    await expect(status(page)).toContainText('Graduates only.');
   });
 
   test('a battle starts, is won with the default choice, and earns the badge that opens the office', async ({ page }) => {
