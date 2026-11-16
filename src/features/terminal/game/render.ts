@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, enterOffset, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
-import { ENDING_HOLD, JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene, rustles } from './engine/engine.ts';
+import { ENDING_HOLD, JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, pieceLength, restScene, rustles } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -556,6 +556,29 @@ function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
   drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
 }
 
+/** How many pieces the selector of the player piano shows at a time; a longer list scrolls like the bag. */
+const PICK_ROWS = 7;
+
+/**
+ * The selector of the player piano, in the style of the shop: its name at the top, a row per piece (its name) with
+ * the cursor, and at the foot the artist and the length (m:ss) of the piece under the cursor.
+ */
+function drawPick(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const pieces = world.pieces ?? [];
+  const cursor = Math.min(state.pick!.cursor, pieces.length - 1);
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, 'PLAYER PIANO', 14, 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  const top = Math.max(0, Math.min(cursor - PICK_ROWS + 2, pieces.length - PICK_ROWS));
+  pieces.slice(top, top + PICK_ROWS).forEach((piece, i) => drawText(ctx, sheets, piece.name, 18, 24 + i * LINE));
+  if (cursor >= 0) drawText(ctx, sheets, '>', 10, 24 + (cursor - top) * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  const piece = pieces[cursor];
+  if (!piece) return;
+  drawText(ctx, sheets, piece.artist, 8, BOX_Y + 6);
+  drawText(ctx, sheets, `${pieceLength(piece.ticks)}  A: play  B: back`, 8, BOX_Y + 6 + LINE);
+}
+
 /** Where the two boxes of the battle screen stand, the pitch of their rows and the width of an energy bar. */
 const HUD = { enemy: { x: 4, y: 6 }, you: { x: 76, y: 58 }, row: 10, bar: 62 } as const;
 
@@ -782,6 +805,7 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
   if (state.battle) drawBattle(ctx, sheets, state, world);
   else if (state.learn) drawLearn(ctx, sheets, state, world);
   else if (state.shop) drawShop(ctx, sheets, state, world);
+  else if (state.pick) drawPick(ctx, sheets, state, world);
   else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
   else {
     drawWorld(ctx, sheets, state, world);

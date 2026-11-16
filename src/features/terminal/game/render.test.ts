@@ -1471,3 +1471,43 @@ describe('the player piano', () => {
     }
   });
 });
+
+describe('the piece selector of the player piano', () => {
+  const piece = (i: number) => ({ id: `p${i}`, name: `PIECE NUMBER ${i}`, artist: `COMPOSER ${i}`, track: 'moonlight', ticks: 600 + i * 60 });
+  const one: World = { ...world, pieces: [{ id: 'moon', name: 'MOONLIGHT SONATA', artist: 'L. VAN BEETHOVEN', track: 'moonlight', ticks: 3771 }] };
+  const many: World = { ...world, pieces: Array.from({ length: 10 }, (_, i) => piece(i + 1)) };
+  const draw = (on: World, cursor: number, hud?: Hud) => drawn({ ...started(), pick: { cursor } }, hud, on).draws;
+
+  it('lists the one piece with the cursor on it, and its artist and length under the list', () => {
+    const draws = draw(one, 0);
+    expect(textAt(draws, 8)).toBe('PLAYERPIANO');
+    expect(textAt(draws, 24)).toBe('>MOONLIGHTSONATA');
+    expect(textAt(draws, 34)).toBe('');
+    expect(textAt(draws, 110)).toBe('L.VANBEETHOVEN');
+    expect(textAt(draws, 120)).toBe('1:03A:playB:back');
+  });
+
+  it('shows seven rows of a long list and scrolls to keep the cursor in view', () => {
+    const top = draw(many, 0);
+    expect([24, 34, 84].map((y) => textAt(top, y))).toEqual(['>PIECENUMBER1', 'PIECENUMBER2', 'PIECENUMBER7']);
+    expect(textAt(top, 94)).toBe('');
+    const low = draw(many, 8);
+    // The cursor on the ninth: the list has moved on, the cursor's row still on the screen, a row below it.
+    const rows = [24, 34, 44, 54, 64, 74, 84].map((y) => textAt(low, y));
+    expect(rows).toContain('>PIECENUMBER9');
+    expect(rows.at(-1)).toBe('PIECENUMBER10');
+    expect(textAt(low, 110)).toBe('COMPOSER9');
+    expect(textAt(low, 120)).toBe('0:19A:playB:back');
+  });
+
+  it('is drawn in the colours of the boxes in GBC', () => {
+    const ids = Object.keys(PALETTES) as PaletteId[];
+    const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;
+    const record = recorder();
+    drawGame(record.ctx, coloured, { ...started(), pick: { cursor: 0 } }, one, { muted: false, volume: 5, colour: true });
+    const text = record.draws.filter((d) => d.y === 24 && d.sheet.startsWith('font'));
+    expect(text.length).toBeGreaterThan(0);
+    for (const glyph of text) expect(glyph.sheet).toBe('font:ui');
+    for (const fill of record.fills) expect(PALETTES.ui).toContain(fill.shade);
+  });
+});
