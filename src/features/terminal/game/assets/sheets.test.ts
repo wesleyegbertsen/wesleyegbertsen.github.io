@@ -174,8 +174,20 @@ describe('the sprite sheets', () => {
       expect(Math.min(...rows.flat())).toBeGreaterThanOrEqual(torso.left - 1);
       expect(Math.max(...rows.flat())).toBeLessThanOrEqual(torso.right + 1);
     }
-    expect(Math.min(...arm(forward))).toBeLessThan(torso.left + 1);
-    expect(Math.max(...arm(back))).toBeGreaterThan(torso.right - 1);
+    // A whole arm, the same in the standing picture and in the walk: never a single pixel. Its light pixels, row by
+    // row, are runs of two at the least, in three rows at the least, and a stride moves that very shape a pixel.
+    const shape = (rows: string[]) => rows.slice(9, 13).flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '0' || dot === '1' ? [{ x, y, dot }] : [])));
+    for (const frame of [standing, forward, back]) {
+      const cells = shape(frame);
+      const ys = [...new Set(cells.map((cell) => cell.y))];
+      expect(ys.length, frame.join('/')).toBeGreaterThanOrEqual(3);
+      for (const y of ys) expect(cells.filter((cell) => cell.y === y).length, `row ${y}`).toBeGreaterThanOrEqual(2);
+    }
+    const key = (cells: { x: number; y: number; dot: string }[], dx: number) => cells.map((cell) => `${cell.x + dx},${cell.y},${cell.dot}`).sort().join(' ');
+    for (const frame of [forward, back]) {
+      expect([-1, 0, 1].some((dx) => key(shape(standing), dx) === key(shape(frame), 0)), frame.join('/')).toBe(true);
+    }
+    expect(key(shape(forward), 0)).not.toBe(key(shape(back), 0));
     // The legs (rows 13 and 14): two shapes, each one connected, hanging from the torso, slanting by a pixel per row
     // at most, two pixels of leg inside the outline, on a shoe of three pixels at the most.
     const legsOf = (rows: string[]) => {
@@ -222,6 +234,9 @@ describe('the sprite sheets', () => {
     const legs = (rows: string[]) => rows.slice(13, 15).join('/');
     expect(legs(forward)).not.toBe(legs(standing));
     expect(legs(forward)).not.toBe(legs(back));
+    // A short stride: the feet spread a pixel wider than standing at the most.
+    const spread = (rows: string[]) => { const xs = rows.slice(13, 15).flatMap(filled); return Math.max(...xs) - Math.min(...xs); };
+    for (const frame of [forward, back]) expect(spread(frame) - spread(standing)).toBeLessThanOrEqual(1);
     for (const frame of [forward, back]) expect(frame[15]).toBe('................');
   });
 

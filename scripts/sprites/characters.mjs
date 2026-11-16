@@ -57,9 +57,9 @@ const left = [
   '....30000033....',
   '....33333333....',
   '....32222223....',
-  '....32012223....',
-  '....32012223....',
-  '....32222223....',
+  '....32002223....',
+  '....32002223....',
+  '....32112223....',
   '....32233223....',
   '....333..333....',
   '................',
@@ -88,27 +88,27 @@ export const characters = {
     '.........333....',
   ),
   'player-left-0': left,
-  // A step seen from the side. The head and the torso stand still. The legs are straight, two pixels of trouser
-  // each from the hips down to a small shoe: the near leg (the light trouser) a pixel forward and the far one (dark)
-  // a pixel back, then the other way round. The arm swings in front of the torso, overlapping it: the hand a
-  // pixel past the front of the body, then a pixel past the back.
+  // A step seen from the side. The head and the torso stand still. The arm is the one of the standing picture
+  // (two pixels wide, the hand under it), moved a pixel forward and then a pixel back. The legs are straight, two
+  // pixels of trouser each on a small shoe: the near leg (light trouser) a pixel forward with the far one (dark)
+  // under the hips, then the far one a pixel forward and the near one under the hips.
   'player-left-1': step(
     left,
     '....32222223....',
-    '....30122223....',
-    '...301222223....',
-    '...301222223....',
-    '...3223..3333...',
-    '...333....333...',
+    '....30022223....',
+    '....30022223....',
+    '....31122223....',
+    '...3223.3333....',
+    '...333..333.....',
   ),
   'player-left-2': step(
     left,
     '....32222223....',
-    '....32222013....',
-    '....322222013...',
-    '....322222013...',
-    '...3333..3223...',
-    '...333....333...',
+    '....32200223....',
+    '....32200223....',
+    '....32211223....',
+    '...3333.3223....',
+    '...333..333.....',
   ),
   teacher: [
     '................',
