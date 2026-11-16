@@ -8,8 +8,9 @@
 const step = (rows, ...below) => [...rows.slice(0, 9), ...below, '................'];
 
 /**
- * The head sways with the step: the rows above the collar (0 to 7) moved `dx` pixels sideways, the collar and all
- * below it where they are, so the head always rests on the collar. The same pixel in every direction.
+ * Half a sway of the head: the rows above the collar (0 to 7) moved `dx` pixels sideways, the collar and all
+ * below it where they are, so the head rests on the collar. Only the second frame of a walk has it: the head moves
+ * a pixel once per two steps (forward from the side, to the right walking up or down).
  */
 const sway = (rows, dx) => rows.map((row, y) => (y >= 8 ? row : dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
 
@@ -74,7 +75,7 @@ const left = [
 export const characters = {
   'player-down-0': down,
   // One foot forward, the arm on the other side swung down and the near one up. Frame 2 is the mirror.
-  'player-down-1': sway(step(
+  'player-down-1': step(
     down,
     '..33212222123...',
     '..301222222113..',
@@ -82,9 +83,9 @@ export const characters = {
     '...33222222303..',
     '....322333333...',
     '....333.........',
-  ), -1),
+  ),
   'player-up-0': up,
-  'player-up-1': sway(step(
+  'player-up-1': step(
     up,
     '...32222222233..',
     '..322222222203..',
@@ -92,13 +93,13 @@ export const characters = {
     '..30322222233...',
     '...333333223....',
     '.........333....',
-  ), -1),
+  ),
   'player-left-0': left,
   // A step seen from the side. The head and the torso stand still. The arm is the one of the standing picture
   // (two pixels wide, the hand under it), moved a pixel forward and then a pixel back. The legs are straight, two
   // pixels of trouser each on a small shoe: the near leg (light trouser) a pixel forward with the far one (dark)
   // under the hips, then the far one a pixel forward and the near one under the hips.
-  'player-left-1': sway(step(
+  'player-left-1': step(
     left,
     '....32222223....',
     '....30022223....',
@@ -106,7 +107,7 @@ export const characters = {
     '....31122223....',
     '...3223.3333....',
     '...333..333.....',
-  ), -1),
+  ),
   'player-left-2': sway(step(
     left,
     '....32222223....',
@@ -115,7 +116,7 @@ export const characters = {
     '....32211223....',
     '...3333.3223....',
     '...333..333.....',
-  ), 1),
+  ), -1),
   teacher: [
     '................',
     '.....333333.....',
@@ -834,8 +835,6 @@ export const mirrored = {
   'player-right-0': 'player-left-0',
   'player-right-1': 'player-left-1',
   'player-right-2': 'player-left-2',
-  'player-down-2': 'player-down-1',
-  'player-up-2': 'player-up-1',
   'dog-right': 'dog',
   'cat-right': 'cat-left',
 };
@@ -845,3 +844,8 @@ export const mirrored = {
  * the side (name-left); the generator mirrors the side for name-right and refuses a person with one missing.
  */
 export const facing = ['teacher', 'dev', 'maker', 'librarian', 'wesley', 'kid', 'elder', 'postman', 'gardener', 'barista'];
+
+/** The second frame of the walk up and down: the first one mirrored (the other foot), with the head a pixel to the right. */
+const flipped = (rows) => rows.map((row) => [...row].reverse().join(''));
+characters['player-down-2'] = sway(flipped(characters['player-down-1']), 1);
+characters['player-up-2'] = sway(flipped(characters['player-up-1']), 1);

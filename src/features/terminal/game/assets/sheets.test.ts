@@ -152,13 +152,13 @@ describe('the sprite sheets', () => {
       expect(arms(two), two).not.toBe(arms(standing));
       expect(arms(one), direction).not.toBe(arms(two));
       // The head sways a pixel with the step, the same in every direction: the rows above the collar (0 to 7) are
-      // the standing head moved one pixel to one side in one frame and to the other side in the other. The collar
+      // the standing head in the first frame and moved one pixel in the second. The collar
       // (row 8) stays, and the head always touches it.
       const shifted = (rows: string[], dx: number) => rows.slice(0, 8).map((row) => (dx > 0 ? '.'.repeat(dx) + row.slice(0, -dx) : row.slice(-dx) + '.'.repeat(-dx)));
-      const sway = (name: string) => [-1, 1].find((dx) => shifted(frames[standing]!, dx).join('/') === frames[name]!.slice(0, 8).join('/'));
-      expect(sway(one), one).toBeDefined();
-      expect(sway(two), two).toBeDefined();
-      expect(sway(one), direction).not.toBe(sway(two));
+      const sway = (name: string) => [-1, 0, 1].find((dx) => (dx === 0 ? frames[standing]!.slice(0, 8) : shifted(frames[standing]!, dx)).join('/') === frames[name]!.slice(0, 8).join('/'));
+      // Half a sway: the first frame keeps the head at rest, the second moves it one pixel.
+      expect(sway(one), one).toBe(0);
+      expect([-1, 1], two).toContain(sway(two));
       for (const name of [one, two]) {
         expect(frames[name]![8], name).toBe(frames[standing]![8]);
         const above = [...frames[name]![7]!].flatMap((dot, x) => (dot === '.' ? [] : [x]));
