@@ -1032,6 +1032,11 @@ describe('levels on the screen', () => {
     const keep = drawn({ ...offer, learn: { move: 'zap', cursor: 1 } }, undefined, levelWorld).draws;
     expect(textAt(keep, 58)).toBe('NAP+10');
     expect(textAt(keep, 68)).toBe('>KEEPMYMOVES');
+    // The question before a move is forgotten: what for what, and YES or NO with the cursor on one.
+    const ask = (confirm: 0 | 1) => drawn({ ...offer, learn: { move: 'zap', cursor: 0, confirm } }, undefined, levelWorld).draws;
+    expect(textAt(ask(0), 110)).toBe('ReplaceNAPwithZAP?');
+    expect(textAt(ask(0), 130)).toBe('>YESNO');
+    expect(textAt(ask(1), 130)).toBe('YES>NO');
     // A move that heals is described by what it heals.
     const heal = drawn({ ...offer, moves: ['hit', 'zap'], learn: { move: 'nap', cursor: 0 } }, undefined, levelWorld).draws;
     expect(textAt(heal, 30)).toBe('HEALS10PP1');

@@ -397,6 +397,15 @@ function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   drawText(ctx, sheets, 'KEEP MY MOVES', 18, 58 + rows.length * LINE);
   drawText(ctx, sheets, '>', 10, 58 + Math.min(learn.cursor, rows.length) * LINE);
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  if (learn.confirm !== undefined) {
+    // The question: the move that would be forgotten, and YES or NO.
+    const old = world.moves[rows[learn.cursor]!]!.name;
+    drawLines(ctx, sheets, wrap(fold(`Replace ${old} with ${offered.name}?`), COLS).slice(0, 2), 8, BOX_Y + 6);
+    drawText(ctx, sheets, 'YES', 18, BOX_Y + 26);
+    drawText(ctx, sheets, 'NO', 66, BOX_Y + 26);
+    drawText(ctx, sheets, '>', learn.confirm === 0 ? 10 : 58, BOX_Y + 26);
+    return;
+  }
   drawLines(ctx, sheets, [`${world.moves[state.moves[0]!]!.name} always stays.`, 'A: swap it in.', 'B: keep your moves.'], 8, BOX_Y + 6);
 }
 

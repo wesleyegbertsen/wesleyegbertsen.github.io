@@ -150,9 +150,27 @@ describe('the offer of a new move', () => {
     expect(learnRows(state)).toEqual(['nap']);
   });
 
-  it('replaces the picked move with A: the new one is in its place, with full PP', () => {
+  it('asks first: "Replace NAP with ZAP?" YES or NO; NO goes back to the choice, and so does B', () => {
     const { state } = offered();
-    const swapped = press(levelWorld, state, { a: true });
+    const asked = press(levelWorld, state, { a: true });
+    expect(asked.state.learn).toEqual({ move: 'zap', cursor: 0, confirm: 0 });
+    expect(asked.state.moves).toEqual(['hit', 'nap']);
+    expect(asked.events).toEqual([{ kind: 'menu', text: 'Replace NAP with ZAP? Yes or no.' }]);
+    // Down to NO, and A: back to the choice, nothing forgotten.
+    const no = press(levelWorld, asked.state, { pressed: 'down' });
+    expect(no.state.learn).toEqual({ move: 'zap', cursor: 0, confirm: 1 });
+    expect(no.events).toEqual([{ kind: 'menu', text: 'No' }]);
+    const back = press(levelWorld, no.state, { a: true });
+    expect(back.state.learn).toEqual({ move: 'zap', cursor: 0 });
+    expect(back.state.moves).toEqual(['hit', 'nap']);
+    // B in the question is NO too: it does not throw the offer away.
+    const out = press(levelWorld, asked.state, { b: true });
+    expect(out.state.learn).toEqual({ move: 'zap', cursor: 0 });
+  });
+
+  it('replaces the picked move once YES is answered: the new one is in its place, with full PP', () => {
+    const { state } = offered();
+    const swapped = press(levelWorld, press(levelWorld, state, { a: true }).state, { a: true });
     expect(swapped.state.learn).toBeNull();
     expect(swapped.state.moves).toEqual(['hit', 'zap']);
     expect(swapped.state.pp).toEqual({ hit: state.pp.hit, zap: 3 });
@@ -200,7 +218,7 @@ describe('the offer of a new move', () => {
     const { state } = fight(levelWorld, boss(levelWorld));
     expect(state.learn?.move).toBe('zap');
     expect(state.badges).toEqual([]);
-    const after = playIn(levelWorld, state, 'a', 'a', 'a', 'a', 'a');
+    const after = playIn(levelWorld, state, 'a', 'a', 'a', 'a', 'a', 'a');
     expect(after.moves).toEqual(['hit', 'zap']);
     expect(after.badges).toEqual(['one']);
     expect(after.items.key).toBe(1);

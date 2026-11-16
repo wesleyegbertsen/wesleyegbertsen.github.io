@@ -266,8 +266,11 @@ export type Dialogue = { pages: string[][]; page: number; shown: number };
 export type Menu = { tab: 'items' | 'badges' | 'settings'; cursor: number };
 /** The rows of the settings tab, in order. */
 export const SETTINGS = ['sound', 'volume', 'screen', 'mode'] as const;
-/** The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them. */
-export type Learn = { move: string; cursor: number };
+/**
+ * The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them.
+ * `confirm` is there while the game asks whether to really forget the move under the cursor: 0 on YES, 1 on NO.
+ */
+export type Learn = { move: string; cursor: number; confirm?: 0 | 1 };
 /**
  * An open shop: the cursor runs over its stock and a last entry that leaves. `amount` is how many of the item
  * under the cursor A buys (left and right change it; 1 on every new row). `note` is what the last press led to

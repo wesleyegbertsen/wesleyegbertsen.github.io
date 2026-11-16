@@ -198,6 +198,27 @@ function stepLearn(state: GameState, input: Input, ctx: Ctx): GameState {
   const learn = state.learn!;
   const rows = learnRows(state);
   const offered = world.moves[learn.move]!;
+  // The question: forget this move for the new one? YES replaces it, NO (or B) goes back to the choice.
+  if (learn.confirm !== undefined) {
+    if (input.pressed === 'up' || input.pressed === 'down') {
+      const confirm = input.pressed === 'up' ? 0 : 1;
+      if (confirm === learn.confirm) return state;
+      ctx.cues.push('cursor');
+      ctx.events.push({ kind: 'menu', text: confirm === 0 ? 'Yes' : 'No' });
+      return { ...state, learn: { ...learn, confirm } };
+    }
+    if (input.b || (input.a && learn.confirm === 1)) {
+      ctx.cues.push('cancel');
+      ctx.events.push({ kind: 'menu', text: `Replace ${world.moves[rows[learn.cursor]!]!.name}: ${describeMove(world.moves[rows[learn.cursor]!]!)}` });
+      return { ...state, learn: { move: learn.move, cursor: learn.cursor } };
+    }
+    if (!input.a) return state;
+    const old = rows[learn.cursor]!;
+    ctx.cues.push('confirm');
+    const moves = state.moves.map((id) => (id === old ? learn.move : id));
+    const pp = Object.fromEntries(moves.map((id) => [id, id === learn.move ? offered.pp : (state.pp[id] ?? 0)]));
+    return say({ ...state, learn: null, moves, pp }, [`You forget ${world.moves[old]!.name} and learn ${offered.name}!`], ctx);
+  }
   if (input.pressed === 'up' || input.pressed === 'down') {
     const cursor = Math.max(0, Math.min(rows.length, learn.cursor + (input.pressed === 'up' ? -1 : 1)));
     if (cursor === learn.cursor) return state;
@@ -212,10 +233,10 @@ function stepLearn(state: GameState, input: Input, ctx: Ctx): GameState {
     return say({ ...state, learn: null }, [`You keep your moves. ${offered.name} will have to wait.`], ctx);
   }
   if (!old) return state;
+  // A move is picked: ask before it is forgotten.
   ctx.cues.push('confirm');
-  const moves = state.moves.map((id) => (id === old ? learn.move : id));
-  const pp = Object.fromEntries(moves.map((id) => [id, id === learn.move ? offered.pp : (state.pp[id] ?? 0)]));
-  return say({ ...state, learn: null, moves, pp }, [`You forget ${world.moves[old]!.name} and learn ${offered.name}!`], ctx);
+  ctx.events.push({ kind: 'menu', text: `Replace ${world.moves[old]!.name} with ${offered.name}? Yes or no.` });
+  return { ...state, learn: { ...learn, confirm: 0 } };
 }
 
 function stepMenu(state: GameState, input: Input, ctx: Ctx): GameState {
