@@ -20,8 +20,13 @@ describe('note names', () => {
     expect(frequencyOf('Bb3')).toBeCloseTo(frequencyOf('A#3'), 6);
   });
 
+  it('takes a double sharp as two sharps: F##4 is a G4, as a score writes it', () => {
+    expect(frequencyOf('F##4')).toBeCloseTo(frequencyOf('G4'), 9);
+    expect(frequencyOf('F##1')).toBeCloseTo(frequencyOf('G1'), 9);
+  });
+
   it('refuses what is not a note', () => {
-    for (const bad of ['H4', 'C', '4', 'c4', 'C#', 'C10', '']) expect(() => frequencyOf(bad)).toThrow(/Not a note/);
+    for (const bad of ['H4', 'C', '4', 'c4', 'C#', 'C10', '', 'C###4', 'Cbb4', 'C#b4']) expect(() => frequencyOf(bad)).toThrow(/Not a note/);
   });
 });
 
