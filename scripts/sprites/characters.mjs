@@ -89,13 +89,13 @@ export const characters = {
   ),
   'player-left-0': left,
   // A step seen from the side, like the walk up and down: the body stays where it is and only the arm and the legs
-  // move. The arm swings two pixels in front of the body and then two behind it; the legs spread a pixel each way
-  // and then pass each other, on small shoes of three pixels like the standing picture.
+  // move. The arm hangs at the side of the body like a small pendulum: the forearm a pixel forward, then the hand a
+  // pixel lower; the legs spread a pixel each way and then pass each other, on small shoes of three pixels.
   'player-left-1': step(
     left,
     '....32222223....',
-    '..3012222223....',
-    '..3332222223....',
+    '....32012223....',
+    '....30122223....',
     '....32222223....',
     '...3223..3223...',
     '...333....333...',
@@ -103,9 +103,9 @@ export const characters = {
   'player-left-2': step(
     left,
     '....32222223....',
-    '....3222222103..',
-    '....322222233...',
-    '....32222223....',
+    '....32012223....',
+    '....32012223....',
+    '....32202223....',
     '.....32233223...',
     '.....333..333...',
   ),

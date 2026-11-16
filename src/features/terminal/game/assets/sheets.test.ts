@@ -158,17 +158,29 @@ describe('the sprite sheets', () => {
     }
   });
 
-  it('walk sideways like up and down: the arm two pixels in front and behind, the legs a pixel or two, small shoes, no bob', () => {
+  it('walk sideways like up and down: the arm hanging at the side, the legs a pixel or two, small shoes, no bob', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2', 'player-down-0'].map((name) => characters[name]))))";
     const [standing, forward, back, front] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[], string[]];
     // No bob: everything down to the shoulders is the standing picture, in the same rows.
     for (const frame of [forward, back]) expect(frame.slice(0, 10)).toEqual(standing.slice(0, 10));
-    // The arm (rows 10 and 11) reaches two pixels in front of the body, then two behind it.
     const first = (rows: string[]) => Math.min(...rows.map((row) => row.search(/[^.]/)).filter((x) => x >= 0));
     const last = (rows: string[]) => Math.max(...rows.map((row) => row.length - 1 - [...row].reverse().join('').search(/[^.]/)));
+    // The arm hangs at the side: nothing of the torso rows (9 to 12) leaves the outline of the standing body by more
+    // than a column, in front or behind.
     const body = standing.slice(9, 13);
-    expect(first(body) - first(forward.slice(10, 12))).toBe(2);
-    expect(last(back.slice(10, 12)) - last(body)).toBe(2);
+    for (const frame of [forward, back]) {
+      expect(first(body) - first(frame.slice(9, 13))).toBeLessThanOrEqual(1);
+      expect(last(frame.slice(9, 13)) - last(body)).toBeLessThanOrEqual(1);
+    }
+    // A small pendulum: every pixel of the arm (the light ones in the torso) has one in the other frame a pixel away
+    // at the most, and the two frames are not the same.
+    const arm = (rows: string[]) => rows.slice(9, 13).flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '0' || dot === '1' ? [[x, y] as const] : [])));
+    const near = (from: readonly (readonly [number, number])[], to: readonly (readonly [number, number])[]) =>
+      from.every(([x, y]) => to.some(([u, v]) => Math.max(Math.abs(u - x), Math.abs(v - y)) <= 1));
+    expect(arm(forward).length).toBeGreaterThan(0);
+    expect(near(arm(forward), arm(back))).toBe(true);
+    expect(near(arm(back), arm(forward))).toBe(true);
+    expect(arm(forward)).not.toEqual(arm(back));
     // Small shoes: every foot on the bottom row of the legs is as long as a foot of the standing and front pictures.
     const feet = (rows: string[]) => rows[14]!.split(/\.+/).filter(Boolean).map((foot) => foot.length);
     const size = Math.max(...feet(standing), ...feet(front));
