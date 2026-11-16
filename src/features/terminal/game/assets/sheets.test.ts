@@ -166,13 +166,13 @@ describe('the sprite sheets', () => {
     const filled = (row: string) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [x]));
     const torso = { left: Math.min(...filled(standing[12]!)), right: Math.max(...filled(standing[12]!)) };
     // The arm: the light pixels in the torso rows. It overlaps the torso in both frames and reaches no further than
-    // two pixels past its edge, forward in one frame and back in the other.
+    // one pixel past its edge, forward in one frame and back in the other.
     const arm = (rows: string[]) => rows.slice(10, 13).flatMap((row) => [...row].flatMap((dot, x) => (dot === '0' || dot === '1' ? [x] : [])));
     for (const frame of [forward, back]) {
       expect(arm(frame).some((x) => x >= torso.left && x <= torso.right)).toBe(true);
       const rows = frame.slice(10, 13).map(filled);
-      expect(Math.min(...rows.flat())).toBeGreaterThanOrEqual(torso.left - 2);
-      expect(Math.max(...rows.flat())).toBeLessThanOrEqual(torso.right + 2);
+      expect(Math.min(...rows.flat())).toBeGreaterThanOrEqual(torso.left - 1);
+      expect(Math.max(...rows.flat())).toBeLessThanOrEqual(torso.right + 1);
     }
     expect(Math.min(...arm(forward))).toBeLessThan(torso.left + 1);
     expect(Math.max(...arm(back))).toBeGreaterThan(torso.right - 1);

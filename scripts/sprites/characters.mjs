@@ -90,14 +90,14 @@ export const characters = {
   'player-left-0': left,
   // A step seen from the side. The head and the torso stand still. The legs are straight, two pixels of trouser
   // each from the hips down to a small shoe: the near leg (the light trouser) a pixel forward and the far one (dark)
-  // a pixel back, then the other way round. The arm swings in front of the torso, overlapping it: the hand two
-  // pixels past the front of the body, then two past the back.
+  // a pixel back, then the other way round. The arm swings in front of the torso, overlapping it: the hand a
+  // pixel past the front of the body, then a pixel past the back.
   'player-left-1': step(
     left,
     '....32222223....',
     '....30122223....',
     '...301222223....',
-    '..3012222223....',
+    '...301222223....',
     '...3223..3333...',
     '...333....333...',
   ),
@@ -106,7 +106,7 @@ export const characters = {
     '....32222223....',
     '....32222013....',
     '....322222013...',
-    '....3222222013..',
+    '....322222013...',
     '...3333..3223...',
     '...333....333...',
   ),
