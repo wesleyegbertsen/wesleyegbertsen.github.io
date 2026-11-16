@@ -158,45 +158,71 @@ describe('the sprite sheets', () => {
     }
   });
 
-  it('walk sideways like up and down: the arm hanging at the side, the legs a pixel or two, small shoes, no bob', () => {
+  it('walk sideways with straight legs from the hips and an arm that swings beside the body, the body still', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify(['player-left-0', 'player-left-1', 'player-left-2', 'player-down-0'].map((name) => characters[name]))))";
     const [standing, forward, back, front] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[], string[]];
-    // No bob: everything down to the shoulders is the standing picture, in the same rows.
+    // The head and the torso stand still: down to the shoulders exactly the standing picture.
     for (const frame of [forward, back]) expect(frame.slice(0, 10)).toEqual(standing.slice(0, 10));
-    const first = (rows: string[]) => Math.min(...rows.map((row) => row.search(/[^.]/)).filter((x) => x >= 0));
-    const last = (rows: string[]) => Math.max(...rows.map((row) => row.length - 1 - [...row].reverse().join('').search(/[^.]/)));
-    // The arm hangs at the side: nothing of the torso rows (9 to 12) leaves the outline of the standing body by more
-    // than a column, in front or behind.
-    const body = standing.slice(9, 13);
+    const filled = (row: string) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [x]));
+    const torso = { left: Math.min(...filled(standing[12]!)), right: Math.max(...filled(standing[12]!)) };
+    // The arm: the light pixels in the torso rows. It overlaps the torso in both frames and reaches no further than
+    // two pixels past its edge, forward in one frame and back in the other.
+    const arm = (rows: string[]) => rows.slice(10, 13).flatMap((row) => [...row].flatMap((dot, x) => (dot === '0' || dot === '1' ? [x] : [])));
     for (const frame of [forward, back]) {
-      expect(first(body) - first(frame.slice(9, 13))).toBeLessThanOrEqual(1);
-      expect(last(frame.slice(9, 13)) - last(body)).toBeLessThanOrEqual(1);
+      expect(arm(frame).some((x) => x >= torso.left && x <= torso.right)).toBe(true);
+      const rows = frame.slice(10, 13).map(filled);
+      expect(Math.min(...rows.flat())).toBeGreaterThanOrEqual(torso.left - 2);
+      expect(Math.max(...rows.flat())).toBeLessThanOrEqual(torso.right + 2);
     }
-    // A small pendulum: every pixel of the arm (the light ones in the torso) has one in the other frame a pixel away
-    // at the most, and the two frames are not the same.
-    const arm = (rows: string[]) => rows.slice(9, 13).flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '0' || dot === '1' ? [[x, y] as const] : [])));
-    const near = (from: readonly (readonly [number, number])[], to: readonly (readonly [number, number])[]) =>
-      from.every(([x, y]) => to.some(([u, v]) => Math.max(Math.abs(u - x), Math.abs(v - y)) <= 1));
-    expect(arm(forward).length).toBeGreaterThan(0);
-    expect(near(arm(forward), arm(back))).toBe(true);
-    expect(near(arm(back), arm(forward))).toBe(true);
-    expect(arm(forward)).not.toEqual(arm(back));
-    // Small shoes: every foot on the bottom row of the legs is as long as a foot of the standing and front pictures.
-    const feet = (rows: string[]) => rows[14]!.split(/\.+/).filter(Boolean).map((foot) => foot.length);
-    const size = Math.max(...feet(standing), ...feet(front));
-    expect(size).toBeLessThanOrEqual(3);
+    expect(Math.min(...arm(forward))).toBeLessThan(torso.left + 1);
+    expect(Math.max(...arm(back))).toBeGreaterThan(torso.right - 1);
+    // The legs (rows 13 and 14): two shapes, each one connected, hanging from the torso, slanting by a pixel per row
+    // at most, two pixels of leg inside the outline, on a shoe of three pixels at the most.
+    const legsOf = (rows: string[]) => {
+      const cells = new Set<string>();
+      for (const y of [13, 14]) for (const x of filled(rows[y]!)) cells.add(`${x},${y}`);
+      const shapes: { x: number; y: number }[][] = [];
+      const seen = new Set<string>();
+      for (const start of cells) {
+        if (seen.has(start)) continue;
+        const shape: { x: number; y: number }[] = [];
+        const queue = [start];
+        seen.add(start);
+        for (let key = queue.shift(); key; key = queue.shift()) {
+          const [x, y] = key.split(',').map(Number) as [number, number];
+          shape.push({ x, y });
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const next = `${x + dx!},${y + dy!}`;
+            if (cells.has(next) && !seen.has(next)) {
+              seen.add(next);
+              queue.push(next);
+            }
+          }
+        }
+        shapes.push(shape);
+      }
+      return shapes;
+    };
     for (const frame of [forward, back]) {
-      expect(feet(frame).length).toBeGreaterThanOrEqual(1);
-      for (const foot of feet(frame)) expect(foot).toBeLessThanOrEqual(size);
-      // Nothing below the feet, as standing.
-      expect(frame[15]).toBe('................');
+      const legs = legsOf(frame);
+      expect(legs, frame.join('/')).toHaveLength(2);
+      for (const leg of legs) {
+        const row = (y: number) => leg.filter((cell) => cell.y === y).map((cell) => cell.x);
+        // Hanging from the torso: the top of the leg is under it.
+        expect(row(13).some((x) => x >= torso.left && x <= torso.right)).toBe(true);
+        // Straight: the second row starts a pixel from the first at the most, on both sides.
+        expect(Math.abs(Math.min(...row(14)) - Math.min(...row(13)))).toBeLessThanOrEqual(1);
+        expect(Math.abs(Math.max(...row(14)) - Math.max(...row(13)))).toBeLessThanOrEqual(1);
+        // Two pixels of leg inside its outline, and a small shoe.
+        expect(row(13)).toHaveLength(4);
+        expect(row(14).length).toBeLessThanOrEqual(3);
+      }
     }
-    // The legs move: the two strides differ from each other and from standing, by a pixel or two.
+    // The legs step: the two frames differ from standing and from each other.
     const legs = (rows: string[]) => rows.slice(13, 15).join('/');
-    expect(legs(forward)).not.toBe(legs(back));
     expect(legs(forward)).not.toBe(legs(standing));
-    const spread = (rows: string[]) => last(rows.slice(13, 15)) - first(rows.slice(13, 15));
-    expect(Math.abs(spread(forward) - spread(standing))).toBeLessThanOrEqual(2);
+    expect(legs(forward)).not.toBe(legs(back));
+    for (const frame of [forward, back]) expect(frame[15]).toBe('................');
   });
 
   it('draw everyone who can turn by hand: a back without a face and a side that is not the front', () => {
