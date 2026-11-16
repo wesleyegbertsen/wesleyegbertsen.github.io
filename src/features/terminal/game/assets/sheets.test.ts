@@ -170,6 +170,16 @@ describe('the sprite sheets', () => {
         expect(lopsided(characters['cat-left']!)).toBeGreaterThanOrEqual(6);
         expect(characters['cat-left']!.join()).not.toBe(front.map((row) => [...row].reverse().join('')).join());
         expect(sprites).toHaveProperty(['cat-right']);
+        // The same cat from every side: as tall (from the same top row to the same bottom row) and about as much cat.
+        const size = (rows: string[]) => {
+          const filled = rows.map((row, y) => (/[^.]/.test(row) ? y : -1)).filter((y) => y >= 0);
+          return { top: filled[0], bottom: filled.at(-1), mass: rows.join('').replaceAll('.', '').length };
+        };
+        const [ahead, behind, side] = [characters.cat!, characters['cat-up']!, characters['cat-left']!].map(size) as [ReturnType<typeof size>, ReturnType<typeof size>, ReturnType<typeof size>];
+        for (const other of [behind, side]) {
+          expect([other.top, other.bottom]).toEqual([ahead.top, ahead.bottom]);
+          expect(Math.abs(other.mass - ahead.mass) / ahead.mass).toBeLessThanOrEqual(0.15);
+        }
       }
       if (name === 'dog' || name === 'cat') continue;
       const side = characters[`${name}-left`]!;
