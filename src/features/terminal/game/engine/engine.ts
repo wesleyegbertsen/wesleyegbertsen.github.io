@@ -499,10 +499,7 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
     const sliding = glide(arrived, ctx, state.walk.slide ?? (state.walk.jump ? 2 : 1));
     if (sliding.walk) return sliding;
     // Still holding the direction: keep walking without a pause between the cells.
-    if (!(idle(arrived) && input.dir)) return arrived;
-    // The walk goes on: one more step of it.
-    const next = tryMove(arrived, input.dir, ctx);
-    return next.walk ? { ...next, pace: (state.pace ?? 0) + 1 } : next;
+    return idle(arrived) && input.dir ? tryMove(arrived, input.dir, ctx) : arrived;
   }
   if (input.start) {
     ctx.cues.push('confirm');
@@ -519,8 +516,7 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
   }
   if (input.a) return interact(state, ctx);
   const dir = input.dir ?? input.pressed;
-  // A walk starts from standing: its first step.
-  return dir ? { ...tryMove(state, dir, ctx), pace: 0 } : state;
+  return dir ? tryMove(state, dir, ctx) : state;
 }
 
 /**

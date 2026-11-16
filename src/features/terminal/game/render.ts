@@ -239,9 +239,7 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   // On slippery ground the legs stand still: the player slides.
   const frame = state.walk && !state.walk.slide && (state.walk.jump ? hop > 0 : state.walk.t >= WALK_TICKS / 2) ? foot : 0;
   if (hop > 0) rect(ctx, px - camX + 4, py - camY + 13, 8, 2, DARK);
-  // The head sways slowly: at rest for two steps of a walk, a pixel over for the next two (the `s` twins).
-  const head = frame > 0 && Math.floor((state.pace ?? 0) / 2) % 2 === 1 ? 's' : '';
-  drawSprite(ctx, sheets, `player-${state.dir}-${frame}${head}`, px - camX, py - camY - hop);
+  drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY - hop);
 
   // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
   // the player, so nothing flickers. A fire bowl lights the cells around it the same way, wherever the player is.
