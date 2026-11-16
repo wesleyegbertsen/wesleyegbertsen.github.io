@@ -228,8 +228,8 @@ export const TRACKS: Record<string, Track> = {
    * real quarter note at 56 a minute: a triplet eighth is 4 steps, the melody's dotted eighth and sixteenth 9 and 3,
    * a quarter 12, a half 24, a bar 48. A bar line `|` between bars (a test reads the bars). Pitches carry their own
    * accidentals (B#1, G3 natural), not the key signature. The triplets are one voice (where the left hand takes them
-   * over too), the bass another (the lowest note of the left hand; one voice is one line, so its octaves are one
-   * note), the melody the third. `pluck` makes every note die away from its start, like a piano. It plays once
+   * over too), the bass another (the lowest note of the left hand), the melody the third; a fourth has the upper
+   * note of the left hand's octaves, a fifth the inner notes of its chords (one voice is one line). `pluck` makes every note die away from its start, like a piano. It plays once
    * (an entry in content/pieces.ts); content/piano.test.ts holds the score's notes bar by bar.
    */
   moonlight: {
