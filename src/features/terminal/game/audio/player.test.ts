@@ -272,6 +272,21 @@ describe('the sound player', () => {
     expect(Math.min(...muted.audio.oscillators.map((oscillator) => oscillator.startAt!))).toBeCloseTo(0.06, 6);
   });
 
+  it('plucks the notes of a plucked voice: struck and dying away from the start, a triangle too, never held', () => {
+    const { sound, audio } = setup({}, { tracks: { ...TRACKS, keys: { bpm: 150, loop: false, voices: [{ wave: 'triangle', volume: 0.4, notes: 'C4:8', pluck: true }] } } });
+    sound.music('keys');
+    sound.unlock();
+    const note = audio.oscillators[0]!;
+    // Set once at the start, then one ramp down to nothing at the end: no level held for three quarters of it.
+    expect(note.out.gain.events.filter((event) => event.kind === 'set')).toHaveLength(1);
+    expect(note.out.gain.events.at(-1)).toMatchObject({ kind: 'linear', value: 0 });
+    // The same voice unplucked holds its level first.
+    const held = setup({}, { tracks: { ...TRACKS, keys: { bpm: 150, loop: false, voices: [{ wave: 'triangle', volume: 0.4, notes: 'C4:8' }] } } });
+    held.sound.music('keys');
+    held.sound.unlock();
+    expect(held.audio.oscillators[0]!.out.gain.events.filter((event) => event.kind === 'set')).toHaveLength(2);
+  });
+
   it('plays a jingle over the tune, which steps back for it and returns', () => {
     const { audio, sound } = setup();
     sound.music('walk');

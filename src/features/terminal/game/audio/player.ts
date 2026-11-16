@@ -232,7 +232,7 @@ export function createSound(options: SoundOptions): Sound {
     // `from`: a note carried on after a pause sounds only for what was left of it.
     const duration = whole - (from - at);
     if (duration <= 0) return null;
-    const node = sound(item.wave, drum ? drum.rate : item.frequency, undefined, from, duration, item.volume, bus, !drum && item.wave !== 'pulse');
+    const node = sound(item.wave, drum ? drum.rate : item.frequency, undefined, from, duration, item.volume, bus, !drum && item.wave !== 'pulse' && !item.pluck);
     return node ? { node, end: from + duration + 0.05, item, at } : null;
   }
 

@@ -218,6 +218,25 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
 
+  /**
+   * The player piano in the cafe: the first minute of Beethoven's Moonlight Sonata (Piano Sonata No. 14, first
+   * movement, Adagio sostenuto, C sharp minor; public domain), bars 1 to 14 and a held last chord. HOW TO EDIT: one
+   * step of this score is one triplet eighth, twelve to a bar, so `bpm: 42` here is 56 quarter notes a minute (a
+   * step is a sixteenth of the score's beat). The right hand's triplets are one voice, the bass another (the octaves
+   * of the left hand as single low notes), the melody from bar 5 the third; a dotted eighth and a sixteenth over the
+   * triplets are written as two steps and one. Written from memory: correct a note right here. `pluck` makes every
+   * note die away from its start, like a piano. It plays once (MUSIC.piano); a test keeps it about a minute long,
+   * softer than the other tunes, and inside the keys of a piano.
+   */
+  moonlight: {
+    bpm: 42,
+    loop: false,
+    voices: [
+      { wave: 'pulse', volume: 0.26, pluck: true, notes: '-:12 | -:12 | -:12 | -:12 | -:9 G#4:2 G#4:1 | G#4:9 G#4:2 G#4:1 | G#4:6 A4:6 | G#4:6 F#4:6 | E4:12 | -:9 B4:2 B4:1 | B4:9 B4:2 B4:1 | B4:6 C5:6 | B4:6 A4:6 | G#4:12 | G#4:8' },
+      { wave: 'thin', volume: 0.24, pluck: true, notes: 'G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 | G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 | A3 C#4 E4 A3 C#4 E4 A3 D4 F#4 A3 D4 F#4 | G#3 C4 F#4 G#3 C#4 E4 G#3 C#4 D#4 F#3 C4 D#4 | G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 | G#3 C#4 E4 G#3 C#4 E4 A3 C#4 F#4 A3 C#4 F#4 | G#3 C#4 E4 G#3 C#4 E4 A3 C#4 F#4 A3 C#4 F#4 | G#3 C4 F#4 G#3 C4 F#4 G#3 C4 D#4 G#3 C4 D#4 | G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 | F#3 B3 D#4 F#3 B3 D#4 F#3 B3 D#4 F#3 B3 D#4 | G#3 B3 E4 G#3 B3 E4 G#3 B3 E4 G#3 B3 E4 | G#3 B3 E4 G#3 B3 E4 A3 C4 E4 A3 C4 E4 | G#3 B3 E4 G#3 B3 E4 F#3 A3 D#4 F#3 A3 D#4 | G#3 B3 E4 G#3 B3 E4 G#3 B3 E4 G#3 B3 E4 | B3:8' },
+      { wave: 'triangle', volume: 0.32, pluck: true, notes: 'C#2:12 | B1:12 | A1:6 F#1:6 | G#1:12 | C#2:12 | C#2:12 | B1:6 A1:6 | G#1:12 | C#2:12 | B1:12 | E2:12 | E2:12 | B1:12 | E2:12 | E2:8' },
+    ],
+  },
   /** The cafe: light and easy, with a brush on the hi-hat. */
   cafe: {
     bpm: 104,
@@ -377,6 +396,8 @@ export const MUSIC: NonNullable<World['music']> = {
   victory: 'victory',
   indoors: 'indoors',
   maps: { town: 'town', east: 'route', west: 'route', hills: 'hills', cave: 'cave', deep: 'cave', cafe: 'cafe' },
+  // The player piano in the cafe, while it plays.
+  piano: 'moonlight',
 };
 
 // --- the sound effects ---------------------------------------------------------------------------------------------

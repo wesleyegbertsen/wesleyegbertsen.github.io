@@ -244,7 +244,7 @@ export type World = {
   /** The DEX on the Start menu: every monster in the order of the list (content/dex.ts). */
   dex?: DexEntry[];
   /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
-  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
+  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string>; piano?: string };
 };
 
 /**

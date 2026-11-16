@@ -16,7 +16,8 @@
 export type Wave = 'pulse' | 'thin' | 'triangle' | 'noise';
 export type Drum = 'k' | 's' | 'h';
 
-export type Voice = { wave: Wave; volume: number; notes: string };
+/** `pluck`: every note is struck and dies away from its start, never held (a piano). The pulse voices already are. */
+export type Voice = { wave: Wave; volume: number; notes: string; pluck?: true };
 
 export type Track = {
   /** Beats (quarter notes) per minute. */
@@ -29,7 +30,7 @@ export type Track = {
 };
 
 /** One sound to make: when (seconds from the start of the track), how long, on which voice, how high. */
-export type Note = { voice: number; wave: Wave; volume: number; time: number; duration: number; frequency: number; drum?: Drum };
+export type Note = { voice: number; wave: Wave; volume: number; time: number; duration: number; frequency: number; drum?: Drum; pluck?: true };
 
 export const STEPS_PER_BEAT = 4;
 
@@ -80,6 +81,7 @@ export function flatten(track: Track): { notes: Note[]; length: number; loopAt: 
           duration: note.steps * step,
           frequency: note.frequency,
           ...(note.drum ? { drum: note.drum } : {}),
+          ...(voice.pluck ? { pluck: true as const } : {}),
         }),
       ),
     )
