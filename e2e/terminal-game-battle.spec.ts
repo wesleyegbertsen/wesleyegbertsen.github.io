@@ -96,7 +96,9 @@ test.describe('the battle screen', () => {
     expect(await darkIn(page, 91, 92, 62, 1)).toBe(0);
     expect(await darkIn(page, 90, 93, 64, 1)).toBe(64);
     // Nothing but paper between the enemy's box and its picture, and right of the player's box.
-    expect(await darkIn(page, 104, 0, 16, 44)).toBe(0);
+    expect(await darkIn(page, 103, 0, 6, 44)).toBe(0);
+    // And a margin right of the enemy: it keeps clear of the right edge of the screen.
+    expect(await darkIn(page, 150, 0, 10, 56)).toBe(0);
     expect(await darkIn(page, 156, 44, 4, 60)).toBe(0);
   });
 });
