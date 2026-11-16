@@ -348,6 +348,8 @@ export type GameState = {
   trail?: { map: string; x: number; y: number; at: number }[];
   /** Ticks left of a rest that is played through (its jingle): nothing happens until they are over. */
   pause?: number;
+  /** The rest that is being played through: how many ticks it takes in all, and the energy before it (the scene). */
+  rest?: { ticks: number; from: number };
   /** Where a defeat sends the player back to. */
   heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;

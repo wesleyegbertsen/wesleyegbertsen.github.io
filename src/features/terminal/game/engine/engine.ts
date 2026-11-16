@@ -119,7 +119,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
   if ('heal' in action) {
     ctx.cues.push(action.rest ? 'rest' : 'heal');
     // A rest is played through: the script waits until its jingle is over (with reduced motion it does not wait).
-    const pause = action.rest && !ctx.instant ? { pause: action.rest } : {};
+    const pause = action.rest && !ctx.instant ? { pause: action.rest, rest: { ticks: action.rest, from: state.hp } } : {};
     return { ...state, ...pause, hp: state.maxHp, pp: fullPp(world, state.moves), heal: { map: state.map, x: state.x, y: state.y } };
   }
   if ('boost' in action) {
@@ -178,6 +178,19 @@ function stepDialogue(state: GameState, input: Input, ctx: Ctx): GameState {
     return { ...state, dialogue: { ...dialogue, page: dialogue.page + 1, shown: ctx.instant ? pageLength(next) : 0 } };
   }
   return runScript({ ...state, dialogue: null }, ctx);
+}
+
+/**
+ * The rest in the cafe as a scene, in 32 equal steps of the rest (the two bars of its jingle): four mugs light up
+ * one after another with the notes of the tune (steps 3, 6, 12 and 15), a sparkle comes with the held last note
+ * (18), and then the energy bar fills from what it was to full (18 to 28). Null when no rest is being played.
+ */
+export function restScene(state: GameState): { mugs: number; sparkle: boolean; hp: number } | null {
+  if (!state.rest || !state.pause) return null;
+  const at = ((state.rest.ticks - state.pause) * 32) / state.rest.ticks;
+  const mugs = [3, 6, 12, 15].filter((step) => at >= step).length;
+  const fill = Math.max(0, Math.min(1, (at - 18) / 10));
+  return { mugs, sparkle: at >= 18, hp: Math.round(state.rest.from + (state.maxHp - state.rest.from) * fill) };
 }
 
 /** The tabs of the Start menu, in order; left and right go round. */
@@ -531,7 +544,7 @@ export function step(state: GameState, input: Input, world: World, options: Opti
   if (state.pause) {
     const left = ctx.instant ? 0 : state.pause - 1;
     if (left > 0) return done({ ...state, pause: left });
-    return done(runScript({ ...state, pause: undefined }, ctx));
+    return done(runScript({ ...state, pause: undefined, rest: undefined }, ctx));
   }
   if (state.dialogue) return done(stepDialogue(state, input, ctx));
   if (state.battle) {

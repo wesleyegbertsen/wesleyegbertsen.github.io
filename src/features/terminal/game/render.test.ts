@@ -1097,3 +1097,21 @@ describe('the trail through the tall grass', () => {
     expect(draws.indexOf(shown(draws, 'rustle')[0]!)).toBeLessThan(player);
   });
 });
+
+describe('the rest at the cafe', () => {
+  it('draws a tray of four mugs that are poured with the tune, a sparkle at the end and the energy filling up', () => {
+    const resting = (pause: number) => drawn({ ...started(), hp: 5, pause, rest: { ticks: 64, from: 5 } });
+    const count = (draws: Draw[], name: 'mug' | 'mug-lit' | 'sparkle') => draws.filter((draw) => draw.sheet === 'tiles' && draw.sx === tiles[name][0] && draw.sy === tiles[name][1]).length;
+    const start = resting(64).draws;
+    expect([count(start, 'mug'), count(start, 'mug-lit'), count(start, 'sparkle')]).toEqual([4, 0, 0]);
+    expect(textAt(start, 54)).toBe('HP');
+    const half = resting(64 - 26).draws;
+    expect([count(half, 'mug'), count(half, 'mug-lit')]).toEqual([1, 3]);
+    const end = resting(2);
+    expect([count(end.draws, 'mug-lit'), count(end.draws, 'sparkle')]).toEqual([4, 2]);
+    // The bar is full by then: its fill is as wide as it can be (76 less the frame).
+    expect(end.fills).toContainEqual(expect.objectContaining({ x: 51, y: 56, w: 74, h: 4 }));
+    // No rest, no tray.
+    expect(count(drawn(started()).draws, 'mug')).toBe(0);
+  });
+});

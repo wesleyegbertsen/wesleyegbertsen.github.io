@@ -1,4 +1,4 @@
-import { TRAIL_TICKS, WALK_TICKS, initialGame, ownedItems, step } from './engine.ts';
+import { TRAIL_TICKS, WALK_TICKS, initialGame, ownedItems, restScene, step } from './engine.ts';
 import { random } from './rng.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { fold, paginate, wrap } from './text.ts';
@@ -241,6 +241,42 @@ describe('things on the map', () => {
     const instant = step(hurt, { ...NO_INPUT, a: true }, resting, { instant: true });
     expect(instant.cues).toContain('rest');
     expect(instant.state.dialogue?.pages).toEqual([['Rested.']]);
+  });
+
+  it('plays a scene with the rest: four mugs light up one after another with the tune, a sparkle, then the energy fills', () => {
+    const main = world.maps.main!;
+    const resting = { ...world, maps: { ...world.maps, main: { ...main, objects: main.objects.map((object) => (object.id === 'main:k' ? { ...object, branches: [{ do: [{ heal: true as const, rest: 64 }, { say: ['Rested.'] }] }] } : object)) } } };
+    const hurt = { ...play(started(), 'right', 'right', 'up', 'right'), hp: 4 };
+    let state = step(hurt, { ...NO_INPUT, a: true }, resting).state;
+    expect(state.rest).toEqual({ ticks: 64, from: 4 });
+    // Frame by frame: the mugs come one at a time, in order, never one going out again; then the sparkle; then the bar.
+    const seen: ReturnType<typeof restScene>[] = [];
+    while (state.pause) {
+      seen.push(restScene(state));
+      state = step(state, NO_INPUT, resting).state;
+    }
+    expect(seen).toHaveLength(64);
+    const mugs = seen.map((scene) => scene!.mugs);
+    expect(mugs[0]).toBe(0);
+    expect(mugs.at(-1)).toBe(4);
+    for (let i = 1; i < mugs.length; i++) expect(mugs[i]! - mugs[i - 1]!).toBeGreaterThanOrEqual(0);
+    // Each mug lights once and stays lit: four changes in all, nothing that blinks.
+    const changes = mugs.flatMap((count, i) => (i > 0 && count !== mugs[i - 1] ? [i] : []));
+    expect(changes).toHaveLength(4);
+    // The sparkle after the fourth mug; the bar fills after it, from the energy before the rest to full.
+    const firstSparkle = seen.findIndex((scene) => scene!.sparkle);
+    expect(firstSparkle).toBeGreaterThan(changes.at(-1)!);
+    const energy = seen.map((scene) => scene!.hp);
+    expect(energy[0]).toBe(4);
+    expect(energy[firstSparkle]).toBe(4);
+    expect(energy.at(-1)).toBe(hurt.maxHp);
+    for (let i = 1; i < energy.length; i++) expect(energy[i]!).toBeGreaterThanOrEqual(energy[i - 1]!);
+    // Over: no scene, and the words come.
+    expect(restScene(state)).toBeNull();
+    expect(state.rest).toBeUndefined();
+    expect(state.dialogue?.pages).toEqual([['Rested.']]);
+    // With reduced motion there is no scene at all: the end at once.
+    expect(step(hurt, { ...NO_INPUT, a: true }, resting, { instant: true }).state.rest).toBeUndefined();
   });
 
   it('ends the game at the host', () => {

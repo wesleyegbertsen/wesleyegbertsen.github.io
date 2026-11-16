@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
-import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, restScene } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -260,6 +260,20 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
     const left = Math.floor((SCREEN_W - width) / 2);
     box(ctx, left, drop - NOTE_H, width, NOTE_H);
     drawText(ctx, sheets, name, left + 6, drop - NOTE_H + 4);
+  }
+
+  // A rest at the cafe: a tray with four mugs that are poured one after another with the tune, a sparkle with its
+  // last note, and the energy filling up under them. Each mug lights once and stays lit: nothing blinks.
+  const scene = restScene(state);
+  if (scene) {
+    box(ctx, 24, 20, 112, 56);
+    for (let i = 0; i < 4; i++) drawSprite(ctx, sheets, i < scene.mugs ? 'mug-lit' : 'mug', 34 + i * 24, 28);
+    if (scene.sparkle) {
+      drawSprite(ctx, sheets, 'sparkle', 26, 20);
+      drawSprite(ctx, sheets, 'sparkle', 118, 20);
+    }
+    drawText(ctx, sheets, 'HP', 34, 54);
+    hpBar(ctx, 50, 55, 76, scene.hp, state.maxHp, 6);
   }
 
   // The note after a find: the count, in the corner, for a moment. A thing to collect with a picture of its own
