@@ -123,25 +123,32 @@ describe('the sprite sheets', () => {
       expect(arms(one), one).not.toBe(arms(standing));
       expect(arms(two), two).not.toBe(arms(standing));
       expect(arms(one), direction).not.toBe(arms(two));
-      // The head stays still, or the player would wobble (the mirrored frames have a symmetric head).
-      if (direction === 'left' || direction === 'right') expect(head(one)).toBe(head(standing));
+      // From the side the head is the same picture, one row lower in a stride (the bob of a step), never another.
+      if (direction === 'left' || direction === 'right') expect(frames[one]!.slice(1, 10).join('/')).toBe(head(standing));
     }
   });
 
-  it('keep the arm at the side of the body when the player walks left or right: a swing of one pixel, nothing sticks out', () => {
+  it('walk sideways with a stride: the arm two pixels in front and then behind the body, the legs taking turns, a bob', () => {
     const script = "import('./scripts/sprites/characters.mjs').then(({ characters }) => console.log(JSON.stringify([0, 1, 2].map((frame) => characters['player-left-' + frame]))))";
-    const [standing, ...walking] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as string[][];
-    // Rows 9 to 12: the shoulders, the arm and the hand. The legs below may stride.
-    const filled = (rows: string[]) => new Set(rows.slice(9, 13).flatMap((row, y) => [...row].flatMap((dot, x) => (dot === '.' ? [] : [`${x},${y}`]))));
-    const body = filled(standing!);
-    for (const frame of walking) {
-      // Inside the outline of the standing body: no arm in front of it or behind the back.
-      for (const cell of filled(frame)) expect(body.has(cell), cell).toBe(true);
-      // A small swing: a handful of pixels change, not a whole arm.
-      const changed = frame.slice(9, 13).flatMap((row, y) => [...row].filter((dot, x) => dot !== standing![9 + y]![x])).length;
-      expect(changed).toBeGreaterThan(0);
-      expect(changed).toBeLessThanOrEqual(8);
-    }
+    const [standing, forward, back] = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })) as [string[], string[], string[]];
+    // How far the arm and hand reach beyond the standing body, in the rows of the arm (10 to 12 of a stride).
+    const left = (rows: string[]) => Math.min(...rows.slice(10, 13).map((row) => row.search(/[^.]/)).filter((x) => x >= 0));
+    const right = (rows: string[]) => Math.max(...rows.slice(10, 13).map((row) => row.length - 1 - [...row].reverse().join('').search(/[^.]/)));
+    const bodyLeft = Math.min(...standing.slice(9, 13).map((row) => row.search(/[^.]/)));
+    const bodyRight = Math.max(...standing.slice(9, 13).map((row) => row.length - 1 - [...row].reverse().join('').search(/[^.]/)));
+    // Looking left: forward is to the left. About two pixels each way, like the arms of the walk up and down.
+    expect(bodyLeft - left(forward)).toBe(2);
+    expect(right(back) - bodyRight).toBe(2);
+    expect(right(forward)).toBeLessThanOrEqual(bodyRight);
+    expect(left(back)).toBeGreaterThanOrEqual(bodyLeft);
+    // The legs take turns: in each stride one foot is off the ground (the bottom row), and not the same one.
+    const feet = (rows: string[]) => [...rows[15]!].map((dot) => dot !== '.');
+    const ground = (rows: string[], from: number, to: number) => feet(rows).slice(from, to).some(Boolean);
+    expect([ground(forward, 0, 8), ground(forward, 8, 16)]).toEqual([false, true]);
+    expect([ground(back, 0, 8), ground(back, 8, 16)]).toEqual([true, false]);
+    // The bob: the strides start a row lower than standing.
+    for (const frame of [forward, back]) expect(frame[0]).toBe('................');
+    expect(standing[1]).not.toBe('................');
   });
 
   it('draw everyone who can turn by hand: a back without a face and a side that is not the front', () => {

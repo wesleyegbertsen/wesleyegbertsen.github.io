@@ -7,6 +7,12 @@
 /** The same picture from the shoulders down: rows 9 to 14 replaced (the arms and the legs of a step). */
 const step = (rows, ...below) => [...rows.slice(0, 9), ...below, '................'];
 
+/**
+ * A stride seen from the side: the head and the shoulders of the standing picture one row lower (the bob of a
+ * step), then six rows of the body, the arm and the legs (rows 10 to 15).
+ */
+const stride = (...below) => ['................', ...left.slice(0, 9), ...below];
+
 const down = [
   '................',
   '.....333333.....',
@@ -87,25 +93,24 @@ export const characters = {
     '.........333....',
   ),
   'player-left-0': left,
-  // A stride with the arm a pixel forward, then one with it a pixel back. The arm stays at the side of the body:
-  // seen from the side it hangs over the hip and only sways.
-  'player-left-1': step(
-    left,
+  // A stride, seen from the side. The body drops a pixel (the bob of a step), the arm swings two pixels in front
+  // of the body and then two behind it, and the legs take turns: the front foot lifted and forward with the arm
+  // back, then the back foot lifted with the arm forward. Heads stay the same picture, a row lower.
+  'player-left-1': stride(
+    '...332222223....',
+    '..3012222223....',
+    '..33.2222223....',
     '....32222223....',
-    '....30122223....',
-    '....30122223....',
-    '....32222223....',
-    '...3223.3223....',
-    '..3333..333.....',
+    '..33223..3223...',
+    '.........3333...',
   ),
-  'player-left-2': step(
-    left,
+  'player-left-2': stride(
+    '....322222233...',
+    '....3222222103..',
+    '....3222222.33..',
     '....32222223....',
-    '....32201223....',
-    '....32201223....',
-    '....32222223....',
-    '....3223.3223...',
-    '....333.3333....',
+    '...3223..32233..',
+    '..3333..........',
   ),
   teacher: [
     '................',
