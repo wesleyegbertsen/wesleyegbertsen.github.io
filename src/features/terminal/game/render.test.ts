@@ -1503,7 +1503,10 @@ describe('the piece selector of the player piano', () => {
   it('lists the two real pieces, and the second one\'s artist whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
-    expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATA', '>SCARBOROUGHFAIR']);
+    expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
+    // The longest name a row holds (22 characters, the first movement's) stays inside the box.
+    const row = draws.filter((draw) => draw.sheet === 'font' && draw.y === 24);
+    expect(Math.max(...row.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     expect(textAt(draws, 44)).toBe('');
     expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
     expect(textAt(draws, 120)).toBe('2:31A:playB:back');

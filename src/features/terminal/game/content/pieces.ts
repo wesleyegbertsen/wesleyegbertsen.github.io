@@ -15,6 +15,6 @@ export type PieceEntry = { id: string; name: string; artist: string; track: stri
 export const PIECE_TEXT_MAX = 22;
 
 export const PIECES: PieceEntry[] = [
-  { id: 'moonlight', name: 'MOONLIGHT SONATA', artist: 'L. VAN BEETHOVEN', track: 'moonlight' },
+  { id: 'moonlight', name: 'MOONLIGHT SONATA MVT 1', artist: 'L. VAN BEETHOVEN', track: 'moonlight' },
   { id: 'scarborough-fair', name: 'SCARBOROUGH FAIR', artist: 'TRADITIONAL ENGLISH', track: 'scarborough-fair' },
 ];

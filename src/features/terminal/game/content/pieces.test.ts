@@ -20,7 +20,11 @@ const peakOf = (name: string) => {
 describe('the pieces of the player piano', () => {
   it('has the Moonlight Sonata, by Beethoven', () => {
     expect(PIECES.map((piece) => [piece.id, piece.track])).toContainEqual(['moonlight', 'moonlight']);
-    expect(PIECES.find((piece) => piece.id === 'moonlight')?.artist).toMatch(/BEETHOVEN/);
+    expect(PIECES.find((piece) => piece.id === 'moonlight')?.artist).toBe('L. VAN BEETHOVEN');
+  });
+
+  it('says in its name that the Moonlight Sonata is the first movement only (bars 1 to 69), in words, not a Roman numeral', () => {
+    expect(PIECES.find((piece) => piece.id === 'moonlight')?.name).toBe('MOONLIGHT SONATA MVT 1');
   });
 
   it('names a track of TRACKS for every piece: one that plays once, plucked', () => {
