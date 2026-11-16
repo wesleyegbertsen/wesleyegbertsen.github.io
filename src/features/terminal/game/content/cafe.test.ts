@@ -68,9 +68,10 @@ describe('the cafe in town', () => {
   it('is a building of its own: a canopy, a plaque with a cup, a door and a sign beside it', () => {
     const door = thing(town, 'X');
     expect(door.sprite).toBe('door-brick');
-    expect(tileOf(town, door.x - 1, door.y)!.sprite).toBe('plaque-cafe');
-    for (const dx of [-2, -1, 0, 1]) expect(tileOf(town, door.x + dx, door.y - 1)!.sprite, String(dx)).toBe('canopy');
-    for (const dx of [-2, -1, 0, 1]) expect(tileOf(town, door.x + dx, door.y - 2)!.solid, String(dx)).toBe(true);
+    // The door on the left of the front, the plaque on its right (as the door inside is on the left of the room).
+    expect(tileOf(town, door.x + 1, door.y)!.sprite).toBe('plaque-cafe');
+    for (const dx of [-1, 0, 1, 2]) expect(tileOf(town, door.x + dx, door.y - 1)!.sprite, String(dx)).toBe('canopy');
+    for (const dx of [-1, 0, 1, 2]) expect(tileOf(town, door.x + dx, door.y - 2)!.solid, String(dx)).toBe(true);
     // Only the cafe has them.
     const count = (sprite: string) => town.cells.flat().filter((char) => town.tiles[char]!.sprite === sprite).length;
     expect(count('plaque-cafe')).toBe(1);

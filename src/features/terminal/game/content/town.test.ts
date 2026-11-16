@@ -444,3 +444,21 @@ describe('the mountain by the West Road', () => {
     expect(lookAt(mouth.x, mouth.y + 1)).toBe('cliff-face-e');
   });
 });
+
+describe('the front of the cafe', () => {
+  const tile = (x: number, y: number) => town.tiles[town.cells[y]![x]!]!.sprite;
+
+  it('has its door on the left of the front and the coffee plaque on the right, as the door inside is on the left', () => {
+    const door = town.objects.find((object) => object.id === 'town:X')!;
+    expect([door.x, door.y]).toEqual([18, 11]);
+    expect([17, 19, 20].map((x) => tile(x, 11))).toEqual(['glass', 'plaque-cafe', 'glass']);
+    // In and out: the door takes the player to the mat inside, and the mat back to the road in front of the door.
+    const outside = { ...initialGame(world), scene: 'world' as const, map: 'town', x: 18, y: 12, dir: 'up' as const };
+    const inside = press(outside, { dir: 'up', pressed: 'up' });
+    expect(inside.map).toBe('cafe');
+    const mat = world.maps.cafe!.objects.find((object) => object.id === 'cafe:m')!;
+    expect([inside.x, inside.y]).toEqual([mat.x, mat.y - 1]);
+    const back = press(inside, { dir: 'down', pressed: 'down' });
+    expect([back.map, back.x, back.y]).toEqual(['town', 18, 12]);
+  });
+});
