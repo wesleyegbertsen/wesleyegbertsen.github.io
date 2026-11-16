@@ -48,6 +48,8 @@ export type Hud = {
   colour?: boolean;
   /** The dim LCD (LIGHT: DIM): drawn from the dimmed sheets, the boxes and bars in the dimmed shades. */
   dim?: boolean;
+  /** Reduced motion: the player piano shows one still picture and no note. */
+  still?: boolean;
 };
 
 /** The volume wheel has this many steps. */
@@ -59,6 +61,8 @@ export const VOLUME_STEPS = 10;
  */
 let [LIGHTEST, , DARK, DARKEST] = PALETTE as readonly [string, string, string, string];
 let tint: Sheets['colour'] | null = null;
+/** Reduced motion: whatever would move stands still (the player piano). Set at the start of every drawGame. */
+let STILL = false;
 /** The darkest shade of the dark in a cave. */
 let NIGHT = PALETTE[3] as string;
 const LINE = 10;
@@ -210,6 +214,26 @@ export function hopHeight(progress: number): number {
   return Math.max(0, Math.round(Math.sin(Math.PI * Math.max(0, Math.min(1, progress))) * HOP_PIXELS));
 }
 
+/** How long a picture of the playing piano stays (0.4 s: fewer than 3 changes a second), and a note's rise. */
+export const PIANO_FRAME = 24;
+export const PIANO_NOTE = 48;
+
+/**
+ * The player piano while it plays: its two playing pictures in turn, and a note that floats up from it and starts
+ * again, on the ticks of its piece. With reduced motion (STILL) the first picture alone, and no note.
+ */
+function drawPiano(ctx: Painter, sheets: Sheets, ticks: number, x: number, y: number) {
+  const other = !STILL && Math.floor(ticks / PIANO_FRAME) % 2 === 1;
+  drawSprite(ctx, sheets, other ? 'piano-play-b' : 'piano-play', x, y);
+  if (STILL) return;
+  const rise = (PIANO_NOTE - (ticks % PIANO_NOTE)) % PIANO_NOTE;
+  const top = y - 2 - Math.floor(rise / 4);
+  // An eighth note: a head, a stem and a flag.
+  rect(ctx, x + 9, top + 4, 3, 2, DARKEST);
+  rect(ctx, x + 11, top, 1, 4, DARKEST);
+  rect(ctx, x + 12, top, 1, 2, DARKEST);
+}
+
 function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   const map = world.maps[state.map]!;
   const progress = state.walk ? state.walk.t / (state.walk.jump ? JUMP_TICKS : WALK_TICKS) : 1;
@@ -242,6 +266,11 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
   for (const object of map.objects) {
     const sprite = spriteOf(object, state);
     if (!sprite || gone(object, state)) continue;
+    // The player piano while it plays in this room.
+    if (sprite === 'piano' && state.piano?.map === map.id) {
+      drawPiano(ctx, sheets, state.piano.ticks, object.x * TILE - camX, object.y * TILE - camY);
+      continue;
+    }
     const roaming = state.roam[object.id];
     if (!roaming) {
       drawSprite(ctx, sheets, frameOf(facingSprite(sprite, object, state), object.animated, state.clock), object.x * TILE - camX, object.y * TILE - camY);
@@ -728,6 +757,7 @@ function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World
 export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   ctx.imageSmoothingEnabled = false;
   // Game Boy Color: every picture from the copy of its sheet in its palette, the boxes and lines in the `ui` one.
+  STILL = !!hud?.still;
   // The dim LCD: the dimmed copies of the sheets and the dimmed shades, where they have been made.
   const dark = hud?.dim && sheets.dim ? sheets.dim : null;
   tint = hud?.colour && sheets.colour ? (dark ? (dark.colour ?? sheets.colour) : sheets.colour) : null;

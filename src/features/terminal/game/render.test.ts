@@ -1432,3 +1432,42 @@ describe('the dim LCD', () => {
     expect(new Set(gbc)).toEqual(new Set([dimmed(PALETTES.cave)[3]]));
   });
 });
+
+describe('the player piano', () => {
+  // The test world's coffee machine (5,1) as the piano, the player in front of it.
+  const main = world.maps.main!;
+  const pianoWorld: World = { ...world, maps: { ...world.maps, main: { ...main, objects: main.objects.map((object) => (object.id === 'main:k' ? { ...object, sprite: 'piano' } : object)) } } };
+  const at = (piano: GameState['piano'], hud: Hud = { muted: false, volume: 5 }) => drawn({ ...started(), x: 4, y: 1, piano }, hud, pianoWorld);
+  const pictures = (draws: Draw[]) =>
+    (['piano', 'piano-play', 'piano-play-b'] as const).filter((name) => draws.some((draw) => draw.sheet === 'tiles' && draw.sx === tiles[name][0] && draw.sy === tiles[name][1]));
+  /** The pixels of the floating note: small fills of the darkest shade over the piano's column, above its cell. */
+  const PIANO = { x: 5 * TILE - camera(4 * TILE + TILE / 2, world.maps.main!.width * TILE, SCREEN_W), y: 1 * TILE - camera(1 * TILE + TILE / 2, world.maps.main!.height * TILE, SCREEN_H) };
+  const note = (fills: Fill[]) => fills.filter((fill) => fill.shade === PALETTE[3] && fill.w <= 3 && fill.h <= 6 && fill.x >= PIANO.x && fill.x < PIANO.x + TILE && fill.y < PIANO.y + 4);
+
+  it('stands still while off, with its keys up', () => {
+    const { draws, fills } = at(undefined);
+    expect(pictures(draws)).toEqual(['piano']);
+    expect(note(fills)).toHaveLength(0);
+  });
+
+  it('plays with motion: its two pictures in turn, every 24 ticks (under 3 changes a second), and a note rising above it', () => {
+    const frame = (ticks: number) => at({ map: 'main', ticks });
+    expect(pictures(frame(576).draws)).toEqual(['piano-play']);
+    expect(pictures(frame(552).draws)).toEqual(['piano-play-b']);
+    expect(pictures(frame(528).draws)).toEqual(['piano-play']);
+    const low = Math.min(...note(frame(600).fills).map((fill) => fill.y));
+    const high = Math.min(...note(frame(580).fills).map((fill) => fill.y));
+    expect(note(frame(600).fills).length).toBeGreaterThan(0);
+    expect(high).toBeLessThan(low);
+    // Not in another room.
+    expect(pictures(at({ map: 'room', ticks: 600 }).draws)).toEqual(['piano']);
+  });
+
+  it('with reduced motion shows one still playing picture and no note, whatever the ticks', () => {
+    for (const ticks of [600, 588, 500]) {
+      const { draws, fills } = at({ map: 'main', ticks }, { muted: false, volume: 5, still: true });
+      expect(pictures(draws)).toEqual(['piano-play']);
+      expect(note(fills)).toHaveLength(0);
+    }
+  });
+});
