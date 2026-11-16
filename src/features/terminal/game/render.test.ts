@@ -1500,6 +1500,17 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
+  it('lists the two real pieces, and the second one\'s artist whole and inside the box at the foot', () => {
+    const real = buildWorld({ profile, skills, experience, education, projects });
+    const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
+    expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATA', '>SCARBOROUGHFAIR']);
+    expect(textAt(draws, 44)).toBe('');
+    expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
+    expect(textAt(draws, 120)).toBe('1:19A:playB:back');
+    const artist = draws.filter((draw) => draw.sheet === 'font' && draw.y === 110);
+    expect(Math.max(...artist.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
+  });
+
   it('is drawn in the colours of the boxes in GBC', () => {
     const ids = Object.keys(PALETTES) as PaletteId[];
     const coloured = { ...sheets, colour: Object.fromEntries(ids.map((id) => [id, { tiles: `tiles:${id}`, sprites: `sprites:${id}`, font: `font:${id}` }])) } as unknown as Sheets;

@@ -84,6 +84,54 @@ const lead = (notes: string[], volume = 0.42) => ({ wave: 'pulse' as Wave, volum
 const STEADY = 'h:2 h:2 s:2 h:2 h:2 h:2 s:2 h:2';
 const DRIVING = 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h h';
 
+/**
+ * Scarborough Fair, a traditional English song; the notes are written out here from an arrangement published on IMSLP
+ * (PMLP514655, file IMSLP318388) under Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0); changed here:
+ * reduced to five chiptune voices, the repeated section played twice, a chosen tempo, no lyrics. Non-commercial use
+ * only: if the site is ever used commercially, remove the piece (its line in content/pieces.ts and its track).
+ *
+ * HOW TO EDIT: per voice, the score's bars 1 and 2 (`intro`), 3 to 22 (`section`, the part between the repeat
+ * signs) and 23 (`end`, the chord under the fermata, held 24 steps); the track plays the intro, the section twice and
+ * the end. A step is a sixteenth (`bpm: 100`, the score has no tempo; a calm folk pace), a bar of 3/4 is 12 steps, a
+ * bar line `|` between bars (content/scarborough.test.ts reads them). A tie is one longer note in the bar where it
+ * starts, and an empty bar after it. Every pitch carries its accidental (bar 11's B naturals are B4).
+ */
+const FAIR: Record<'melody' | 'upper' | 'bass' | 'octave' | 'lower', { intro: string; section: string; end: string }> = {
+  // The tune (the vocal line).
+  melody: {
+    intro: '-:12 | -:12',
+    section: '-:12 | -:12 | D4:8 D4:4 | A4:8 A4:4 | E4:6 F4:2 E4:4 | D4:12 | -:4 A4:4 C5:4 | D5:8 C5:4 | A4:4 B4:4 G4:4 | A4:20 | D5:4 | D5:8 D5:4 | C5:8 A4:4 | A4:4 G4:4 F4:4 | E4:12 | D4:8 A4:4 | G4:8 F4:4 | E4:4 D4:4 C4:4 | D4:24 | ',
+    end: '-:24',
+  },
+  // The right hand's upper chord note.
+  upper: {
+    intro: 'A4:12 | A4:12',
+    section: 'A4:12 | A4:12 | A4:12 | A4:12 | G4:12 | D4:12 | F4:12 | A4:12 | A4:4 B4:8 | A4:24 |  | A4:12 | A4:12 | A4:4 G4:4 F4:4 | E4:12 | A4:12 | G4:12 | G4:12 | A4:24 | ',
+    end: 'A4:24',
+  },
+  // The left hand: one note at a time, so all of it is the bass.
+  bass: {
+    intro: 'D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2',
+    section: 'D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:8 | D2:2 A2:2 D3:8 | C2:2 G2:2 C3:8 | D2:2 A2:2 D3:4 D2:2 E2:2 | F2:2 C3:2 F3:8 | D2:2 A2:2 D3:8 | F2:2 D3:2 G3:8 | D2:2 A2:2 D3:2 F3:2 A3:4 | D2:2 A2:2 D3:2 F3:2 A3:4 | D2:2 A2:2 D3:4 D2:2 E2:2 | F2:2 C3:2 F3:8 | F2:2 C3:2 E2:4 D2:4 | C2:2 G2:2 C3:2 E3:2 G3:4 | D2:2 A2:2 D3:8 | C2:2 G2:2 C3:8 | C2:2 G2:2 C3:8 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2',
+    end: 'A2:24',
+  },
+  // Silent but for the D3 of the last chord.
+  octave: {
+    intro: '-:12 | -:12',
+    section: '-:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12',
+    end: 'D3:24',
+  },
+  // The right hand's lower chord note.
+  lower: {
+    intro: 'D4:12 | D4:12',
+    section: 'D4:12 | D4:12 | D4:12 | D4:12 | C4:12 | A3:12 | C4:12 | D4:12 | F4:4 G4:8 | D4:24 |  | D4:12 | F4:12 | F4:4 E4:4 D4:4 | C4:12 | D4:12 | C4:12 | C4:12 | D4:24 | ',
+    end: 'D4:24',
+  },
+};
+
+/** A voice of Scarborough Fair as played: the intro, the section twice, the end. */
+const fair = ({ intro, section, end }: { intro: string; section: string; end: string }) => [intro, section, section, end].join(' | ');
+
 // --- the tracks ----------------------------------------------------------------------------------------------------
 
 export const TRACKS: Record<string, Track> = {
@@ -246,6 +294,18 @@ export const TRACKS: Record<string, Track> = {
       // The upper note of the left hand (its octaves; from bar 60 its G sharp line), and the inner notes of chords.
       { wave: 'triangle', volume: 0.14, pluck: true, notes: 'C#3:48 | B2:48 | A2:24 F#2:24 | G#2:24 G#2:24 | C#3:48 | B#2:48 | C#3:24 F#2:24 | B2:24 B2:24 | E3:48 | E3:48 | D3:48 | C3:12 B2:12 A#2:24 | B2:24 -:24 | -:24 F#2:24 | B2:60 | E3:12 G3:12 E3:12 | B2:60 | E3:12 G3:12 E3:12 | B2:24 G#2:24 | E#2:24 F#2:24 | B2:24 B#2:24 | -:48 | F#2:48 | E#3:48 | F#3:24 D#3:12 C#3:12 | B#2:36 B#2:12 | C#3:24 F#2:12 F##2:12 | G#2:48 | G#2:48 | G#2:48 | G#2:48 | G#2:48 | G#2:48 | G#2:48 | G#2:144 |  |  | G#2:48 | G#2:48 | G#2:24 A2:24 | F#2:24 G#2:24 | C#3:48 | B#2:48 | C#3:24 F#2:24 | B2:24 B2:24 | E3:48 | D#3:48 | E3:24 D#3:12 C#3:12 | B#2:24 C#3:24 | F#2:24 G#2:24 | C#3:60 | F#3:12 A3:12 F#3:12 | C#3:60 | F#3:12 A3:12 F#3:12 | C#3:24 F#2:24 | D#3:36 E3:12 | C#3:12 D#3:12 B#2:12 C#3:12 | A2:24 G#2:12 F#2:12 | G#2:24 G#2:24 | G#2:36 G#2:9 G#2:3 | G#2:36 G#2:9 G#2:3 | G#2:36 G#2:9 G#2:3 | G#2:36 G#2:9 G#2:3 | G#2:36 G#2:9 G#2:3 | G#2:36 G#2:9 G#2:3 | G#2:24 C#3:24 | G#2:24 G#2:4 C#3:4 G#2:4 E2:4 G#2:4 E2:4 | -:24 C#3:24 | C#3:64' },
       { wave: 'thin', volume: 0.12, pluck: true, notes: '-:48 | -:48 | -:48 | -:48 | G#2:48 | G#2:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | C#2:48 | C#3:48 | -:48 | G#2:36 G#2:12 | A2:24 -:24 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:28 D#3:8 C#3:12 | B#2:24 D#3:12 C#3:12 | B#2:24 D3:12 C#3:12 | B#2:24 -:24 | -:48 | G#2:48 | G#2:48 | -:48 | -:48 | -:48 | -:48 | -:48 | G#2:24 G#2:24 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | E3:4 -:44 | -:48 | E3:4 -:44 | -:48 | -:24 E3:24 | E3:64' },
+    ],
+  },
+  /** Scarborough Fair, a traditional English song (CC BY-NC 4.0 arrangement; see FAIR above for the credit). */
+  'scarborough-fair': {
+    bpm: 100,
+    loop: false,
+    voices: [
+      { wave: 'pulse', volume: 0.22, pluck: true, notes: fair(FAIR.melody) },
+      { wave: 'thin', volume: 0.14, pluck: true, notes: fair(FAIR.upper) },
+      { wave: 'triangle', volume: 0.18, pluck: true, notes: fair(FAIR.bass) },
+      { wave: 'triangle', volume: 0.14, pluck: true, notes: fair(FAIR.octave) },
+      { wave: 'thin', volume: 0.12, pluck: true, notes: fair(FAIR.lower) },
     ],
   },
   /** The cafe: light and easy, with a brush on the hi-hat. */

@@ -14,4 +14,7 @@ export type PieceEntry = { id: string; name: string; artist: string; track: stri
 /** The most characters a name or an artist may have: what fits a row of the selector. */
 export const PIECE_TEXT_MAX = 22;
 
-export const PIECES: PieceEntry[] = [{ id: 'moonlight', name: 'MOONLIGHT SONATA', artist: 'L. VAN BEETHOVEN', track: 'moonlight' }];
+export const PIECES: PieceEntry[] = [
+  { id: 'moonlight', name: 'MOONLIGHT SONATA', artist: 'L. VAN BEETHOVEN', track: 'moonlight' },
+  { id: 'scarborough-fair', name: 'SCARBOROUGH FAIR', artist: 'TRADITIONAL ENGLISH', track: 'scarborough-fair' },
+];
