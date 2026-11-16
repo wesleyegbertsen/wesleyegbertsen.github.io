@@ -1511,8 +1511,8 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(draws, 54)).toBe('UNRAVEL');
     expect(textAt(draws, 64)).toBe('ALIEZ');
     expect(textAt(draws, 74)).toBe('');
-    expect(textAt(draws, 110)).toBe('TRADITIONALENGLISH');
-    expect(textAt(draws, 120)).toBe('2:31A:playB:back');
+    expect(textAt(draws, 110)).toBe('KATOTATSUYA');
+    expect(textAt(draws, 120)).toBe('2:26A:playB:back');
     const artist = draws.filter((draw) => draw.sheet === 'font' && draw.y === 110);
     expect(Math.max(...artist.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     // The third, converted from a MIDI: its row, its composer and its length at the foot.

@@ -84,55 +84,6 @@ const lead = (notes: string[], volume = 0.42) => ({ wave: 'pulse' as Wave, volum
 const STEADY = 'h:2 h:2 s:2 h:2 h:2 h:2 s:2 h:2';
 const DRIVING = 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h h';
 
-/**
- * Scarborough Fair, a traditional English song; the notes are written out here from an arrangement published on IMSLP
- * (PMLP514655, file IMSLP318388) under Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0); changed here:
- * reduced to five chiptune voices, the repeated section played four times, a chosen tempo, no lyrics. Non-commercial use
- * only: if the site is ever used commercially, remove the piece (its line in content/pieces.ts and its track).
- *
- * HOW TO EDIT: per voice, the score's bars 1 and 2 (`intro`), 3 to 22 (`section`, the part between the repeat
- * signs) and 23 (`end`, the chord under the fermata, held 24 steps); the track plays the intro, the section four times
- * (once for each verse, as the song is performed) and the end. A step is a sixteenth (`bpm: 100`, the score has no
- * tempo; a calm folk pace), a bar of 3/4 is 12 steps, a
- * bar line `|` between bars (content/scarborough.test.ts reads them). A tie is one longer note in the bar where it
- * starts, and an empty bar after it. Every pitch carries its accidental (bar 11's B naturals are B4).
- */
-const FAIR: Record<'melody' | 'upper' | 'bass' | 'octave' | 'lower', { intro: string; section: string; end: string }> = {
-  // The tune (the vocal line).
-  melody: {
-    intro: '-:12 | -:12',
-    section: '-:12 | -:12 | D4:8 D4:4 | A4:8 A4:4 | E4:6 F4:2 E4:4 | D4:12 | -:4 A4:4 C5:4 | D5:8 C5:4 | A4:4 B4:4 G4:4 | A4:20 | D5:4 | D5:8 D5:4 | C5:8 A4:4 | A4:4 G4:4 F4:4 | E4:12 | D4:8 A4:4 | G4:8 F4:4 | E4:4 D4:4 C4:4 | D4:24 | ',
-    end: '-:24',
-  },
-  // The right hand's upper chord note.
-  upper: {
-    intro: 'A4:12 | A4:12',
-    section: 'A4:12 | A4:12 | A4:12 | A4:12 | G4:12 | D4:12 | F4:12 | A4:12 | A4:4 B4:8 | A4:24 |  | A4:12 | A4:12 | A4:4 G4:4 F4:4 | E4:12 | A4:12 | G4:12 | G4:12 | A4:24 | ',
-    end: 'A4:24',
-  },
-  // The left hand: one note at a time, so all of it is the bass.
-  bass: {
-    intro: 'D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2',
-    section: 'D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:8 | D2:2 A2:2 D3:8 | C2:2 G2:2 C3:8 | D2:2 A2:2 D3:4 D2:2 E2:2 | F2:2 C3:2 F3:8 | D2:2 A2:2 D3:8 | F2:2 D3:2 G3:8 | D2:2 A2:2 D3:2 F3:2 A3:4 | D2:2 A2:2 D3:2 F3:2 A3:4 | D2:2 A2:2 D3:4 D2:2 E2:2 | F2:2 C3:2 F3:8 | F2:2 C3:2 E2:4 D2:4 | C2:2 G2:2 C3:2 E3:2 G3:4 | D2:2 A2:2 D3:8 | C2:2 G2:2 C3:8 | C2:2 G2:2 C3:8 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2 | D2:2 A2:2 D3:2 F3:2 A3:2 D3:2',
-    end: 'A2:24',
-  },
-  // Silent but for the D3 of the last chord.
-  octave: {
-    intro: '-:12 | -:12',
-    section: '-:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12 | -:12',
-    end: 'D3:24',
-  },
-  // The right hand's lower chord note.
-  lower: {
-    intro: 'D4:12 | D4:12',
-    section: 'D4:12 | D4:12 | D4:12 | D4:12 | C4:12 | A3:12 | C4:12 | D4:12 | F4:4 G4:8 | D4:24 |  | D4:12 | F4:12 | F4:4 E4:4 D4:4 | C4:12 | D4:12 | C4:12 | C4:12 | D4:24 | ',
-    end: 'D4:24',
-  },
-};
-
-/** A voice of Scarborough Fair as played: the intro, the section four times (one for each verse), the end. */
-const fair = ({ intro, section, end }: { intro: string; section: string; end: string }) => [intro, ...Array<string>(4).fill(section), end].join(' | ');
-
 // --- the tracks ----------------------------------------------------------------------------------------------------
 
 export const TRACKS: Record<string, Track> = {
@@ -297,16 +248,31 @@ export const TRACKS: Record<string, Track> = {
       { wave: 'thin', volume: 0.12, pluck: true, notes: '-:48 | -:48 | -:48 | -:48 | G#2:48 | G#2:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | C#2:48 | C#3:48 | -:48 | G#2:36 G#2:12 | A2:24 -:24 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:28 D#3:8 C#3:12 | B#2:24 D#3:12 C#3:12 | B#2:24 D3:12 C#3:12 | B#2:24 -:24 | -:48 | G#2:48 | G#2:48 | -:48 | -:48 | -:48 | -:48 | -:48 | G#2:24 G#2:24 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | -:48 | E3:4 -:44 | -:48 | E3:4 -:44 | -:48 | -:24 E3:24 | E3:64' },
     ],
   },
-  /** Scarborough Fair, a traditional English song (CC BY-NC 4.0 arrangement; see FAIR above for the credit). */
+  /**
+   * Scarborough Fair, a traditional English song, in the version from the soundtrack of the anime SukaSuka by Kato
+   * Tatsuya; converted here from a MIDI file linked with the YouTube video j6sZX-u9Nbk; reduced to five chiptune
+   * voices and quantized.
+   *
+   * HOW IT WAS CONVERTED (the MIDI is not in the repository; the rules of always-in-my-heart below, but for the
+   * tempo): the MIDI changes tempo six times (140, 120, 127, 130, 110 and 94 a minute) and meter (3/4 and 4/4); the
+   * format takes one bpm, so every note's time is worked out in seconds through that tempo map and rounded to a fixed
+   * grid of 75 ms, `bpm: 200` (37 ms at most). A bar line `|` is every 16 steps (1.2 s), a line of the data, not a
+   * bar of the music. The MIDI's empty first bar is left out; the end is padded to the next line. Track 0 is the right
+   * hand, tracks 1 and 2 the left; the 3 notes under 40 Hz (C1, D1) are left out; five voices one note at a time as
+   * for the other MIDI pieces; 71 of 1120 notes found no free voice (thick chords). No velocities or pedal:
+   * `levelled` sets the loudness (content/scarborough.test.ts checks the result).
+   */
   'scarborough-fair': {
-    bpm: 100,
+    bpm: 200,
     loop: false,
     voices: [
-      { wave: 'pulse', volume: 0.22, pluck: true, notes: fair(FAIR.melody) },
-      { wave: 'thin', volume: 0.14, pluck: true, notes: fair(FAIR.upper) },
-      { wave: 'triangle', volume: 0.18, pluck: true, notes: fair(FAIR.bass) },
-      { wave: 'triangle', volume: 0.14, pluck: true, notes: fair(FAIR.octave) },
-      { wave: 'thin', volume: 0.12, pluck: true, notes: fair(FAIR.lower) },
+      { wave: 'pulse', volume: 0.2, pluck: true, notes: '-:16 | -:1 F5:2 G5:2 C6:2 F6:2 G6:2 A6:1 -:1 C7:19 |  | -:1 D6:3 D#6:9 -:1 A#5:13 | C6:45 |  |  | -:8 | C5:21 | -:1 D5:3 D#5:6 -:1 | D5:3 D5:1 D#5:1 D5:1 C5:3 A#4:3 C5:24 |  | -:1 C5:12 | -:1 C5:6 G5:12 | -:1 G5:6 D5:9 | -:1 D#5:3 D5:6 C5:18 |  | -:16 | -:10 G5:6 | -:1 A#5:6 C6:12 | A#5:6 -:1 G5:6 | A5:6 F5:6 -:1 G5:18 | -:1 | -:16 | -:15 C6:6 | C6:12 | -:1 C6:6 A#5:12 | -:1 G5:6 G5:6 | F5:6 -:1 D#5:6 C5:18 |  | -:1 C5:9 F5:1 A5:1 C6:8 | C5:12 | G5:6 -:1 F5:12 | D5:6 -:1 D5:6 | C5:6 A#4:6 -:1 C5:17 | -:2 | -:16 | -:16 | -:16 | -:8 C6:6 C6:6 | -:1 C6:6 G5:6 | G5:6 -:1 G5:6 D5:9 | D#5:3 -:1 D5:6 | D#5:12 G5:3 | -:1 A5:3 A#5:3 A5:3 G5:9 | G5:3 -:1 F5:3 G5:3 C5:6 | G5:6 -:1 A#5:5 -:1 | C6:12 A#5:6 | -:1 G5:6 A5:6 F5:6 | -:1 G5:6 D#6:6 | D6:6 -:1 C6:5 -:1 A#5:6 | A5:6 G5:6 | -:1 D#5:6 D5:6 A#4:12 | -:1 C6:6 | C6:12 -:1 C6:6 | A#5:12 | -:1 G5:6 G5:6 F5:6 | -:1 D#5:6 D5:3 A#4:12 | -:4 A#6:18 | -:1 | C5:12 G5:6 | -:1 F5:12 D5:6 | D5:6 -:1 C5:6 | A#4:6 C5:18 | -:1 G#5:6 | A5:6 -:1 B5:5 -:1 C#6:6 | F#4:6 C#6:6 | C#6:6 A4:3 B5:3 -:1 A5:5 | -:1 G#5:6 G#4:3 A5:3 G#5:6 | F#5:6 F#4:3 G#4:3 | A4:3 -:1 B4:2 -:1 C#5:5 -:1 C#6:6 | E6:6 F#6:6 | F#4:3 E6:3 C#6:6 -:1 C#6:5 | -:1 D#6:8 -:1 B5:3 C#6:6 | C#5:3 B4:3 A4:3 G#4:3 | F#4:6 -:1 A4:5 -:1 C#5:6 | F#6:6 C#6:12 | E6:6 -:1 B5:8 | -:1 C#6:3 C#6:6 B5:6 | A5:6 G#5:3 E5:3 | E4:6 -:1 G#4:11 | -:1 E4:3 E4:3 F#4:3 G#4:3 | F#5:12 -:1 C#6:5 | -:1 B5:11 -:1 G#5:6 | G#5:6 F#5:6 | E5:6 -:1 F#5:8 | -:1 C#5:3 F#5:6 C#5:3 F#5:6 | C#5:3 F#5:6 -:1 A#4:2 -:1 | F#4:5 -:1 A#4:3 F#4:6 A#4:3 | F#4:6 A#4:3 F#4:6 | D5:6 -:1 D5:5 -:1 D5:6 | A5:6 A5:6 | A5:6 E5:9 -:1 | F5:3 E5:6 D5:6 A#4:3 | C5:3 D5:6 E5:6 | C5:3 -:1 D5:2 -:1 E5:11 | -:1 A5:6 C6:6 | D6:12 -:1 C6:5 | -:1 A5:6 B5:9 | G5:3 A5:3 D5:3 F5:3 D6:3 | D5:3 -:1 F5:2 -:1 C6:3 D5:3 F5:3 | B5:3 D5:3 F5:3 A5:3 D5:3 | F5:3 G5:3 D6:6 -:1 D6:11 | -:1 D6:6 C6:3 | G5:9 A5:6 | A5:6 -:1 G5:5 -:1 F5:6 | E5:3 C5:26 |  | -:2 C5:6 D5:12 | A5:6 G5:12 | -:1 E5:5 -:1 E5:7 | D5:7 C5:7 | -:1 D5:8 G4:8 | -:1 A4:8 C5:8 | -:1 B4:16 | -:1 D4:16 | -:1 D4:8 | A4:8 -:1 A4:8 | A4:8 -:1 E4:12 | F4:4 -:1 E4:8 | D4:16 | -:13' },
+      { wave: 'thin', volume: 0.18, pluck: true, notes: '-:16 | -:13 A6:19 |  | -:16 | -:11 A5:45 |  |  | -:8 | G4:21 | -:11 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:1 A4:9 -:6 | -:16 | -:16 | -:16 | -:13 G4:17 | -:2 | -:16 | -:16 | -:16 | -:8 C5:6 C5:6 | -:1 C5:6 G4:6 | G4:6 -:1 G4:6 D4:9 | D#4:3 -:1 D4:6 | C5:12 D#5:3 | -:1 F5:3 G5:3 F5:3 C5:9 | D#5:3 -:1 C5:3 D5:3 A4:6 | G4:6 -:1 A#4:5 -:1 | C5:12 A#4:6 | -:1 G4:6 A4:6 F4:6 | -:1 G4:6 C6:6 | A#5:6 -:1 A5:5 -:1 G5:6 | F5:6 D#5:6 | -:1 C5:6 A#4:6 D#4:12 | -:1 G5:6 | G5:12 -:1 G5:6 | F5:12 | -:1 D#5:6 C5:6 A#4:6 | -:1 A#4:6 A#4:3 D4:12 | -:4 F6:18 | -:1 | -:12 D#5:6 | -:1 D5:12 A#4:6 | A#4:6 -:1 F4:6 | D4:6 G4:18 | -:1 D#5:6 | F#5:6 -:1 G#5:5 -:1 A5:6 | C#4:6 A5:6 | A5:6 F#4:3 E5:3 -:1 E5:5 | -:1 E5:6 E4:3 E5:3 E5:6 | C#5:6 C#4:3 E4:3 | F#4:3 -:1 F#4:2 -:1 A4:5 -:1 A5:6 | C#6:6 C#6:6 | C#4:3 A5:3 A5:6 -:1 A5:5 | -:1 B5:8 -:1 B4:3 C#5:6 | A4:3 G#4:3 F#4:3 E4:3 | C#4:6 -:1 F#4:5 -:1 A4:6 | C#6:6 C#5:12 | B5:6 -:1 B4:8 | -:1 C#5:3 A5:6 F#5:6 | E5:6 E5:3 G#4:3 | B3:6 -:1 E4:11 | -:1 B3:3 -:9 | D5:12 -:1 C#5:5 | -:1 F#5:11 -:1 G#4:6 | E5:6 B4:6 | B4:6 -:1 C#5:8 | -:1 A4:3 -:6 A4:3 -:3 | -:3 A4:3 -:7 F#4:2 -:1 | -:6 F#4:3 -:6 F#4:3 | -:6 F#4:3 -:5 | -:1 A4:6 -:1 A4:5 -:1 A4:6 | D5:6 D5:6 | D5:6 C5:9 -:1 | C5:3 E4:6 A#4:6 F4:3 | -:3 A#4:6 C5:6 | G4:3 -:4 C5:11 | -:1 D5:6 C5:6 | A5:12 -:1 C5:5 | -:1 F5:6 B4:9 | C5:3 D5:3 -:6 D5:3 | -:7 C5:3 -:5 | -:1 B4:3 -:6 A4:3 -:3 | -:3 G4:3 D5:6 -:1 A5:11 | -:1 D5:6 G5:3 | D5:9 F5:6 | F5:6 -:1 D5:5 -:1 C5:6 | C5:3 G4:26 |  | -:2 C4:6 A#4:12 | F5:6 E5:12 | -:1 E4:5 -:1 C5:7 | C5:7 G4:7 | -:1 A4:8 F4:8 | -:1 F4:8 G4:8 | -:11 | -:7 A3:16 | -:9 | -:16 | -:16 | -:16 | -:16 | -:16' },
+      { wave: 'triangle', volume: 0.18, pluck: true, notes: 'C3:2 F3:2 G3:2 A3:2 C4:1 -:1 F4:1 G4:2 A4:2 C5:2 | -:15 | -:16 | -:16 | -:16 | -:16 | -:16 | -:10 C2:3 G3:3 | C4:3 D#4:3 -:1 G4:2 -:1 F4:3 C2:3 | G3:3 C4:3 D4:3 D#4:6 -:1 | C2:3 G3:3 C4:3 D4:3 G4:6 | -:1 C3:3 G3:3 C4:12 | C3:3 -:1 G3:3 C4:3 D#4:3 | G4:6 C3:3 -:1 G3:3 C4:3 | D#4:3 G4:6 D3:3 G#3:3 | -:1 C4:3 D#4:3 G4:6 D3:3 | G#3:3 C4:3 -:1 D#4:3 G4:6 | D3:3 G#3:3 C4:3 -:1 D#4:3 G4:6 | C3:3 G3:3 C4:3 D#4:3 | -:1 G4:6 C3:3 G3:3 C4:3 | D#4:3 G4:6 -:1 A#3:6 | C4:6 F3:6 -:1 C3:3 | G3:3 C4:3 D#4:3 G4:6 -:1 | C3:3 G3:3 C4:3 D#4:3 G4:6 | C3:3 -:1 G3:3 C4:12 | C3:1 D#3:1 G3:1 C4:16 | D#3:1 G3:1 A#3:1 D#4:16 | D#6:1 G6:1 A#6:1 D#7:16 | F2:3 | A#2:3 C3:3 -:1 F3:2 -:1 A#3:3 F3:3 | A3:18 | -:1 F3:6 F4:3 A#4:3 | C5:3 -:1 F4:3 D4:18 | -:1 A#5:18 | -:1 C3:3 | G3:3 C4:3 D#4:3 G4:6 A#2:4 | G3:3 C4:3 D#4:3 G4:6 | G2:3 G3:3 -:1 C4:3 D#4:3 G4:6 | F2:3 G3:3 -:1 C4:3 D#4:3 | D4:3 A#3:3 C2:18 | -:1 C3:18 | -:1 G2:18 |  | -:1 F3:3 G3:3 A#3:6 C4:3 | -:1 D#4:3 G4:3 C4:3 C4:12 | -:7 G2:18 | -:1 | C2:18 | -:1 A#2:6 C3:6 F2:6 | -:1 C3:3 G3:3 A#3:3 C4:3 | D#4:3 G4:3 -:1 C3:2 -:1 G3:3 A#3:3 | C4:3 D#4:3 G4:3 C3:3 -:1 G3:3 | A#3:3 C4:3 D#4:3 G4:3 C3:3 | G3:3 -:1 C4:12 | C4:12 -:1 C4:6 | A#3:12 | -:1 D3:6 D4:6 G3:6 | -:1 F3:6 F2:12 | -:4 F3:3 A#2:18 | -:1 | F2:6 C3:6 F3:6 | -:1 G2:6 A#2:6 F3:6 | A#1:6 -:1 A#2:6 | D3:6 C2:6 -:1 D#3:3 | G3:3 A#3:3 C4:3 G#2:6 | A2:6 -:1 B2:5 -:1 F#2:6 | C#3:6 A3:6 | F#2:6 C#3:6 -:1 E3:5 | -:1 E2:6 B2:6 E3:6 | F#2:6 C#3:6 | C#3:6 -:1 F#2:5 -:1 C#3:6 | A3:6 F#2:6 | C#3:6 A3:6 -:1 E2:5 | -:1 F#2:8 -:1 E2:3 F#2:6 | C#3:6 F#3:6 | F#2:6 -:1 C#3:5 -:1 F#3:6 | F#2:6 C#3:6 | C#3:6 G#2:6 -:1 E3:8 | -:1 A2:3 A2:6 F#2:6 | E2:6 G#2:6 | B2:6 -:1 E3:5 -:1 E2:6 | B2:6 E3:6 | D2:3 A2:3 D3:3 F#3:3 -:1 A3:2 -:1 | D2:3 E2:3 B2:3 E3:3 F#3:3 G#3:6 | E2:3 B2:3 E3:3 F#3:3 | G#3:6 -:1 F#1:3 C#3:3 F#3:3 | A3:3 F#3:3 A3:3 A3:3 F#3:3 | A3:3 A3:3 F#3:3 A3:3 -:1 A#1:3 | F#3:3 A#3:3 C#4:3 A#3:3 F#3:3 C#3:3 | A#2:3 G#2:3 F#2:3 E2:3 D#2:3 | D2:3 -:1 A2:2 -:1 D3:3 A3:3 D3:3 | A2:3 F3:3 D3:3 F3:3 A3:3 | F3:3 D3:3 C2:3 G2:3 -:1 C3:2 -:1 | E3:3 G3:3 E3:3 A#1:3 D3:3 F3:3 | A#3:3 D4:3 A#3:3 C2:3 G3:3 | C4:3 -:1 G3:2 -:1 E4:3 C4:3 D2:3 | A2:3 D3:3 F3:3 A3:3 F3:3 | D2:3 A2:3 F3:3 D4:3 -:1 A3:2 -:1 | F3:3 A2:6 D3:9 | A2:3 D2:3 A2:3 D3:3 F3:3 | A3:3 -:1 F3:2 -:1 D2:3 A3:3 E3:3 | D4:3 A3:3 E3:3 D2:3 A2:3 | D3:3 F3:3 D3:3 F3:3 -:1 D2:3 | D3:3 F3:3 A3:3 D4:6 C2:3 | C3:3 E3:3 G3:3 C4:6 | F2:1 C3:1 A3:5 E2:1 G3:5 D2:1 C3:5 | C2:3 G2:3 C3:3 D3:3 | E3:6 C2:3 G2:3 -:1 C3:2 -:1 | E3:3 C3:3 G2:3 A#1:3 F2:3 A#2:3 | F3:3 D3:3 F2:3 C2:3 G2:3 | C3:3 -:1 G3:2 -:1 C3:3 G2:3 C2:3 | G2:4 C3:3 -:1 G3:3 C3:4 | G2:3 -:1 A#1:8 A2:8 | -:1 F2:8 G1:24 |  | -:2 D2:89 |  |  |  |  |  | -:16' },
+
+      // The left hand's second note, and what neither hand's first two voices take.
+      { wave: 'triangle', volume: 0.14, pluck: true, notes: '-:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:10 C3:3 -:3 | -:13 C3:3 | -:16 | C3:3 -:13 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:10 D4:6 | F4:6 C4:6 -:4 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:4 C4:6 -:6 | -:7 A#4:18 | -:1 D6:18 | -:4 | -:15 C3:3 | -:14 | -:2 C3:3 -:11 | -:5 C3:3 -:8 | -:8 G2:18 | -:1 G3:18 | -:1 D3:18 |  | -:1 A#3:3 -:9 G4:3 | -:1 C5:3 D#5:3 A#4:3 G4:12 | -:7 C3:18 | -:1 | G2:18 | -:1 D3:6 F3:6 C3:6 | -:11 | -:16 | -:16 | -:16 | -:16 | -:1 G4:12 -:1 G4:6 | F4:12 | -:1 A#3:6 F4:6 A#3:6 | -:1 A#3:6 A#2:12 | -:7 A#3:18 | -:1 | F3:6 F3:6 -:4 | -:3 G3:6 D3:6 A#3:6 | F2:6 -:1 D3:6 | F3:6 C3:6 -:2 | -:11 D#3:6 | E3:6 -:1 F#3:5 -:1 C#3:6 | F#3:6 C#4:6 | C#3:6 F#3:6 -:1 A3:5 | -:1 B2:6 F#3:6 B3:6 | C#3:6 F#3:6 | A3:6 -:1 C#3:5 -:1 F#3:6 | C#4:6 C#3:6 | F#3:6 C#4:6 -:1 A2:5 | -:1 B2:8 -:1 B2:3 C#3:6 | F#3:6 A3:6 | C#3:6 -:1 F#3:5 -:1 A3:6 | C#3:6 F#3:6 | F#3:6 B2:6 -:1 G#3:8 | -:1 C#3:3 C#3:6 B2:6 | A2:6 B2:6 | E3:6 -:1 G#3:5 -:1 B2:6 | E3:6 G#3:6 | -:16 | -:16 | -:16 | -:8 F#2:3 -:5 | -:1 C#4:3 -:6 C#4:3 -:3 | -:3 C#4:3 -:7 A#2:2 -:1 | -:16 | -:16 | -:16 | -:4 A3:3 -:9 | -:16 | -:9 A#2:3 -:4 | -:11 C3:3 -:2 | -:14 D3:3 | -:15 | D3:3 -:13 | -:3 C3:6 A3:9 | D3:3 D3:3 -:8 | -:8 D3:3 -:5 | -:10 D3:3 -:3 | -:13 A2:2 -:1 | -:15 G2:3 | -:14 | -:8 C3:6 -:1 F3:5 | C3:3 -:9 | -:6 C3:3 -:7 | -:9 A#2:3 -:4 | -:11 C3:3 -:2 | -:14 C3:3 | -:15 | -:4 A#2:8 A3:8 | -:1 F3:8 G2:24 |  | -:11 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16' },
+      { wave: 'thin', volume: 0.12, pluck: true, notes: '-:16 | -:13 F6:19 |  | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:4 F4:6 -:6 | -:7 D5:18 | -:1 F6:18 | -:4 | -:16 | -:16 | -:16 | -:16 | -:8 C3:18 | -:1 C4:18 | -:1 A#3:18 |  | -:1 G4:12 -:3 | -:16 | -:13 G3:18 | -:1 | C3:18 | -:14 | -:16 | -:16 | -:16 | -:16 | -:16 | -:1 C5:12 -:1 C5:6 | A#4:12 | -:1 A#4:6 A#4:6 D#4:6 | -:1 D4:6 D3:12 | -:7 D6:18 | -:1 | -:16 | -:9 F3:6 D4:6 | -:7 F3:6 | -:14 | -:11 G#4:6 | C#5:6 -:1 E5:5 -:1 F#5:6 | A3:6 F#5:6 | F#5:6 C#4:6 -:1 C#5:5 | -:1 G#4:6 B3:6 C#5:6 | F#4:6 A3:6 | C#4:6 -:7 F#5:6 | A5:6 A5:6 | A3:6 F#5:6 -:1 E5:5 | -:1 F#5:8 -:5 | -:5 A3:6 C#4:6 | -:7 A3:5 -:1 C#4:6 | A5:6 A3:6 | C#4:6 G#5:6 -:1 B3:8 | -:1 A3:3 E5:6 C#5:6 | C#5:6 G#4:3 E4:3 | -:15 | -:4 G#3:6 B3:6 | A4:12 -:4 | -:3 E5:11 -:2 | -:5 B4:6 F#4:6 | E4:6 -:1 A4:8 | -:16 | -:13 C#4:2 -:1 | -:6 C#4:3 -:6 C#4:3 | -:6 C#4:3 -:5 | -:1 D4:6 -:1 D4:5 -:1 D4:6 | A4:6 A4:6 | A4:6 G4:9 -:1 | F4:3 -:6 F4:6 -:1 | -:11 G4:6 | -:15 | -:4 A4:6 -:6 | F5:12 -:4 | -:3 C5:6 -:7 | -:2 G4:3 A4:3 -:8 | -:16 | -:16 | -:13 F5:11 | -:7 C5:3 | C5:9 C5:6 | C5:6 -:1 C5:5 -:1 A4:6 | G4:3 E4:26 |  | -:8 F4:12 | D5:6 C5:12 | -:7 G4:7 | G4:7 E4:7 | -:1 F4:8 D4:8 | -:1 C4:8 C4:8 | -:11 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16 | -:16' },
     ],
   },
   /**
