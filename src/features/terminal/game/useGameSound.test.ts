@@ -320,7 +320,7 @@ describe('the way a battle opens, heard', () => {
 
 describe('the player piano, heard', () => {
   it('replaces the tune of its room with the piece, and the tune comes back from its start when it stops', () => {
-    const pianoWorld: World = { ...world, music: { ...world.music!, piano: 'moonlight' } };
+    const pianoWorld: World = { ...world, pieces: [{ id: 'moon', name: 'MOONLIGHT SONATA', artist: 'BEETHOVEN', track: 'moonlight', ticks: 100 }] };
     const made: FakeAudio[] = [];
     const store = createSettingsStore(false);
     const context = () => {
@@ -339,7 +339,7 @@ describe('the player piano, heard', () => {
     const town = audio.oscillators.slice();
     // On: the piece, from its first notes; the town's tune is let go.
     let from = audio.oscillators.length;
-    act(() => void expect(result.current.follow({ ...inTown, piano: { map: inTown.map, ticks: 100 } })).toBe('moonlight'));
+    act(() => void expect(result.current.follow({ ...inTown, piano: { map: inTown.map, piece: 'moon', ticks: 100 } })).toBe('moonlight'));
     expect(pitches(from)).toEqual(expect.arrayContaining(firstOf('moonlight')));
     for (const oscillator of town) expect(oscillator.stopAt, 'the town tune stops').not.toBeNull();
     // Off: the town's tune again, from its start.

@@ -135,7 +135,7 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
     events.push(...result.events);
     presses++;
   };
-  const busy = () => state.scene !== 'world' || !!state.dialogue || !!state.battle || !!state.menu || !!state.learn || !!state.shop;
+  const busy = () => state.scene !== 'world' || !!state.dialogue || !!state.battle || !!state.menu || !!state.learn || !!state.shop || !!state.pick;
   /**
    * Walks a route; stops early when something interrupts (a wild enemy) or when a step did not land (someone
    * strolled into the way). True when it got to the end.
@@ -169,7 +169,7 @@ export function playthrough(world: World, seed = 1, maxPresses = 40_000): BotRun
 
   while (!state.finished && presses < maxPresses) {
     // A menu is closed again, and so is a shop: the bot never buys, so the game is proven without spending a coin.
-    if (state.menu || state.shop) {
+    if (state.menu || state.shop || state.pick) {
       press({ b: true });
       continue;
     }

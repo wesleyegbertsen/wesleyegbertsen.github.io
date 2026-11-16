@@ -580,24 +580,31 @@ describe('the player piano on the page', () => {
   const pianoWorld: World = {
     ...world,
     maps: { ...world.maps, main: { ...main, objects: main.objects.map((object) => (object.id === 'main:k' ? { ...object, sprite: 'piano', branches: [{ do: [{ piano: true as const }] }] } : object)) } },
-    music: { title: 't', ending: 'e', wild: 'w', boss: 'b', victory: 'v', indoors: 'in', maps: {}, piano: 'moonlight', pianoTicks: 12 },
+    music: { title: 't', ending: 'e', wild: 'w', boss: 'b', victory: 'v', indoors: 'in', maps: {} },
+    pieces: [{ id: 'moon', name: 'MOONLIGHT SONATA', artist: 'BEETHOVEN', track: 'moonlight', ticks: 12 }],
   };
   const atPiano = () => playIn(pianoWorld, playIn(pianoWorld, initialGame(pianoWorld, 7), 'a', 'a'), 'right', 'right', 'up', 'right');
 
-  it('shows whether it plays (data-piano), and A turns it off again', async () => {
+  it('opens its selector (data-pick), plays the piece (data-piano, data-piece), and A turns it off again', async () => {
     const { game, user } = setup(atPiano(), false, false, pianoWorld);
     expect(game).toHaveAttribute('data-piano', 'off');
+    expect(game).toHaveAttribute('data-pick', '');
     await user.keyboard('z');
+    expect(game).toHaveAttribute('data-pick', 'moon');
+    expect(game).toHaveAttribute('data-piano', 'off');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-pick', '');
     expect(game).toHaveAttribute('data-piano', 'on');
+    expect(game).toHaveAttribute('data-piece', 'moon');
     expect(game).toHaveAttribute('data-music', 'moonlight');
-    expect(screen.getByRole('status')).toHaveTextContent('The player piano plays.');
+    expect(screen.getByRole('status')).toHaveTextContent('The player piano plays MOONLIGHT SONATA.');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-piano', 'off');
   });
 
   it('with reduced motion turns itself off when the piece has had its time (the page tells the engine)', async () => {
     const { game, user } = setup(atPiano(), false, false, pianoWorld);
-    await user.keyboard('z');
+    await user.keyboard('zz');
     expect(game).toHaveAttribute('data-piano', 'on');
     await new Promise((done) => setTimeout(done, 400));
     expect(game).toHaveAttribute('data-piano', 'off');

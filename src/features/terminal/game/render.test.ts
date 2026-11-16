@@ -1451,7 +1451,7 @@ describe('the player piano', () => {
   });
 
   it('plays with motion: its two pictures in turn, every 24 ticks (under 3 changes a second), and a note rising above it', () => {
-    const frame = (ticks: number) => at({ map: 'main', ticks });
+    const frame = (ticks: number) => at({ map: 'main', piece: 'moon', ticks });
     expect(pictures(frame(576).draws)).toEqual(['piano-play']);
     expect(pictures(frame(552).draws)).toEqual(['piano-play-b']);
     expect(pictures(frame(528).draws)).toEqual(['piano-play']);
@@ -1460,12 +1460,12 @@ describe('the player piano', () => {
     expect(note(frame(600).fills).length).toBeGreaterThan(0);
     expect(high).toBeLessThan(low);
     // Not in another room.
-    expect(pictures(at({ map: 'room', ticks: 600 }).draws)).toEqual(['piano']);
+    expect(pictures(at({ map: 'room', piece: 'moon', ticks: 600 }).draws)).toEqual(['piano']);
   });
 
   it('with reduced motion shows one still playing picture and no note, whatever the ticks', () => {
     for (const ticks of [600, 588, 500]) {
-      const { draws, fills } = at({ map: 'main', ticks }, { muted: false, volume: 5, still: true });
+      const { draws, fills } = at({ map: 'main', piece: 'moon', ticks }, { muted: false, volume: 5, still: true });
       expect(pictures(draws)).toEqual(['piano-play']);
       expect(note(fills)).toHaveLength(0);
     }

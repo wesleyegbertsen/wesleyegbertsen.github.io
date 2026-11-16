@@ -165,7 +165,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     // The ending screen takes a press (KEEP EXPLORING) once it has held for a moment.
     const keep = state.scene === 'ending' && (state.ending?.ticks ?? 0) >= ENDING_HOLD;
     const root = focusRef.current;
-    const key = [keep, state.piano?.map, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [keep, state.piano?.map, state.piano?.piece, state.pick?.cursor, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -213,6 +213,9 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         keep: String(keep),
         // The player piano: whether it plays.
         piano: state.piano ? 'on' : 'off',
+        // The piece that plays, and the piece under the cursor of the selector while it is open (else empty).
+        piece: state.piano?.piece ?? '',
+        pick: state.pick ? (world.pieces?.[state.pick.cursor]?.id ?? '') : '',
       });
     }
   };

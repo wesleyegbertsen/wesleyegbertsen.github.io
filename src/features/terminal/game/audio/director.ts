@@ -16,7 +16,8 @@ export function trackFor(state: GameState, world: World): string | null {
     if (state.battle.cheer) return music.victory;
     return state.battle.wild ? music.wild : (world.enemies[state.battle.enemy]?.tune ?? music.boss);
   }
-  // The player piano replaces the tune of its room while it plays.
-  if (state.piano && state.piano.map === state.map && music.piano) return music.piano;
+  // The player piano replaces the tune of its room while it plays: the track of its piece.
+  const piece = state.piano && state.piano.map === state.map ? world.pieces?.find((candidate) => candidate.id === state.piano!.piece) : undefined;
+  if (piece) return piece.track;
   return music.maps[state.map] ?? music.indoors;
 }

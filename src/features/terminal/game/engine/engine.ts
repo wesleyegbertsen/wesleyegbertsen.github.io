@@ -5,7 +5,7 @@ import { covered, loose, platesDown, putBack, roomFor } from './push.ts';
 import { random } from './rng.ts';
 import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
-import { SETTINGS, type TileDef, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
+import { SETTINGS, type Piece, type TileDef, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { placeOf, stroll } from './wander.ts';
 import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -143,9 +143,14 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
   }
   if ('shop' in action) return openShop(state, action.shop, ctx);
   if ('piano' in action) {
-    // It says nothing: the music is the answer. The status region is told, for whoever does not hear it.
-    ctx.events.push({ kind: 'menu', text: state.piano ? 'The player piano stops.' : 'The player piano plays.' });
-    return { ...state, piano: state.piano ? undefined : { map: state.map, ticks: world.music?.pianoTicks ?? 0 } };
+    // Playing: it stops, and the tune of the room comes back. Off: the list of what it can play.
+    if (state.piano) {
+      ctx.events.push({ kind: 'menu', text: 'The player piano stops.' });
+      return { ...state, piano: undefined };
+    }
+    if (!world.pieces?.length) return state;
+    ctx.events.push({ kind: 'menu', text: `The player piano. ${pieceRow(world.pieces[0]!)}` });
+    return { ...state, pick: { cursor: 0 } };
   }
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx, 0, action.quick);
   if ('warp' in action) {
@@ -583,7 +588,7 @@ function arrived(state: GameState, from: string, ctx: Ctx): GameState {
   return { ...state, area, banner: { text: area, at: state.clock, slide: !ctx.instant }, notice: null };
 }
 
-const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop && state.scene === 'world';
+const idle = (state: GameState) => !state.walk && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop && !state.pick && state.scene === 'world';
 
 /** What the player does on the map this tick: carry on walking, open the bag, ask for a hint, talk or step. */
 function act(state: GameState, input: Input, ctx: Ctx): GameState {
@@ -624,6 +629,39 @@ function act(state: GameState, input: Input, ctx: Ctx): GameState {
  * the map the game clock runs (one tick, or a whole step's worth with reduced motion), which moves the townsfolk
  * and the animated tiles.
  */
+/** How long a piece is, as m:ss. */
+export const pieceLength = (ticks: number): string => {
+  const seconds = Math.round(ticks / 60);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
+
+/** A row of the piece selector as the status region says it. */
+const pieceRow = (piece: Piece) => `${piece.name}, ${piece.artist}, ${pieceLength(piece.ticks)}.`;
+
+/** The piece selector of the player piano: up and down choose, A plays the piece from its start, B closes it. */
+function stepPick(state: GameState, input: Input, ctx: Ctx): GameState {
+  const pieces = ctx.world.pieces ?? [];
+  const cursor = Math.min(state.pick!.cursor, pieces.length - 1);
+  if (input.b || input.start) {
+    ctx.cues.push('cancel');
+    return { ...state, pick: undefined };
+  }
+  if (input.a) {
+    const piece = pieces[cursor]!;
+    ctx.cues.push('confirm');
+    ctx.events.push({ kind: 'menu', text: `The player piano plays ${piece.name}.` });
+    return { ...state, pick: undefined, piano: { map: state.map, piece: piece.id, ticks: piece.ticks } };
+  }
+  if (input.pressed === 'up' || input.pressed === 'down') {
+    const next = Math.max(0, Math.min(pieces.length - 1, cursor + (input.pressed === 'up' ? -1 : 1)));
+    if (next === cursor) return state;
+    ctx.cues.push('cursor');
+    ctx.events.push({ kind: 'menu', text: pieceRow(pieces[next]!) });
+    return { ...state, pick: { cursor: next } };
+  }
+  return state;
+}
+
 /**
  * The player piano's piece runs on: a tick at a time with motion (menus and text boxes too, like the music), and
  * with reduced motion by the ticks the page says went by. Off at its end.
@@ -674,11 +712,12 @@ export function step(given: GameState, input: Input, world: World, options: Opti
     const bye = world.shops[state.shop.id]?.bye;
     return done(runScript(bye ? { ...shopped.state, script: [{ say: bye }, ...shopped.state.script] } : shopped.state, ctx));
   }
+  if (state.pick) return done(stepPick(state, input, ctx));
   if (state.menu) return done(stepMenu(state, input, ctx));
 
   // The player first, then the town: someone you just turned to and talk to has not walked off in between.
   const next = act(state, input, ctx);
   const clock = state.clock + (ctx.instant ? WALK_TICKS : 1);
-  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu || next.learn || next.shop) return done({ ...next, clock });
+  if (next.scene !== 'world' || next.dialogue || next.battle || next.menu || next.learn || next.shop || next.pick) return done({ ...next, clock });
   return done(stroll(next, world, clock, ctx.instant, (object) => gone(object, next)));
 }

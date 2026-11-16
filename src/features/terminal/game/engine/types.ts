@@ -51,7 +51,7 @@ export type Action =
   | { coins: number }
   /** Opens a shop (a name in `world.shops`): a list to buy from, until the player leaves it. */
   | { shop: string }
-  /** The player piano: starts the piece (MUSIC.piano) from its start, or stops it when it plays. */
+  /** The player piano: opens the piece selector when it is off (engine stepPick), or stops the piece that plays. */
   | { piano: true }
   | { ending: true };
 
@@ -246,14 +246,18 @@ export type World = {
   /** The DEX on the Start menu: every monster in the order of the list (content/dex.ts). */
   dex?: DexEntry[];
   /** Which tune plays where: names of tracks in content/music.ts. A map without an entry plays `indoors`. */
-  /** `piano`: the piece of the player piano, `pianoTicks` how long it is (60 a second). */
-  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string>; piano?: string; pianoTicks?: number };
+  music?: { title: string; ending: string; wild: string; boss: string; victory: string; indoors: string; maps: Record<string, string> };
+  /** What the player piano can play (content/pieces.ts), each with its length in ticks (60 a second). */
+  pieces?: Piece[];
 };
 
 /**
  * `label` is the word on the Start menu, `mark` the sign before the count in the corner note. `icon` is a small
  * picture (8 by 8, a name on the sheets) drawn in the place of the mark, and before the label on the menu.
  */
+/** A piece of the player piano: `track` is its tune in TRACKS (it plays once), `ticks` how long it is. */
+export type Piece = { id: string; name: string; artist: string; track: string; ticks: number };
+
 /** A monster in the DEX: what its page says, and where it lives (a region of the world), or that it is a boss. */
 export type DexEntry = { enemy: string; text: string; area?: string; boss?: true };
 
@@ -386,8 +390,10 @@ export type GameState = {
   heal: { map: string; x: number; y: number; dir?: Dir };
   seed: number;
   finished: boolean;
-  /** The player piano plays (the cafe's): the map it is on, and the ticks left of its piece. Off when absent. */
-  piano?: { map: string; ticks: number };
+  /** The player piano plays (the cafe's): the map it is on, the piece, and the ticks left of it. Off when absent. */
+  piano?: { map: string; piece: string; ticks: number };
+  /** The piece selector of the player piano is open: the row under the cursor (world.pieces). */
+  pick?: { cursor: number };
   /** The ending screen is up: how many ticks so far (it takes a press only after ENDING_HOLD of them). */
   ending?: { ticks: number };
   /** Ticks spent walking about. Drives the townsfolk and the animated tiles; it stands still in text and battles. */

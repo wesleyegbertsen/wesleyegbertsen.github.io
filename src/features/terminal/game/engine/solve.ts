@@ -25,7 +25,7 @@ export const pressIn = (world: World, state: GameState, key: Press): GameState =
 
 /** Standing on the map with nothing open: the next press is a step or a talk. */
 export const calm = (state: GameState): boolean =>
-  state.scene === 'world' && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop;
+  state.scene === 'world' && !state.dialogue && !state.battle && !state.menu && !state.learn && !state.shop && !state.pick;
 
 /**
  * What a puzzle can change, as one string: where the player stands, where the things that can be pushed on this
