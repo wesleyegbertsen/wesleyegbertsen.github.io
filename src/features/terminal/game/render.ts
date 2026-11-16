@@ -1,7 +1,7 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { bannerOut } from './engine/banner.ts';
 import { BATTLE_MENU, usableItems } from './engine/battle.ts';
-import { JUMP_TICKS, NOTICE_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems } from './engine/engine.ts';
 import { xpProgress } from './engine/level.ts';
 import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
@@ -204,6 +204,13 @@ function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World)
       if (tile.under) drawSprite(ctx, sheets, tile.under, cx * TILE - camX, cy * TILE - camY);
       drawSprite(ctx, sheets, frameOf(tile.look ?? tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
     }
+  }
+  // The tall grass just walked through rustles: blades bent and a leaf or two, then the second picture, over the
+  // grass and under everyone on it.
+  for (const cell of state.trail ?? []) {
+    const age = state.clock - cell.at;
+    if (cell.map !== map.id || age < 0 || age >= TRAIL_TICKS) continue;
+    drawSprite(ctx, sheets, age < TRAIL_TICKS / 2 ? 'rustle' : 'rustle-b', cell.x * TILE - camX, cell.y * TILE - camY);
   }
   for (const object of map.objects) {
     const sprite = spriteOf(object, state);

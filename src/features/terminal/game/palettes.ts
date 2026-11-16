@@ -49,7 +49,7 @@ export const RULES: [RegExp, PaletteId][] = [
   [/^(ice|water|lily|duck|reeds|stones|jetty|float|fountain|well)/, 'water'],
   [/^fence/, 'fence'],
   [/^(flowers|flowerbed)/, 'flower'],
-  [/^(grass|tallgrass|tree|pine|bush|hedge|plant)/, 'grass'],
+  [/^(grass|tallgrass|rustle|tree|pine|bush|hedge|plant)/, 'grass'],
   [/^(shore|path)$/, 'sand'],
   [/^(roof|awning|canopy|shingle|slate|tin|flag|torii|mailbox)/, 'roof'],
   [/^(computer|server|cooler|coffee|crt|arcade|solder|telescope|kanji|flask|globe|lever|gate|lamp)/, 'tech'],

@@ -341,6 +341,11 @@ export type GameState = {
   repel: number;
   /** Who is being talked to, and which way they turned for it. They turn back a moment after the talk is over: at clock `until`. */
   face: { id: string; dir: Dir; until?: number } | null;
+  /**
+   * The tall grass that was just walked through: the cells rustle for TRAIL_TICKS of the game clock from `at`.
+   * Only with motion; the oldest entries go when they are over.
+   */
+  trail?: { map: string; x: number; y: number; at: number }[];
   /** Ticks left of a rest that is played through (its jingle): nothing happens until they are over. */
   pause?: number;
   /** Where a defeat sends the player back to. */

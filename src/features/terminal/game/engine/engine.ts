@@ -13,6 +13,8 @@ import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passabl
 export const WALK_TICKS = 10;
 /** How many ticks a hop over a ledge takes: two cells in one go, a little quicker than walking them. */
 export const JUMP_TICKS = 16;
+/** How long the tall grass rustles after a step into it or out of it, in ticks of the game clock (0.4 s). */
+export const TRAIL_TICKS = 24;
 /** How long the note in the corner stays after a find, in ticks of the game clock. */
 export const NOTICE_TICKS = 150;
 /** The typewriter ticks once per this many characters. */
@@ -383,6 +385,16 @@ function glide(state: GameState, ctx: Ctx, moved: number): GameState {
 }
 
 /**
+ * The trail through the tall grass: the cells of a step that are tall grass rustle from now on (an older rustle of
+ * the same cell is replaced), and rustles that are over are dropped.
+ */
+function rustle(state: GameState, map: GameMap, cells: { x: number; y: number }[]): NonNullable<GameState['trail']> {
+  const fresh = cells.filter((cell) => tileAt(map, cell.x, cell.y).grass).map((cell) => ({ map: map.id, x: cell.x, y: cell.y, at: state.clock }));
+  const kept = (state.trail ?? []).filter((old) => state.clock - old.at < TRAIL_TICKS && !fresh.some((cell) => cell.map === old.map && cell.x === old.x && cell.y === old.y));
+  return [...kept, ...fresh];
+}
+
+/**
  * Turn to `dir` and take a step if the way is free. Walking into a locked door makes it say why. A ledge that is
  * jumped this way is hopped over: one move, two cells. A boulder in the way is pushed; slippery ground is slid over.
  */
@@ -413,7 +425,7 @@ function tryMove(state: GameState, dir: Dir, ctx: Ctx): GameState {
   // Off slippery ground in one step: told like the end of any other slide.
   else if (tileAt(map, state.x, state.y).slide) ctx.events.push({ kind: 'say', text: `You slide ${dir} ${stepsOf(to.jump ? 2 : 1)} and stop on firm ground.` });
   const walk = { fromX: state.x, fromY: state.y, t: 0, ...(to.jump ? { jump: true as const } : {}) };
-  const walking = { ...turned, x: to.x, y: to.y, walk };
+  const walking = { ...turned, x: to.x, y: to.y, walk, ...(ctx.instant ? {} : { trail: rustle(turned, map, [state, to]) }) };
   return ctx.instant ? glide(arrive({ ...walking, walk: null }, ctx), ctx, to.jump ? 2 : 1) : walking;
 }
 

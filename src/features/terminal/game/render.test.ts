@@ -1,6 +1,6 @@
 import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
 import { BANNER_HOLD, BANNER_SLIDE } from './engine/banner.ts';
-import { JUMP_TICKS, NOTICE_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
+import { JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, initialGame } from './engine/engine.ts';
 import { levelWorld, play, playIn, shopWorld, testWorld as world } from './engine/testWorld.ts';
 import { BOSS_TICKS, QUICK_TICKS, WILD_TICKS } from './engine/transition.ts';
 import type { GameState, TileDef, World } from './engine/types.ts';
@@ -1079,5 +1079,21 @@ describe('Game Boy Color mode', () => {
     expect(plain.draws.every((draw) => !draw.sheet.includes(':'))).toBe(true);
     // Without the coloured copies (they are made in the page), colour mode draws the greens: never nothing.
     expect(drawn(talking, { muted: false, volume: 5, colour: true }).draws.every((draw) => !draw.sheet.includes(':'))).toBe(true);
+  });
+});
+
+describe('the trail through the tall grass', () => {
+  it('draws the rustle over the grass for a moment, in two pictures, and not on another map or after it is over', () => {
+    const at = (clock: number, map = 'main') => drawn({ ...started(), clock, trail: [{ map, x: 3, y: 3, at: 100 }] }).draws;
+    const shown = (draws: Draw[], name: 'rustle' | 'rustle-b') => draws.filter((draw) => draw.sheet === 'tiles' && draw.sx === tiles[name][0] && draw.sy === tiles[name][1]);
+    expect(shown(at(100), 'rustle')).toEqual([expect.objectContaining({ x: 24 + 3 * TILE, y: 24 + 3 * TILE })]);
+    expect(shown(at(100 + TRAIL_TICKS - 1), 'rustle-b')).toHaveLength(1);
+    expect(shown(at(100 + TRAIL_TICKS), 'rustle')).toHaveLength(0);
+    expect(shown(at(100 + TRAIL_TICKS), 'rustle-b')).toHaveLength(0);
+    expect(shown(at(100, 'room'), 'rustle')).toHaveLength(0);
+    // Under the player: drawn before the player's picture.
+    const draws = at(100);
+    const player = draws.findIndex((draw) => draw.sheet === 'sprites' && draw.sx === sprites['player-down-0'][0] && draw.sy === sprites['player-down-0'][1]);
+    expect(draws.indexOf(shown(draws, 'rustle')[0]!)).toBeLessThan(player);
   });
 });

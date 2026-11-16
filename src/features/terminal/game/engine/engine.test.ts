@@ -1,4 +1,4 @@
-import { WALK_TICKS, initialGame, ownedItems, step } from './engine.ts';
+import { TRAIL_TICKS, WALK_TICKS, initialGame, ownedItems, step } from './engine.ts';
 import { random } from './rng.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { fold, paginate, wrap } from './text.ts';
@@ -62,6 +62,26 @@ describe('parseMap', () => {
     expect(() => parseMap({ ...base, rows: ['..'], objects }, legend)).toThrow(/not on the map/);
     expect(() => parseMap({ ...base, rows: ['aa'], objects }, legend)).toThrow(/twice/);
     expect(parseMap({ ...base, rows: ['.a'], objects }, legend).objects[0]).toMatchObject({ id: 'm:a', x: 1, y: 0 });
+  });
+});
+
+describe('the trail through the tall grass', () => {
+  it('rustles the grass that is walked into and the grass that is left, for a moment on the game clock', () => {
+    // The tall grass of the test world is at 3,3; from 2,3 a step right goes into it.
+    const before = { ...started(), x: 2, y: 3, dir: 'right' as const, clock: 100 };
+    const into = tick(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }).state;
+    expect(into.walk).not.toBeNull();
+    expect(into.trail).toEqual([{ map: 'main', x: 3, y: 3, at: 100 }]);
+    // Out of it again: the cell left behind rustles, with a new time; the old entry is replaced, not stacked.
+    const inside = { ...before, x: 3, y: 3, clock: 110, trail: into.trail, battle: null };
+    const out = tick(inside, { ...NO_INPUT, dir: 'right', pressed: 'right' }).state;
+    expect(out.trail).toEqual([{ map: 'main', x: 3, y: 3, at: 110 }]);
+    // Old rustles are dropped once they are over.
+    const later = tick({ ...before, clock: 100 + TRAIL_TICKS + 1, trail: into.trail }, { ...NO_INPUT, dir: 'left', pressed: 'left' }).state;
+    expect(later.trail).toEqual([]);
+    // Grass that is not walked through, and reduced motion: nothing.
+    expect(tick({ ...before, x: 1, y: 2 }, { ...NO_INPUT, dir: 'right', pressed: 'right' }).state.trail ?? []).toEqual([]);
+    expect(step(before, { ...NO_INPUT, dir: 'right', pressed: 'right' }, world, { instant: true }).state.trail ?? []).toEqual([]);
   });
 });
 
