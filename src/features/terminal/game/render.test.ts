@@ -1538,8 +1538,8 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(sixth, 120)).toBe('1:34A:playB:back');
     // The seventh, the last of the seven rows the box shows: its name and its artist line inside the box.
     const seventh = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 6 } }, undefined, real).draws;
-    // With nine pieces the list has scrolled by two when the cursor is on the seventh: it is on the fifth row.
-    expect(textAt(seventh, 64)).toBe('>ICHIBANNOTAKARAMONO');
+    // The list keeps a row below the cursor: on the seventh it has scrolled by one, the seventh on the sixth row.
+    expect(textAt(seventh, 74)).toBe('>ICHIBANNOTAKARAMONO');
     expect(textAt(seventh, 110)).toBe('ANANT-GARDEEYES');
     expect(textAt(seventh, 120)).toBe('2:42A:playB:back');
     // The ninth: the list scrolls by two, the cursor on its last row.
@@ -1555,7 +1555,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(eighth, 74)).toBe('>BAUKLOTZE');
     expect(textAt(eighth, 110)).toBe('PIANOVERSION');
     expect(textAt(eighth, 120)).toBe('3:44A:playB:back');
-    for (const y of [64, 110]) {
+    for (const y of [74, 110]) {
       const text = seventh.filter((draw) => draw.sheet === 'font' && draw.y === y);
       expect(Math.max(...text.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     }
