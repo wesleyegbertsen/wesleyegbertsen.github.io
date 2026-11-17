@@ -13,14 +13,15 @@ import { buildWorld } from './world.ts';
 /**
  * My Soul, Your Beats!, from the anime Angel Beats!, converted from a piano and vocals MIDI file; the vocal is the melody voice (see the credit and the conversion rules above the track in music.ts). The MIDI is not in the
  * repository, so these tests check what the conversion produced: the tempo and grid, the length against the MIDI's,
- * the notes in each voice and those left out, the range, and a few bars.
+ * the notes in each voice and those left out, the range, and a few bars. The MIDI's lead-in rest (14 steps) is left out:
+ * bar 1 is the 2 steps before the bar line, and the last bar ends on a rest 14 steps longer (a multiple of 16).
  */
 const SPOTS: { bar: number; melody: string; second: string; bass: string; octave: string; inner: string }[] = [
-  { bar: 1, melody: '-:16', second: '-:14 F#5:2', bass: '-:16', octave: '-:16', inner: '-:16' },
+  { bar: 1, melody: '-:2', second: 'F#5:2', bass: '-:2', octave: '-:2', inner: '-:2' },
   { bar: 2, melody: '-:16', second: 'E5:4 D5:4 B4:2 D4:2 A4:16', bass: 'B2:2 F#3:2 G2:2 D3:2 G3:4 F#2:20', octave: '-:12 F#3:20', inner: '-:8 B3:2 -:2 A3:16' },
   { bar: 20, melody: 'C#5:4 A4:4 B4:4 B4:8', second: '-:6 E4:2 A4:2 E5:2 -:4', bass: 'F#1:2 F#2:2 F#2:2 F#2:2 F#2:2 F#2:2 F#2:2 F#2:2', octave: 'F#2:2 -:14', inner: '-:8 F#4:2 -:6' },
   { bar: 40, melody: 'F#5:2 G#5:8 G#5:2 F#5:2 E5:2', second: 'F#5:2 G#5:2 C#5:2 E5:2 G#5:2 G#5:2 F#5:2 E5:2', bass: 'C#2:2 G#2:2 C#3:2 E3:2 G#3:2 C#4:2 G#3:2 E3:2', octave: 'C#3:2 -:14', inner: 'F#4:2 G#4:2 -:6 G#4:2 F#4:2 E4:2' },
-  { bar: 54, melody: '-:4', second: 'E5:2 G#5:2 C#6:2 E6:2 G#6:2 C#7:4 -:2', bass: 'C#3:2 C#3:2 C#3:2 C#3:2 C#3:2 C#2:4 -:2', octave: '-:10 C#3:4 -:2', inner: '-:10 G#6:4 -:2' },
+  { bar: 54, melody: '-:18', second: 'E5:2 G#5:2 C#6:2 E6:2 G#6:2 C#7:4 -:16', bass: 'C#3:2 C#3:2 C#3:2 C#3:2 C#3:2 C#2:4 -:16', octave: '-:10 C#3:4 -:16', inner: '-:10 G#6:4 -:16' },
 ];
 
 describe('My Soul, Your Beats! on the player piano, as converted from the MIDI', () => {
@@ -34,10 +35,15 @@ describe('My Soul, Your Beats! on the player piano, as converted from the MIDI',
     expect(piece.loop).toBe(false);
   });
 
+  it('sounds at once: the leading rests of the MIDI\'s lead-in are left out, so a voice starts on a note', () => {
+    expect(Math.min(...piece.voices.map((voice) => parseVoice(voice.notes).notes[0]?.step ?? Infinity))).toBe(0);
+  });
+
   it('is as long as the MIDI, 54 bars as its time signatures make them: about 1:29', () => {
     expect(trackSteps(piece)).toBe(864);
     expect(bars(0)).toHaveLength(54);
-    // The MIDI's notes end at 89.2 s from its start; the data ends on the bar after.
+    // The MIDI's notes end at 89.2 s from its start, about 87.7 s from its first note (the lead-in rest is left out); the
+    // data ends on the next multiple of 16 steps after.
     const { length } = flatten(piece);
     expect(Math.abs(length - 89.2)).toBeLessThan(1);
     for (const voice of piece.voices) expect(parseVoice(voice.notes).steps).toBe(trackSteps(piece));
