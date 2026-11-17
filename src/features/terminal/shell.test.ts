@@ -53,6 +53,35 @@ describe('execute', () => {
   });
 });
 
+describe('letter case', () => {
+  it('runs a command typed in any case like the lowercase one', () => {
+    expect(run('WHOAMI').lines).toEqual(['guest']);
+    expect(run('Help').lines).toEqual(run('help').lines);
+    expect(run('PLAY').effects).toEqual([{ type: 'game' }]);
+    expect(run('Theme green').effects).toEqual([{ type: 'theme', index: 0 }]);
+  });
+
+  it('keeps what was typed in the unknown-command message and in the history', () => {
+    expect(run('NOPE').lines).toEqual(["command not found: NOPE. Type 'help' to see the commands."]);
+    expect(run('WHOAMI', 'Echo Hi').state.history).toEqual(['WHOAMI', 'Echo Hi']);
+    expect(run('ECHO Hi There').lines).toEqual(['Hi There']);
+  });
+
+  it('matches the fixed words of a command in any case', () => {
+    expect(run('help PLAY').lines.join(' ')).toMatch(/^play: .*Game Boy adventure/);
+    expect(run('theme GREEN')).toMatchObject({ lines: ['theme set to green'], effects: [{ type: 'theme', index: 0 }] });
+    expect(run('open PROJECTS')).toMatchObject({ lines: ['opening projects...'], effects: [{ type: 'navigate', to: '/projects' }] });
+    expect(run('OPEN Cardipaw').effects).toEqual([{ type: 'navigate', to: '/projects' }]);
+    expect(run('open CONSTRUCTOR').effects).toEqual([]);
+  });
+
+  it('keeps file names case-sensitive, like the Unix filesystem it imitates', () => {
+    expect(run('cat ABOUT.TXT').lines).toEqual(['cat: ABOUT.TXT: No such file or directory']);
+    expect(run('cd PROJECTS').lines).toEqual(['cd: no such file or directory: PROJECTS']);
+    expect(run('CAT about.txt').text).toContain(profile.role);
+  });
+});
+
 describe('info commands', () => {
   it('about, contact and skills print the data', () => {
     expect(run('about').text).toContain(profile.role);

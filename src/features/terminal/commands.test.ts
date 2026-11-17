@@ -95,7 +95,7 @@ describe('play', () => {
   });
 
   it('answers an unknown argument with a usage line instead of starting the game', () => {
-    for (const line of ['play skp', 'play SKIP', 'play now']) {
+    for (const line of ['play skp', 'play skip skip', 'play now']) {
       const result = run(line);
       expect(result.effects).toEqual([]);
       expect(result.lines.join(' ')).toContain('Usage: play [skip]');
@@ -110,5 +110,14 @@ describe('play', () => {
     expect(text).toContain('HAN University of Applied Sciences');
     expect(text).toContain(projects[0]!.name);
     expect(text).toContain(profile.links.email);
+  });
+
+  it('takes skip in any case, and PLAY alone still opens the game', () => {
+    for (const line of ['play SKIP', 'PLAY Skip']) {
+      const result = run(line);
+      expect(result.effects).toEqual([]);
+      expect(result.lines).toEqual(run('play skip').lines);
+    }
+    expect(run('PLAY').effects).toEqual([{ type: 'game' }]);
   });
 });

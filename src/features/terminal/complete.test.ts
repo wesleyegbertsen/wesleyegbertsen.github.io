@@ -64,6 +64,24 @@ describe('complete', () => {
     expect(complete('theme b', ctx).line).toBe('theme blue ');
   });
 
+  it('completes command names and fixed words typed in another case to the lowercase word', () => {
+    expect(complete('PL', ctx)).toEqual({ line: 'play ', candidates: [] });
+    expect(complete('Wh', ctx)).toEqual({ line: 'whoami ', candidates: [] });
+    expect(complete('CL', ctx).line).toBe('clear ');
+    expect(complete('C', ctx).candidates).toEqual(['cat', 'cd', 'clear', 'contact', 'cowsay']);
+    expect(complete('Help NE', ctx).line).toBe('Help neofetch ');
+    expect(complete('THEME B', ctx).line).toBe('THEME blue ');
+    expect(complete('theme Wh', ctx).line).toBe('theme white ');
+    expect(complete('OPEN car', ctx).line).toBe('OPEN cardipaw ');
+    expect(complete('open CAR', ctx).line).toBe('open cardipaw ');
+  });
+
+  it('keeps paths case-sensitive, like the filesystem', () => {
+    expect(complete('cat AB', ctx)).toEqual({ line: 'cat AB', candidates: [] });
+    expect(complete('CAT ab', ctx).line).toBe('CAT about.txt ');
+    expect(complete('CD pro', ctx).line).toBe('CD projects/');
+  });
+
   it('leaves alone what it cannot complete', () => {
     expect(complete('zzz', ctx)).toEqual({ line: 'zzz', candidates: [] });
     expect(complete('echo he', ctx)).toEqual({ line: 'echo he', candidates: [] });
