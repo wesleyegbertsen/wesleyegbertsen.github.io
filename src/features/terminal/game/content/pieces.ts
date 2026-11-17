@@ -22,4 +22,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'aliez', name: 'ALIEZ', artist: 'ALDNOAH.ZERO ED 2', track: 'aliez' },
   { id: 'guren-no-yumiya', name: 'GUREN NO YUMIYA', artist: 'SHINGEKI NO KYOJIN OP', track: 'guren-no-yumiya' },
   { id: 'ichiban-no-takaramono', name: 'ICHIBAN NO TAKARAMONO', artist: 'ANANT-GARDE EYES', track: 'ichiban-no-takaramono' },
+  { id: 'bauklotze', name: 'BAUKLOTZE', artist: 'PIANO VERSION', track: 'bauklotze' },
 ];

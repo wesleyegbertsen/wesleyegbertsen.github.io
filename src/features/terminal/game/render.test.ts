@@ -1500,7 +1500,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the seven real pieces, and the second to seventh ones\' artists whole and inside the box at the foot', () => {
+  it('lists the real pieces, seven rows at a time, and the second to eighth ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
@@ -1538,10 +1538,17 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(sixth, 120)).toBe('1:34A:playB:back');
     // The seventh, the last of the seven rows the box shows: its name and its artist line inside the box.
     const seventh = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 6 } }, undefined, real).draws;
-    expect(textAt(seventh, 84)).toBe('>ICHIBANNOTAKARAMONO');
+    // With eight pieces the list has scrolled by one when the cursor is on the seventh: it is on the sixth row.
+    expect(textAt(seventh, 74)).toBe('>ICHIBANNOTAKARAMONO');
     expect(textAt(seventh, 110)).toBe('ANANT-GARDEEYES');
     expect(textAt(seventh, 120)).toBe('2:42A:playB:back');
-    for (const y of [84, 110]) {
+    // The eighth: the list scrolls by one, the cursor on its last row, the second piece at the top.
+    const eighth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 7 } }, undefined, real).draws;
+    expect(textAt(eighth, 24)).toBe('SCARBOROUGHFAIR');
+    expect(textAt(eighth, 84)).toBe('>BAUKLOTZE');
+    expect(textAt(eighth, 110)).toBe('PIANOVERSION');
+    expect(textAt(eighth, 120)).toBe('3:44A:playB:back');
+    for (const y of [74, 110]) {
       const text = seventh.filter((draw) => draw.sheet === 'font' && draw.y === y);
       expect(Math.max(...text.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     }

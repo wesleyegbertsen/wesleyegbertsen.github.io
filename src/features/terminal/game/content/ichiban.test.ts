@@ -74,7 +74,7 @@ describe('Ichiban no Takaramono on the player piano, as converted from the MIDI'
   });
 });
 
-describe('the selector with seven pieces', () => {
+describe('the selector, its first seven pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
@@ -83,9 +83,10 @@ describe('the selector with seven pieces', () => {
 
   it('lists the seven pieces, each with the length of its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'ichiban-no-takaramono')).toEqual({ id: 'ichiban-no-takaramono', name: 'ICHIBAN NO TAKARAMONO', artist: 'ANANT-GARDE EYES', track: 'ichiban-no-takaramono' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
+    // The first seven of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 7)).toEqual(ids);
     expect(world.pieces![6]!.ticks).toBe(Math.round(flatten(TRACKS['ichiban-no-takaramono']!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(7);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays the seventh piece with A on its row, and the others still their own', () => {
