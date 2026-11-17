@@ -233,8 +233,13 @@ describe('balance', () => {
 });
 
 describe('a whole playthrough', () => {
+  /**
+   * Each test here has the bot play the whole game: a few seconds on a laptop, three to four times that on a CI
+   * runner (seed 4 took 21 s there, and one of 7.6 s ran past the default 5 s). Every one gets the same room.
+   */
+  const WHOLE_GAME = { timeout: 60_000 };
   // Slower since round seven: the one place to rest is the cafe, and the bot walks back to it.
-  it.each([1, 2, 3, 4, 5, 6, 7, 8])('a bot finishes the game with default choices and no defeat (seed %i)', { timeout: 30_000 }, (seed) => {
+  it.each([1, 2, 3, 4, 5, 6, 7, 8])('a bot finishes the game with default choices and no defeat (seed %i)', WHOLE_GAME, (seed) => {
     const run = playthrough(world, seed);
     expect(run.stuck).toBe(false);
     expect(run.state.finished).toBe(true);
@@ -264,11 +269,11 @@ describe('a whole playthrough', () => {
     expect(seen.length).toBeGreaterThan(world.dex!.filter((entry) => entry.boss).length);
   });
 
-  it('can be finished without a single project in the data', () => {
+  it('can be finished without a single project in the data', WHOLE_GAME, () => {
     expect(playthrough(buildWorld({ ...data, projects: [] })).state.finished).toBe(true);
   });
 
-  it('cannot be finished when a lock has no key: the bot notices', () => {
+  it('cannot be finished when a lock has no key: the bot notices', WHOLE_GAME, () => {
     const broken = buildWorld(data);
     const examiner = broken.maps.academy!.objects.find((object) => object.id === 'academy:E')!;
     examiner.branches = [{ do: [{ say: ['I am on a break.'] }] }];

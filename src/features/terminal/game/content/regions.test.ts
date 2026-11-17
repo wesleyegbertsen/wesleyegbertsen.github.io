@@ -1254,7 +1254,8 @@ describe('the last fight', () => {
 });
 
 describe('none of it is needed', () => {
-  it('can still be finished with both roads out of town closed', () => {
+  // The bot plays the whole game here, as in world.test.ts: the same room for a slow CI runner.
+  it('can still be finished with both roads out of town closed', { timeout: 60_000 }, () => {
     const closed = buildWorld(data);
     for (const char of ['(', ')']) closed.maps.town!.objects.find((object) => object.id === `town:${char}`)!.branches = [];
     const run = playthrough(closed, 2);
