@@ -2,20 +2,20 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "wesleyegbertsen.nl: routed, themed React site with a terminal and a Game Boy game, and its delivery pipeline",
-    "output": ".archify/architecture-overview-20261115-120000/overview.html",
+    "title": "wesleyegbertsen.nl: routed, themed React site with a terminal and the Career Quest game, and its delivery pipeline",
+    "output": "docs/architecture/overview.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "https://github.com/wesleyegbertsen/wesleyegbertsen.github.io.git",
       "provider": "github",
-      "revision": "6131555edfe6a9c649a14b40609ae47d7c7ea76d"
+      "revision": "2a6b9f87d6f96ae8a3197e57733673c0d5fd3484"
     },
     "legend": {
       "entries": {
         "frontend": { "label": "UI (React components)" },
         "backend": { "label": "Hooks, logic and tooling" },
-        "database": { "label": "Browser storage and bundled data" },
+        "database": { "label": "Data, assets and stores" },
         "cloud": { "label": "Hosting and CI" },
         "external": { "label": "Outside this repo" }
       }
@@ -146,7 +146,7 @@
       "label": "Game Boy",
       "sublabel": "always mounted",
       "pos": [880, 480],
-      "size": [110, 60],
+      "size": [100, 60],
       "sources": [
         { "path": "src/features/gameboy/GameBoy.tsx", "line": 28, "end_line": 43, "label": "button and hidden iframe" }
       ]
@@ -205,7 +205,7 @@
       "label": "YouTube player",
       "sublabel": "hidden video",
       "pos": [880, 620],
-      "size": [110, 60],
+      "size": [100, 60],
       "sources": [
         { "path": "src/features/gameboy/GameBoy.tsx", "line": 33, "end_line": 40, "label": "iframe, always mounted" }
       ]
@@ -349,38 +349,39 @@
       "id": "terminalpage",
       "type": "frontend",
       "label": "Terminal page",
-      "sublabel": "route /terminal, shell or game",
-      "pos": [1010, 330],
-      "size": [150, 60],
+      "sublabel": "/terminal: shell or game",
+      "pos": [1000, 330],
+      "size": [140, 70],
       "sources": [
         { "path": "src/pages/TerminalPage.tsx", "line": 6, "end_line": 14, "label": "glass-panel with the Terminal view" },
-        { "path": "src/features/terminal/Terminal.tsx", "line": 85, "end_line": 109, "label": "effects: navigate, theme, matrix, clear, game" },
-        { "path": "src/features/terminal/Terminal.tsx", "line": 193, "end_line": 209, "label": "game mode renders the Game, else the shell" }
+        { "path": "src/features/terminal/Terminal.tsx", "line": 85, "end_line": 118, "label": "effects: navigate, theme, matrix, clear, game" },
+        { "path": "src/features/terminal/Terminal.tsx", "line": 193, "end_line": 210, "label": "game mode renders the Game with both stores" }
       ]
     },
     {
       "id": "session",
-      "type": "frontend",
+      "type": "database",
       "label": "Terminal session",
-      "sublabel": "memory-only session",
-      "pos": [1010, 480],
-      "size": [150, 70],
+      "sublabel": "in memory, with settings",
+      "pos": [1000, 480],
+      "size": [140, 70],
       "sources": [
-        { "path": "src/features/terminal/SessionProvider.tsx", "line": 7, "end_line": 33, "label": "lines, shell, mode, game progress, sound" },
-        { "path": "src/features/terminal/game/soundStore.ts", "line": 6, "end_line": 29, "label": "mute switch kept in memory only" }
+        { "path": "src/features/terminal/SessionProvider.tsx", "line": 9, "end_line": 35, "label": "lines, shell, mode, game progress, settings" },
+        { "path": "src/features/terminal/game/settingsStore.ts", "line": 1, "end_line": 34, "label": "sound, volume, LCD, GBC and DIM; memory only" },
+        { "path": "src/features/terminal/game/settingsStore.ts", "line": 36, "end_line": 57, "label": "the store starts on, half volume, colour and dim" }
       ]
     },
     {
       "id": "shell",
       "type": "backend",
       "label": "Shell logic",
-      "sublabel": "parser, commands, play",
-      "pos": [1010, 620],
-      "size": [150, 70],
+      "sublabel": "commands, Tab completion",
+      "pos": [1000, 620],
+      "size": [140, 70],
       "sources": [
-        { "path": "src/features/terminal/shell.ts", "line": 18, "end_line": 44, "label": "execute: parse, run, record history, apply cd" },
-        { "path": "src/features/terminal/commands.ts", "line": 15, "end_line": 36, "label": "effects incl. game, and what a command reads" },
-        { "path": "src/features/terminal/commands.ts", "line": 192, "end_line": 200, "label": "play and play skip" }
+        { "path": "src/features/terminal/shell.ts", "line": 18, "end_line": 45, "label": "execute: parse, find, record history, apply cd" },
+        { "path": "src/features/terminal/commands.ts", "line": 199, "end_line": 207, "label": "play: the game effect; play skip: text" },
+        { "path": "src/features/terminal/complete.ts", "line": 50, "end_line": 68, "label": "Tab:names, paths, open targets, themes, skip" }
       ]
     },
     {
@@ -400,11 +401,11 @@
       "label": "Game screen",
       "sublabel": "canvas, keys, live region",
       "pos": [980, 1000],
-      "size": [180, 70],
+      "size": [160, 70],
       "sources": [
-        { "path": "src/features/terminal/game/Game.tsx", "line": 68, "end_line": 92, "label": "canvas drawn per frame, live region, sound" },
-        { "path": "src/features/terminal/game/Game.tsx", "line": 114, "end_line": 135, "label": "events to live region, cues to sound, mute" },
-        { "path": "src/features/terminal/game/Game.tsx", "line": 157, "end_line": 175, "label": "keyboard: leave, unlock sound, mute, direction" }
+        { "path": "src/features/terminal/game/Game.tsx", "line": 95, "end_line": 102, "label": "paint: colour and dim copies from the settings" },
+        { "path": "src/features/terminal/game/Game.tsx", "line": 236, "end_line": 263, "label": "cues switch sound, volume, LCD, LIGHT, MODE" },
+        { "path": "src/features/terminal/game/Game.tsx", "line": 290, "end_line": 314, "label": "keyboard: leave, unlock sound, mute, direction" }
       ]
     },
     {
@@ -413,23 +414,24 @@
       "label": "useGameLoop",
       "sublabel": "fixed 60 ticks/s on rAF",
       "pos": [980, 1130],
-      "size": [180, 60],
+      "size": [160, 60],
       "sources": [
-        { "path": "src/features/terminal/game/useGameLoop.ts", "line": 28, "end_line": 57, "label": "calls the pure step, state in the session store" },
-        { "path": "src/features/terminal/game/useGameLoop.ts", "line": 101, "end_line": 123, "label": "accumulated frame time drives advance" }
+        { "path": "src/features/terminal/game/useGameLoop.ts", "line": 59, "end_line": 73, "label": "advance: one pure step, state back in the store" },
+        { "path": "src/features/terminal/game/useGameLoop.ts", "line": 114, "end_line": 136, "label": "accumulated frame time, capped, drives advance" },
+        { "path": "src/features/terminal/game/useGameLoop.ts", "line": 101, "end_line": 112, "label": "reduced motion: the page tells elapsed ticks" }
       ]
     },
     {
       "id": "engine",
       "type": "backend",
       "label": "Game engine",
-      "sublabel": "pure step(state, input)",
+      "sublabel": "pure step: title, battle",
       "pos": [980, 1260],
-      "size": [180, 70],
+      "size": [160, 70],
       "sources": [
-        { "path": "src/features/terminal/game/engine/engine.ts", "line": 252, "end_line": 274, "label": "step: title, dialogue, battle, menu, then walk" },
-        { "path": "src/features/terminal/game/engine/engine.ts", "line": 185, "end_line": 205, "label": "tryMove: bump, door scripts, walk" },
-        { "path": "src/features/terminal/game/engine/battle.ts", "line": 46, "end_line": 60, "label": "startBattle" }
+        { "path": "src/features/terminal/game/engine/engine.ts", "line": 715, "end_line": 750, "label": "step: ending, title, text, battle, menus, walk" },
+        { "path": "src/features/terminal/game/engine/engine.ts", "line": 646, "end_line": 675, "label": "title rows START, MODE, LIGHT ask by cue" },
+        { "path": "src/features/terminal/game/engine/engine.ts", "line": 677, "end_line": 713, "label": "player piano: pick a piece, it plays on" }
       ]
     },
     {
@@ -438,11 +440,11 @@
       "label": "Game content",
       "sublabel": "buildWorld: maps, story",
       "pos": [980, 1390],
-      "size": [180, 70],
+      "size": [160, 70],
       "sources": [
-        { "path": "src/features/terminal/game/content/world.ts", "line": 9, "end_line": 31, "label": "buildWorld joins the content and the data" },
-        { "path": "src/features/terminal/game/content/story.ts", "line": 218, "end_line": 225, "label": "maps built from the profile, jobs, skills" },
-        { "path": "src/features/terminal/game/content/battles.ts", "line": 14, "end_line": 27, "label": "moves and hit points" }
+        { "path": "src/features/terminal/game/content/world.ts", "line": 11, "end_line": 47, "label": "buildWorld joins content, data and pieces" },
+        { "path": "src/features/terminal/game/content/story.ts", "line": 511, "end_line": 518, "label": "maps built from the profile, jobs, skills" },
+        { "path": "src/features/terminal/game/engine/battle.ts", "line": 158, "end_line": 185, "label": "startBattle" }
       ]
     },
     {
@@ -453,20 +455,22 @@
       "pos": [785, 1000],
       "size": [170, 70],
       "sources": [
-        { "path": "src/features/terminal/game/render.ts", "line": 308, "end_line": 323, "label": "drawGame: title, ending, battle, menu, map" },
-        { "path": "src/features/terminal/game/render.ts", "line": 104, "end_line": 121, "label": "map tiles from the camera" },
-        { "path": "src/features/terminal/game/useSheets.ts", "line": 20, "end_line": 35, "label": "loads the three sheets once" }
+        { "path": "src/features/terminal/game/render.ts", "line": 806, "end_line": 842, "label": "drawGame: GBC tint, dim shades, then the scene" },
+        { "path": "src/features/terminal/game/render.ts", "line": 758, "end_line": 784, "label": "title: START, MODE GBC/GB, LIGHT DIM/BRIGHT" },
+        { "path": "src/features/terminal/game/useSheets.ts", "line": 18, "end_line": 38, "label": "loads the three sheets once" }
       ]
     },
     {
       "id": "sheets",
       "type": "database",
       "label": "Sprite sheets",
-      "sublabel": "tiles, sprites, font",
+      "sublabel": "green; GBC and DIM copies",
       "pos": [580, 1000],
       "size": [170, 60],
       "sources": [
-        { "path": "src/features/terminal/game/assets/atlas.ts", "line": 1, "end_line": 12, "label": "generated atlas: tile positions, four shades" }
+        { "path": "src/features/terminal/game/assets/atlas.ts", "line": 1, "end_line": 12, "label": "generated atlas: tile positions, four shades" },
+        { "path": "src/features/terminal/game/palettes.ts", "line": 16, "end_line": 38, "label": "the Game Boy Color palettes" },
+        { "path": "src/features/terminal/game/useSheets.ts", "line": 57, "end_line": 96, "label": "recoloured copies: per palette, and dimmed" }
       ]
     },
     {
@@ -477,32 +481,33 @@
       "pos": [580, 1130],
       "size": [170, 60],
       "sources": [
-        { "path": "scripts/sprites/generate.mjs", "line": 253, "end_line": 279, "label": "builds sheets and atlas; --check compares" }
+        { "path": "scripts/sprites/generate.mjs", "line": 268, "end_line": 301, "label": "writes sheets and atlas; --check compares" }
       ]
     },
     {
       "id": "audio",
       "type": "backend",
       "label": "Chiptune player",
-      "sublabel": "Web Audio, no audio files",
+      "sublabel": "director and sequencer",
       "pos": [785, 1130],
       "size": [170, 70],
       "sources": [
-        { "path": "src/features/terminal/game/useGameSound.ts", "line": 31, "end_line": 50, "label": "one player per visit, closed when the game goes" },
-        { "path": "src/features/terminal/game/audio/director.ts", "line": 7, "end_line": 18, "label": "which tune a game moment wants" },
-        { "path": "src/features/terminal/game/audio/player.ts", "line": 239, "end_line": 278, "label": "pump notes ahead of the clock, start a track" }
+        { "path": "src/features/terminal/game/useGameSound.ts", "line": 30, "end_line": 68, "label": "one player per visit; follow: tune and position" },
+        { "path": "src/features/terminal/game/audio/director.ts", "line": 3, "end_line": 23, "label": "trackFor: which tune a game moment wants" },
+        { "path": "src/features/terminal/game/audio/player.ts", "line": 296, "end_line": 313, "label": "pump: notes ahead of the clock, late ones out" }
       ]
     },
     {
       "id": "scores",
       "type": "database",
-      "label": "Music and effects",
-      "sublabel": "scores as text",
+      "label": "Music and pieces",
+      "sublabel": "scores, 12 piano pieces",
       "pos": [785, 1260],
       "size": [170, 70],
       "sources": [
-        { "path": "src/features/terminal/game/content/music.ts", "line": 237, "end_line": 245, "label": "which track plays where" },
-        { "path": "src/features/terminal/game/content/music.ts", "line": 253, "end_line": 276, "label": "effects per cue and the jingle" }
+        { "path": "src/features/terminal/game/content/music.ts", "line": 733, "end_line": 749, "label": "pieces levelled; which track plays where" },
+        { "path": "src/features/terminal/game/content/pieces.ts", "line": 1, "end_line": 30, "label": "the twelve pieces of the player piano" },
+        { "path": "src/features/terminal/game/audio/score.ts", "line": 109, "end_line": 145, "label": "createSequencer hands out notes, from a position" }
       ]
     },
     {
@@ -557,7 +562,7 @@
       "size": [200, 60],
       "sources": [
         { "path": ".github/workflows/deploy.yml", "line": 52, "end_line": 70, "label": "e2e job steps" },
-        { "path": "playwright.config.ts", "line": 22, "end_line": 34, "label": "projects and web server" },
+        { "path": "playwright.config.ts", "line": 26, "end_line": 40, "label": "projects and a fresh production server" },
         { "path": "e2e/projects.spec.ts", "line": 13, "end_line": 30, "label": "projects deep link test" }
       ]
     },
@@ -569,8 +574,9 @@
       "pos": [785, 1390],
       "size": [170, 70],
       "sources": [
-        { "path": "e2e/pilot.ts", "line": 37, "end_line": 63, "label": "presses keys and steps the same engine alongside" },
-        { "path": "e2e/terminal-game.spec.ts", "line": 149, "end_line": 176, "label": "a battle is won and earns the badge" }
+        { "path": "e2e/pilot.ts", "line": 50, "end_line": 75, "label": "presses keys and steps the same engine alongside" },
+        { "path": "e2e/pilot.ts", "line": 208, "end_line": 222, "label": "solve: fewest presses found on the copy" },
+        { "path": "e2e/terminal-game.spec.ts", "line": 402, "end_line": 431, "label": "resumes after another page, writes no storage" }
       ]
     }
   ],
@@ -605,8 +611,8 @@
     { "id": "themetests-to-applytheme", "from": "themetests", "to": "applytheme", "label": "asserts" },
     { "id": "hooks-to-storage", "from": "hooks", "to": "storage", "label": "persists colour" },
     { "id": "terminal-to-themeprov", "from": "terminalpage", "to": "themeprov", "label": "select, preview" },
-    { "id": "terminal-to-session", "from": "terminalpage", "to": "session", "label": "scrollback, history" },
-    { "id": "terminal-to-shell", "from": "terminalpage", "to": "shell", "label": "execute(line)" },
+    { "id": "terminal-to-session", "from": "terminalpage", "to": "session", "label": "scrollback, progress" },
+    { "id": "terminal-to-shell", "from": "terminalpage", "to": "shell", "label": "execute, complete" },
     { "id": "shell-to-vfs", "from": "shell", "to": "vfs", "label": "ls, cd, cat" },
     { "id": "vfs-to-projects", "from": "vfs", "to": "projectdata", "label": "projects" },
     { "id": "vfs-to-profile", "from": "vfs", "to": "profile", "label": "about, contact" },
@@ -635,10 +641,9 @@
       "items": [
         "A client-only single-page app: no server code in this repo",
         "A HashRouter serves /, /projects and /terminal; unknown addresses go home",
-        "Home, Projects and Terminal use the same symmetric page padding (120px top and bottom) and the body has none, so each glass panel is centred on the window's middle line, level with the centred site menu",
-        "All three pages put their panel on one shared glass-panel class from the plain stylesheet src/styles/glass.css (no CSS Modules composes across files): same width, blur, border and monospace font. The home panel adds roomier inner padding; it holds the name, the role subline and the newest project (projects[0]); the name button toggles the cat",
-        "The four hidden Poke Balls are spread over the whole home glass panel: one in the top padding, one in the left padding, one in the bottom padding and one beside the subline text. Below 1300px and under 700px each gets a narrower-window position so none sits on the name, link or screenshot. They come last in document and tab order, with the counter just above the panel's top edge",
-        "Home and the social bar read the name, role and links from src/data/profile.ts, the same file the terminal's about and contact use",
+        "Home, Projects and Terminal share symmetric page padding (120px top and bottom) and one glass-panel class from src/styles/glass.css, so each panel is centred on the window's middle line, level with the centred site menu",
+        "The home panel holds the name, the role subline and the newest project (projects[0]); the name button toggles the cat. Four hidden Poke Balls are spread over the panel and come last in document and tab order",
+        "Home, the social bar and the terminal read the name, role and links from src/data/profile.ts",
         "The only persisted state is the colour index in localStorage"
       ]
     },
@@ -646,24 +651,35 @@
       "dot": "rose",
       "title": "Terminal",
       "items": [
-        "A fake shell in plain React on /terminal, with no new dependency: type a command, read the answer",
-        "The logic is pure and unit-tested: parser, commands, shell, virtual filesystem and Tab completion import nothing from React; Terminal.tsx is only the view",
-        "The scrollback (500 lines), the folder and the history (500 commands) live in a SessionProvider above the routes, so they survive a visit to another page. They are memory-only: a reload starts a fresh session",
+        "A fake shell in plain React on /terminal: type a command, read the answer",
+        "The logic is pure and unit-tested: parser, commands, shell, virtual filesystem and Tab completion import nothing from React; Terminal.tsx is the view and carries out the effects",
+        "Command names, play skip, theme names and open targets ignore case, and Tab completes them from any case; file paths stay case-sensitive",
+        "The scrollback (500 lines), the folder and the history (500 commands) live in a SessionProvider above the routes, so they survive a visit to another page. Memory only: a reload starts a fresh session",
         "The virtual filesystem is generated from the data modules, so a new project, job or school becomes a file with no further change",
-        "open <page or project> navigates through the menu list and the project ids; theme <colour> sets the real site theme; matrix only previews the other colours and never stores them, so a reload mid-run keeps the visitor's own colour",
-        "play returns a game effect; Terminal.tsx then switches the pane from the shell to the Game. play skip prints the career as plain text instead"
+        "play returns a game effect and Terminal.tsx switches the pane to the Game (a finished game starts again); play skip prints the career as text"
       ]
     },
     {
       "dot": "orange",
       "title": "Game: Career Quest",
       "items": [
-        "A Game Boy style adventure opened by the play command, drawn on a canvas inside the terminal panel; the build of the town, rooms, people and battles comes from the same data as the virtual filesystem",
-        "The engine is pure: step(state, input, world) returns the next state plus text events and sound cues, and imports nothing from React. useGameLoop runs it at a fixed 60 ticks a second and, with reduced motion, advances one whole move per key press",
-        "The progress and the mute switch live in the terminal session, so leaving the game or visiting another page keeps them; neither is ever written to storage. A reload starts at the title",
-        "The canvas is hidden from assistive technology on purpose: a polite live region tells the story, and Skip to text prints the career",
-        "Pixel art is generated: scripts/sprites turns pixel definitions into three indexed PNG sheets and atlas.ts, and npm run sprites -- --check fails when the committed files differ",
-        "Sound is synthesised on Web Audio with no audio files: scores are text, a sequencer hands out notes just ahead of the clock, the director picks the tune for the moment, and M mutes. A missing or failing AudioContext never reaches the game"
+        "A Game Boy style adventure on a 160x144 canvas inside the terminal panel; the maps, people and battles are built from the same data as the virtual filesystem",
+        "The engine is pure: step(state, input, world) returns the next state plus text events and sound cues. useGameLoop runs it at a fixed 60 ticks a second on requestAnimationFrame, capping a stalled frame at 100 ms; with reduced motion each press is one whole move",
+        "The title has three rows, START, MODE and LIGHT. The engine only asks for a mode or light change by a cue; the Game component switches the setting and redraws, as on the Settings tab",
+        "It starts as a Game Boy Color with the dim screen: the green sheets are recoloured once per palette, and dimmed copies are made the first time DIM is wanted",
+        "Progress and settings (sound, volume, LCD look, mode, light) live in the terminal session, in memory only: leaving the game or the page keeps them, a reload starts at the title with the defaults",
+        "The canvas is hidden from assistive technology; a polite live region tells the story, and Skip to text prints the career",
+        "Pixel art is generated: scripts/sprites turns pixel definitions into three indexed PNG sheets and atlas.ts, and npm run sprites -- --check fails when they differ"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Sound",
+      "items": [
+        "Synthesised on Web Audio with no audio files: scores are text and a sequencer hands out notes just ahead of the clock",
+        "The director picks the tune for each moment (title, map, battle, fanfare, ending); notes missed in a page stall are left out instead of starting all at once",
+        "A player piano in the cafe plays any of twelve pieces, levelled to the cafe tune; its piece carries on where the game has it after the sound comes back or the game is entered again",
+        "One player per visit, paused while the tab is hidden; a missing AudioContext never reaches the game"
       ]
     },
     {
@@ -678,20 +694,12 @@
     },
     {
       "dot": "emerald",
-      "title": "Delivery",
+      "title": "Delivery and tests",
       "items": [
-        "Every push and pull request runs check, build and e2e",
-        "Deploy needs all three and runs only on main",
-        "The custom domain and HTTPS live in the Pages settings, not in a file"
-      ]
-    },
-    {
-      "dot": "violet",
-      "title": "Tests",
-      "items": [
-        "Vitest unit tests sit beside the code in src/, including theme contrast and token use, every terminal module, and the game's engine, renderer, loop and audio",
-        "Playwright tests the exact dist the build job produced, on desktop and mobile, terminal page included",
-        "The game pilot plays the page by key presses and steps a copy of the engine alongside, so a test can ask to walk to a door instead of listing keys"
+        "Every push and pull request runs check, build and e2e; deploy needs all three and runs only on main",
+        "The custom domain and HTTPS live in the Pages settings, not in a file",
+        "Vitest unit tests sit beside the code in src/, including the game's engine, content, renderer, palettes, loop and audio",
+        "Playwright tests a fresh production build (CI: the exact dist of the build job) on desktop and mobile; the game pilot plays by key presses and steps a copy of the engine alongside, so a test can ask for a place or a solved puzzle instead of listing keys"
       ]
     }
   ]
