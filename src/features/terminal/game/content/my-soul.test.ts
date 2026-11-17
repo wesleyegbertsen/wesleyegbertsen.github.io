@@ -74,17 +74,19 @@ describe('My Soul, Your Beats! on the player piano, as converted from the MIDI',
   });
 });
 
-describe('the selector with nine pieces (the Clannad Medley taken out)', () => {
+describe('the selector with nine pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
   const down = (state: GameState, times: number): GameState => (times === 0 ? state : down(press(state, { dir: 'down', pressed: 'down' }), times - 1));
   const ids = ['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel', 'aliez', 'guren-no-yumiya', 'ichiban-no-takaramono', 'bauklotze', 'my-soul-your-beats'];
 
-  it('lists the nine pieces, each with the length of its own track, and no track of the medley is left', () => {
+  it('lists the nine pieces, each with the length of its own track, and no piano track is left out of the list', () => {
     expect(PIECES.find((entry) => entry.id === 'my-soul-your-beats')).toEqual({ id: 'my-soul-your-beats', name: 'MY SOUL, YOUR BEATS!', artist: 'ANGEL BEATS', track: 'my-soul-your-beats' });
     expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
-    expect(TRACKS['clannad-medley']).toBeUndefined();
+    // A piano track (played once, every voice plucked) that is not in the list would be dead weight in the bundle.
+    const piano = Object.entries(TRACKS).filter(([, track]) => track.loop === false && track.voices.every((voice) => voice.pluck)).map(([name]) => name);
+    expect(piano.sort()).toEqual(PIECES.map((entry) => entry.track).sort());
     expect(world.pieces![8]!.ticks).toBe(Math.round(flatten(TRACKS['my-soul-your-beats']!).length * 60));
     expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(9);
   });
