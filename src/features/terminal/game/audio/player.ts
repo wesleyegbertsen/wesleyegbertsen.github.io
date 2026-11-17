@@ -91,6 +91,8 @@ export const TICK_MS = 100;
 /** How long a tune takes to fade when another one starts, and the pause before the new one. */
 export const FADE = 0.12;
 const LEAD_IN = 0.06;
+/** A note of the tune due longer ago than this (seconds) is left out rather than played late. */
+const LATE = 0.1;
 const MASTER = 0.25;
 
 /** The kick, the snare and the hi-hat: how bright the noise is and how long it rings at most. */
@@ -291,7 +293,11 @@ export function createSound(options: SoundOptions): Sound {
     track.sources = [];
   }
 
-  /** Hands the context the notes of the tune that start within the lookahead. */
+  /**
+   * Hands the context the notes of the tune that start within the lookahead. After a stall of the page longer than
+   * the lookahead (a long garbage collection, a slow first paint) the notes it missed are taken and left out, not
+   * all started at once: the tune goes on in time from where it is by now.
+   */
   function pump() {
     if (!ctx || !playing || paused || muted) return;
     const now = ctx.currentTime;
@@ -299,6 +305,7 @@ export function createSound(options: SoundOptions): Sound {
     track.sources = track.sources.filter((source) => source.end > now);
     safely(() => {
       for (const item of track.sequencer.take(now - track.startAt + LOOKAHEAD)) {
+        if (track.startAt + item.time < now - LATE) continue;
         const started = note(item, track.startAt + item.time, track.gain);
         if (started) track.sources.push(started);
       }

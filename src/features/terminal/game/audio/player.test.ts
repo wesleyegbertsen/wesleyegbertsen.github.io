@@ -141,6 +141,30 @@ describe('the sound player', () => {
     expect(starts.at(-1)).toBeLessThanOrEqual(+(audio.currentTime + LOOKAHEAD + 0.06).toFixed(2));
   });
 
+  it('leaves out the notes it is too late for after the page stalled, instead of playing them all at once, and carries on in time', () => {
+    const { audio, sound, clock, pass, pitches } = setup();
+    sound.music('walk');
+    sound.unlock();
+    expect(pitches()).toEqual([440, 110]);
+    // The page hangs for 2 s: the E at 0.86 s and the A and the bass at 1.66 s are long gone when it looks again.
+    audio.currentTime = 2;
+    clock.tick();
+    expect(pitches()).toEqual([440, 110]);
+    // The tune went on meanwhile: the next E, at 2.46 s, comes in time, once.
+    pass(0.1);
+    pass(0.1);
+    pass(0.1);
+    expect(pitches()).toEqual([440, 110, 659]);
+    expect(audio.oscillators[2]!.startAt).toBeCloseTo(0.06 + 2.4, 6);
+    // A little late (within a tenth of a second) is still played.
+    const late = setup();
+    late.sound.music('walk');
+    late.sound.unlock();
+    late.audio.currentTime = 0.9;
+    late.clock.tick();
+    expect(late.pitches()).toEqual([440, 110, 659]);
+  });
+
   it('does not start the same tune again, and fades into another one', () => {
     const { audio, sound, pitches } = setup();
     sound.music('walk');
