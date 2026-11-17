@@ -101,13 +101,19 @@ export type Sequencer = {
   readonly done: boolean;
 };
 
-/** Hands out the notes of a track as time passes; a looping track never runs out. */
-export function createSequencer(track: Track): Sequencer {
+/**
+ * Hands out the notes of a track as time passes; a looping track never runs out. `from`: seconds into the track
+ * (within its first round) where it starts, a track that was already under way. The notes that start before it are
+ * left out; the times of the rest stay the times from the start of the track.
+ */
+export function createSequencer(track: Track, from = 0): Sequencer {
   const { notes, length, loopAt } = flatten(track);
   const loopStart = notes.findIndex((note) => note.time >= loopAt);
   // A loop with nothing in it (or no length) would never move on: such a track just plays once.
   const loops = track.loop && loopStart >= 0 && length - loopAt > 0;
-  let index = 0;
+  // (A hair of slack, so a note right at `from` that the sum of two clock times misses by a rounding is not lost.)
+  const first = from > 0 ? notes.findIndex((note) => note.time >= from - 1e-6) : 0;
+  let index = first < 0 ? notes.length : first;
   let offset = 0;
   let done = notes.length === 0;
 

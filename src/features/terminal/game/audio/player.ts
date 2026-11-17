@@ -62,8 +62,13 @@ export type SoundOptions = {
 export type Sound = {
   /** Call on entering the game and from a key or pointer press: makes the context, or wakes a sleeping one. */
   unlock(): void;
-  /** The tune to play from now on (a track name), or null for none. The same name again changes nothing. */
-  music(id: string | null): void;
+  /**
+   * The tune to play from now on (a track name), or null for none. The same name again changes nothing.
+   * `from`: for a tune that plays once (the player piano's piece), how many seconds of it have run already, so it
+   * starts there and not at its first note. Until the tune has a place on the context's clock (before there is a
+   * context), the same name with a later `from` moves it on. A looping tune starts from its start regardless.
+   */
+  music(id: string | null, from?: number): void;
   /** A track played once over the music, which steps back for as long as it lasts. */
   jingle(id: string): void;
   effect(id: string): void;
@@ -113,6 +118,14 @@ export function createSound(options: SoundOptions): Sound {
   let paused = false;
   let closed = false;
   let wanted: string | null = null;
+  /** How far the wanted tune had run when it was asked for, until it has `origin`. */
+  let wantedFrom = 0;
+  /**
+   * Where the wanted tune (one that plays once) starts on the context's clock, its first note's time 0: set once,
+   * and kept while it is muted, so the sound coming back carries it on where it would be by now instead of
+   * starting it over (and the game, which counts its length, stops it at its end, not in the middle).
+   */
+  let origin: number | null = null;
   let playing: Playing | null = null;
   let ticking: unknown = null;
   /** The tune is paused until then (context time): a cry is sounding. */
@@ -254,6 +267,7 @@ export function createSound(options: SoundOptions): Sound {
     const handed = track.sources;
     track.sources = [];
     track.startAt += shift;
+    if (origin !== null) origin += shift;
     safely(() => {
       for (const source of handed) {
         if (source.end <= now) continue;
@@ -304,16 +318,21 @@ export function createSound(options: SoundOptions): Sound {
       playing = null;
     }
     const score = wanted === null ? undefined : options.tracks[wanted];
+    const begin = ctx ? Math.max(ctx.currentTime + LEAD_IN, heldUntil) : 0;
+    // A tune that plays once gets its place on the clock the first time there is one, muted or not; a looping one
+    // starts over each time.
+    if (ctx && score && !paused && (origin === null || score.loop)) origin = begin - (score.loop ? 0 : wantedFrom);
     if (!ctx || !musicBus || muted || paused || wanted === null || !score) {
       stopTicking();
       return;
     }
     const id = wanted;
+    const startAt = origin ?? begin;
     safely(() => {
       const gain = ctx!.createGain();
       gain.gain.value = 1;
       gain.connect(musicBus!);
-      playing = { id, sequencer: createSequencer(score), startAt: Math.max(ctx!.currentTime + LEAD_IN, heldUntil), gain, sources: [] };
+      playing = { id, sequencer: createSequencer(score, Math.max(0, begin - startAt)), startAt, gain, sources: [] };
     });
     pump();
     if (ticking === null) ticking = timer.set(pump, TICK_MS);
@@ -328,9 +347,14 @@ export function createSound(options: SoundOptions): Sound {
       if (fresh) start();
     },
 
-    music(id) {
-      if (id === wanted) return;
+    music(id, from) {
+      if (id === wanted) {
+        if (origin === null && from !== undefined) wantedFrom = Math.max(0, from);
+        return;
+      }
       wanted = id;
+      wantedFrom = Math.max(0, from ?? 0);
+      origin = null;
       if (ctx) start();
     },
 

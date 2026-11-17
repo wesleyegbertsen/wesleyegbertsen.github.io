@@ -1,7 +1,7 @@
 import { initialGame, step } from '../engine/engine.ts';
 import { play, testWorld } from '../engine/testWorld.ts';
 import { NO_INPUT, type GameState, type World } from '../engine/types.ts';
-import { trackFor } from './director.ts';
+import { positionFor, trackFor } from './director.ts';
 
 const world: World = {
   ...testWorld,
@@ -76,5 +76,21 @@ describe('the tune a moment wants', () => {
 
   it('is silence in a world without music', () => {
     expect(trackFor(started(), testWorld)).toBeNull();
+  });
+});
+
+describe('how far the tune has run', () => {
+  const pianoWorld: World = { ...world, pieces: [{ id: 'moon', name: 'MOONLIGHT SONATA', artist: 'BEETHOVEN', track: 'moonlight', ticks: 600 }] };
+  const piano = (ticks: number, state = started()): GameState => ({ ...state, piano: { map: state.map, piece: 'moon', ticks } });
+
+  it("is the player piano's piece as the game counts it: its ticks less the ticks left, 60 a second", () => {
+    expect(positionFor(piano(600), pianoWorld)).toBe(0);
+    expect(positionFor(piano(480), pianoWorld)).toBe(2);
+  });
+
+  it('is nothing for every other tune, which starts from its start', () => {
+    expect(positionFor(started(), pianoWorld)).toBeUndefined();
+    expect(positionFor(piano(480, play(started(), 'down', 'right')), pianoWorld)).toBeUndefined();
+    expect(positionFor({ ...piano(480), map: 'elsewhere' }, pianoWorld)).toBeUndefined();
   });
 });

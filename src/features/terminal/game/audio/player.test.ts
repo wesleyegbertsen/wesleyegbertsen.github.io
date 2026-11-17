@@ -22,6 +22,8 @@ const TRACKS: Record<string, Track> = {
     ],
   },
   fanfare: { bpm: 150, loop: false, voices: [{ wave: 'pulse', volume: 0.5, notes: 'C5:2 E5:2 G5:4' }] },
+  // A piece that plays once (as the player piano's do), 3.2 s: a new note every 0.4 s, each a pitch of its own.
+  piece: { bpm: 150, loop: false, voices: [{ wave: 'pulse', volume: 0.5, notes: 'C4:4 D4:4 E4:4 F4:4 G4:4 A4:4 B4:4 C5:4' }] },
 };
 
 const EFFECTS: Record<string, Effect> = {
@@ -329,6 +331,47 @@ describe('the sound player', () => {
     expect(audio.oscillators.at(-2)!.startAt).toBeGreaterThan(audio.currentTime);
     sound.setMuted(false);
     expect(sound.muted).toBe(false);
+  });
+
+  it('carries a tune that plays once on where it would be after the sound was off, instead of starting it again', () => {
+    const { audio, sound, pass, pitches } = setup();
+    sound.music('piece');
+    sound.unlock();
+    // The C at 0.06 s; the D at 0.46 s is not due yet.
+    expect(pitches()).toEqual([262]);
+    pass(0.1);
+    sound.setMuted(true);
+    audio.currentTime += 1;
+    const before = audio.oscillators.length;
+    sound.setMuted(false);
+    // 1.1 s on, the piece has run past its C, D and E: it goes on with the F (due at 1.26 s), not the C again.
+    expect(pitches(before)).toEqual([349]);
+    expect(audio.oscillators[before]!.startAt).toBeCloseTo(0.06 + 1.2, 6);
+    // Off from the start: the time it ran silent counts too.
+    const quiet = setup({}, { muted: true });
+    quiet.sound.music('piece', 1);
+    quiet.sound.unlock();
+    quiet.audio.currentTime = 1;
+    quiet.sound.setMuted(false);
+    expect(quiet.pitches()).toEqual([440]);
+  });
+
+  it('starts a tune that plays once at the place it is said to have reached, and a looping one from its start', () => {
+    const { audio, sound, pitches } = setup();
+    // Asked for twice before there is a context: the later place counts.
+    sound.music('piece', 0.5);
+    sound.music('piece', 1);
+    sound.unlock();
+    // 1 s in: the F, due 0.2 s from now; the C, D and E are over.
+    expect(pitches()).toEqual([349]);
+    expect(audio.oscillators[0]!.startAt).toBeCloseTo(0.06 + 0.2, 6);
+    // Asked again once it plays: nothing changes.
+    sound.music('piece', 2);
+    expect(pitches()).toEqual([349]);
+    const loop = setup();
+    loop.sound.music('walk', 1);
+    loop.sound.unlock();
+    expect(loop.pitches()).toEqual([440, 110]);
   });
 
   it('can start muted: a silent master and no notes, until the sound is switched on', () => {

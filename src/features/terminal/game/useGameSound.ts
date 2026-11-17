@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { trackFor } from './audio/director.ts';
+import { positionFor, trackFor } from './audio/director.ts';
 import { createSound, type AudioLike, type Sound } from './audio/player.ts';
 import { EFFECTS, JINGLES, TRACKS } from './content/music.ts';
 import type { Cue, GameState, World } from './engine/types.ts';
@@ -35,13 +35,14 @@ type Options = {
 export function useGameSound({ world, store, context = browserContext }: Options) {
   const player = useRef<Sound | null>(null);
   const wanted = useRef<string | null>(null);
+  const position = useRef<number | undefined>(undefined);
   const muted = useSyncExternalStore(store.subscribe, store.muted);
   const volume = useSyncExternalStore(store.subscribe, store.volume);
 
   useEffect(() => {
     const sound = createSound({ context, tracks: TRACKS, effects: EFFECTS, volume: gainFor(store.volume()), muted: store.muted() });
     player.current = sound;
-    sound.music(wanted.current);
+    sound.music(wanted.current, position.current);
     // `play` and Enter were a gesture, so the browser lets the sound start; a key or a touch in the game asks again.
     sound.unlock();
     if (document.hidden) sound.pause();
@@ -58,7 +59,9 @@ export function useGameSound({ world, store, context = browserContext }: Options
   const follow = useCallback(
     (state: GameState) => {
       wanted.current = trackFor(state, world);
-      player.current?.music(wanted.current);
+      // The player piano's piece starts where the game has it (back in the game, it carries on, not over).
+      position.current = positionFor(state, world);
+      player.current?.music(wanted.current, position.current);
       return wanted.current;
     },
     [world],

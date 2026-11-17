@@ -1,11 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { FakeAudio, type FakeOptions } from './audio/fakeAudio.ts';
-import { frequencyOf } from './audio/score.ts';
+import { LOOKAHEAD } from './audio/player.ts';
+import { flatten, frequencyOf } from './audio/score.ts';
 import { CRIES, EFFECTS, TRACKS } from './content/music.ts';
 import { ENTER_TICKS } from './engine/battle.ts';
 import { initialGame, step } from './engine/engine.ts';
 import { play, testWorld } from './engine/testWorld.ts';
-import { NO_INPUT, type World } from './engine/types.ts';
+import { NO_INPUT, type GameState, type World } from './engine/types.ts';
 import { createSettingsStore } from './settingsStore.ts';
 import { MAX_GAIN, VOLUME, gainFor, useGameSound } from './useGameSound.ts';
 
@@ -346,5 +347,50 @@ describe('the player piano, heard', () => {
     from = audio.oscillators.length;
     act(() => void expect(result.current.follow(inTown)).toBe('town'));
     expect(pitches(from).slice(0, firstOf('town').length)).toEqual(expect.arrayContaining(firstOf('town')));
+  });
+
+  // The piece as the game has it: its length in ticks (60 a second), as content/world.ts works it out.
+  const moonlight = flatten(TRACKS.moonlight!);
+  const pieceWorld: World = { ...world, pieces: [{ id: 'moon', name: 'MOONLIGHT SONATA', artist: 'BEETHOVEN', track: 'moonlight', ticks: Math.round(moonlight.length * 60) }] };
+  const playing = (ticks: number): GameState => ({ ...inTown, piano: { map: inTown.map, piece: 'moon', ticks } });
+  /** The pitches of the piece's notes that start from `at` seconds into it, within the player's lookahead. */
+  const due = (at: number) =>
+    moonlight.notes
+      .filter((note) => note.time >= at - 1e-6 && note.time < at + LOOKAHEAD - 0.06)
+      .map((note) => Math.round(note.frequency))
+      .sort((a, b) => a - b);
+  const heard = (audio: FakeAudio, from: number) =>
+    audio.oscillators
+      .slice(from)
+      .filter((oscillator) => oscillator.bus !== audio.buses[1])
+      .map((oscillator) => Math.round(oscillator.frequency.first ?? 0))
+      .sort((a, b) => a - b);
+
+  it('carries the piece on where the game has it after the sound was off and on again, instead of starting it over', () => {
+    const made: FakeAudio[] = [];
+    const store = createSettingsStore(false);
+    const context = () => (made.push(new FakeAudio({})), made.at(-1)!.as());
+    const { result } = renderHook(() => useGameSound({ world: pieceWorld, store, context }));
+    const audio = made.at(-1)!;
+    const length = pieceWorld.pieces![0]!.ticks;
+    act(() => void result.current.follow(playing(length)));
+    act(() => void result.current.toggle());
+    // A minute later (the engine has counted 3,600 ticks of it meanwhile): the sound on again.
+    audio.currentTime += 60;
+    act(() => void result.current.follow(playing(length - 3600)));
+    const from = audio.oscillators.length;
+    act(() => void result.current.toggle());
+    expect(due(60)).not.toEqual(due(0));
+    expect(heard(audio, from)).toEqual(due(60));
+  });
+
+  it('starts the piece where the game has it on coming back to the game, not from its first note', () => {
+    const made: FakeAudio[] = [];
+    const store = createSettingsStore(false);
+    const context = () => (made.push(new FakeAudio({})), made.at(-1)!.as());
+    const { result } = renderHook(() => useGameSound({ world: pieceWorld, store, context }));
+    // The session kept the piano playing, a minute into its piece.
+    act(() => void result.current.follow(playing(pieceWorld.pieces![0]!.ticks - 3600)));
+    expect(heard(made.at(-1)!, 0)).toEqual(due(60));
   });
 });

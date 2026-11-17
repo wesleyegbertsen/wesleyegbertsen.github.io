@@ -17,7 +17,22 @@ export function trackFor(state: GameState, world: World): string | null {
     return state.battle.wild ? music.wild : (world.enemies[state.battle.enemy]?.tune ?? music.boss);
   }
   // The player piano replaces the tune of its room while it plays: the track of its piece.
-  const piece = state.piano && state.piano.map === state.map ? world.pieces?.find((candidate) => candidate.id === state.piano!.piece) : undefined;
+  const piece = pianoPiece(state, world);
   if (piece) return piece.track;
   return music.maps[state.map] ?? music.indoors;
+}
+
+function pianoPiece(state: GameState, world: World) {
+  return state.piano && state.piano.map === state.map ? world.pieces?.find((candidate) => candidate.id === state.piano!.piece) : undefined;
+}
+
+/**
+ * How many seconds of the tune `trackFor` names have run already, as the game counts them: the player piano's piece
+ * that is under way (its length in ticks, 60 a second, less the ticks left). Undefined for every other tune, which
+ * starts from its start.
+ */
+export function positionFor(state: GameState, world: World): number | undefined {
+  if (state.scene !== 'world' || state.battle || !state.piano) return undefined;
+  const piece = pianoPiece(state, world);
+  return piece ? Math.max(0, piece.ticks - state.piano.ticks) / 60 : undefined;
 }
