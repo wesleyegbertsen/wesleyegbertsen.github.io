@@ -52,6 +52,12 @@ export type Command = {
 };
 
 const say = (...lines: string[]): Result => ({ lines });
+
+/**
+ * A fixed word of the shell as it is matched: command names, `play skip`, theme names and `open` targets ignore
+ * case, so `PLAY SKIP` is `play skip`. File paths do not go through this: the filesystem is case-sensitive, as on Unix.
+ */
+export const keyword = (word: string): string => word.toLowerCase();
 const THEME_NAMES = THEMES.map((theme) => theme.name);
 
 /** Targets of `open`: every menu item, then every project (which lives on the projects page). */
@@ -99,18 +105,19 @@ function open(args: string[], ctx: Context): Result {
       `Projects: ${ctx.data.projects.map((project) => project.id).join(', ')}`,
     );
   }
-  const to = Object.hasOwn(targets, name) ? targets[name] : undefined;
+  const id = keyword(name);
+  const to = Object.hasOwn(targets, id) ? targets[id] : undefined;
   if (to === undefined) return say(`open: no such page or project: ${name}`);
-  return { lines: [`opening ${name}...`], effects: [{ type: 'navigate', to }] };
+  return { lines: [`opening ${id}...`], effects: [{ type: 'navigate', to }] };
 }
 
 function theme(args: string[], ctx: Context): Result {
   const name = args[0];
   const list = THEME_NAMES.map((n) => `${n === ctx.themeName ? '*' : ' '} ${n}`);
   if (name === undefined) return say('Usage: theme <name>', ...list);
-  const index = THEME_NAMES.indexOf(name as (typeof THEME_NAMES)[number]);
+  const index = THEME_NAMES.indexOf(keyword(name) as (typeof THEME_NAMES)[number]);
   if (index < 0) return say(`theme: unknown theme: ${name}`, ...list);
-  return { lines: [`theme set to ${name}`], effects: [{ type: 'theme', index }] };
+  return { lines: [`theme set to ${THEME_NAMES[index]}`], effects: [{ type: 'theme', index }] };
 }
 
 function rm(args: string[]): Result {
@@ -133,7 +140,7 @@ export const commands: Command[] = [
     run: (args) => {
       const asked = args[0];
       if (asked !== undefined) {
-        const command = commands.find((candidate) => candidate.name === asked);
+        const command = findCommand(asked);
         return say(
           command ? `${command.name}: ${command.help}` : `help: no such command: ${asked}. Type 'help' to list them.`,
         );
@@ -194,7 +201,7 @@ export const commands: Command[] = [
     help: 'walk through my career (a Game Boy adventure with music, m mutes); "play skip" prints it as text',
     run: (args, ctx) => {
       if (args.length === 0) return { lines: ['Career Quest. Esc or q to leave, m for sound, settings in the Start menu.'], effects: [{ type: 'game' }] };
-      if (args.length === 1 && args[0] === 'skip') return { lines: careerLines(ctx.data) };
+      if (args.length === 1 && keyword(args[0]!) === 'skip') return { lines: careerLines(ctx.data) };
       return say('Usage: play [skip]');
     },
   },
@@ -217,3 +224,9 @@ export const commands: Command[] = [
 ];
 
 export const commandNames: string[] = commands.map((command) => command.name);
+
+/** The command a typed name means, in any case (`Help` is `help`). */
+export function findCommand(name: string): Command | undefined {
+  const wanted = keyword(name);
+  return commands.find((candidate) => candidate.name === wanted);
+}
