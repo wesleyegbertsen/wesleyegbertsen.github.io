@@ -1,4 +1,4 @@
-import { DIM_START, VOLUME_MAX, VOLUME_START, createSettingsStore } from './settingsStore.ts';
+import { COLOUR_START, DIM_START, VOLUME_MAX, VOLUME_START, createSettingsStore } from './settingsStore.ts';
 
 describe('the settings store', () => {
   it('starts with the sound on, unless told otherwise', () => {
@@ -74,36 +74,37 @@ describe('the settings store', () => {
     expect(heard).toHaveBeenCalledTimes(1);
   });
 
-  it('starts as a Game Boy, switches to a Game Boy Color, tells its listeners, and writes nothing to storage', () => {
+  it('starts as a Game Boy Color (COLOUR_START: on), switches to a Game Boy, tells its listeners, and writes nothing to storage', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const store = createSettingsStore();
-    expect(store.colour()).toBe(false);
+    expect(COLOUR_START).toBe(true);
+    expect(store.colour()).toBe(true);
     const heard = vi.fn();
     store.subscribe(heard);
-    store.setColour(false);
-    expect(heard).not.toHaveBeenCalled();
     store.setColour(true);
-    expect(store.colour()).toBe(true);
+    expect(heard).not.toHaveBeenCalled();
+    store.setColour(false);
+    expect(store.colour()).toBe(false);
     expect(heard).toHaveBeenCalledTimes(1);
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
   });
 
-  it('starts with the bright screen (DIM_START: off), dims it, tells its listeners, keeps it apart from the mode', () => {
+  it('starts with the dim screen (DIM_START: on), brightens it, tells its listeners, keeps it apart from the mode', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const store = createSettingsStore();
-    expect(DIM_START).toBe(false);
+    expect(DIM_START).toBe(true);
     expect(store.dim()).toBe(DIM_START);
     const heard = vi.fn();
     store.subscribe(heard);
-    store.setDim(false);
-    expect(heard).not.toHaveBeenCalled();
     store.setDim(true);
-    expect(store.dim()).toBe(true);
+    expect(heard).not.toHaveBeenCalled();
+    store.setDim(false);
+    expect(store.dim()).toBe(false);
     expect(heard).toHaveBeenCalledTimes(1);
-    store.setColour(true);
     store.setColour(false);
-    expect(store.dim()).toBe(true);
+    store.setColour(true);
+    expect(store.dim()).toBe(false);
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
   });

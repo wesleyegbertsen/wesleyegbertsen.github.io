@@ -144,6 +144,20 @@ export class Pilot {
     throw new Error('The text box on the page never caught up with the copy');
   }
 
+  /**
+   * On the title: a Game Boy with the bright screen (MODE GB, LIGHT BRIGHT), and the cursor back on START. The game
+   * starts as a Game Boy Color with the dim screen; a test that reads the four greens of the Game Boy on the canvas
+   * chooses this first, on purpose, through the title's own rows.
+   */
+  async gameBoy() {
+    const game = gameOf(this.page);
+    await expect(game).toHaveAttribute('data-scene', 'title');
+    for (const key of ['down', 'a', 'down', 'a', 'up', 'up'] as const) await this.press(key);
+    await expect(game).toHaveAttribute('data-mode', 'gb');
+    await expect(game).toHaveAttribute('data-dim', 'off');
+    await expect(game).toHaveAttribute('data-title-row', 'start');
+  }
+
   /** From the title screen to standing in town, the intro read. */
   async start() {
     await this.press('a');

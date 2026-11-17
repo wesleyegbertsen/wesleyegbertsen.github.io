@@ -76,6 +76,8 @@ test.describe('the volume wheel', () => {
 
   test('is drawn on the screen as steps that fill up', async ({ page }) => {
     const { pilot } = await play(page);
+    // The steps are counted in the darkest green: a bright Game Boy.
+    await pilot.gameBoy();
     await pilot.start();
     await pilot.press('start');
     await pilot.press('left');
@@ -176,6 +178,8 @@ test.describe('the settings', () => {
 
   test('LIGHT dims the screen, in GB and in GBC, and BRIGHT brings it back: the LCD look is left alone', async ({ page }) => {
     const { pilot, errors } = await play(page);
+    // From a bright Game Boy (the game starts as a dim Game Boy Color), so each mode is dimmed from bright.
+    await pilot.gameBoy();
     await pilot.start();
     /** The light of a part of the screen: the sum of the channels of its pixels (the box of the Settings tab). */
     const light = () =>
@@ -214,6 +218,8 @@ test.describe('the settings', () => {
 
   test('the screen has an LCD look laid over it, which SCREEN switches off and on', async ({ page, isMobile }) => {
     const { pilot, errors } = await play(page);
+    // A bright Game Boy, so the picture under the look can be checked for its four shades.
+    await pilot.gameBoy();
     await pilot.start();
     const lcd = page.getByTestId('lcd');
     await expect(game(page)).toHaveAttribute('data-lcd', 'on');
@@ -284,25 +290,93 @@ test.describe('Game Boy Color mode', () => {
       return { count: seen.size, green, all: data.length / 4 };
     });
 
+  test('is where the game starts, dim: the title has START chosen, and MODE and LIGHT under it, by key or by the D-pad and A', async ({ page, isMobile }) => {
+    const { errors } = await play(page);
+    const shell = game(page).locator('[data-wide]');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    await expect(game(page)).toHaveAttribute('data-title-row', 'start');
+    await expect(game(page)).toHaveAttribute('data-mode', 'gbc');
+    await expect(shell).toHaveAttribute('data-mode', 'gbc');
+    await expect(game(page)).toHaveAttribute('data-dim', 'on');
+    await expect(shell).toContainText('COLOR');
+    // In colour from the first frame: none of the four greens of the Game Boy.
+    await expect.poll(async () => (await colours(page)).count).toBeGreaterThan(4);
+    expect((await colours(page)).green).toBe(0);
+    // The screen and, on a phone, the buttons under it all fit the window and do not overlap.
+    await expect(canvas(page)).toBeInViewport({ ratio: 1 });
+    if (isMobile) {
+      const screenBox = await box(canvas(page));
+      for (const name of ['Up', 'Down', 'A', 'Start']) {
+        const button = page.getByRole('button', { name, exact: true });
+        await expect(button).toBeInViewport({ ratio: 1 });
+        expect((await box(button)).y).toBeGreaterThanOrEqual(screenBox.y + screenBox.height);
+      }
+    }
+    const down = () => (isMobile ? touch(page, 'Down') : page.keyboard.press('ArrowDown'));
+    const up = () => (isMobile ? touch(page, 'Up') : page.keyboard.press('ArrowUp'));
+    const a = () => (isMobile ? touch(page, 'A') : page.keyboard.press('z'));
+
+    await down();
+    await expect(game(page)).toHaveAttribute('data-title-row', 'mode');
+    await expect(status(page)).toHaveText('Mode. A switches between Game Boy and Game Boy Color.');
+    await a();
+    await expect(game(page)).toHaveAttribute('data-mode', 'gb');
+    await expect(status(page)).toHaveText('Game Boy mode');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    await down();
+    await expect(game(page)).toHaveAttribute('data-title-row', 'light');
+    await a();
+    await expect(game(page)).toHaveAttribute('data-dim', 'off');
+    await expect(status(page)).toHaveText('Screen bright');
+    // A Game Boy with the bright screen: the title in the four greens and nothing else.
+    await expect.poll(async () => (await colours(page)).green).toBe((await colours(page)).all);
+    if (!isMobile) {
+      // Left and right switch them too.
+      await page.keyboard.press('ArrowRight');
+      await expect(game(page)).toHaveAttribute('data-dim', 'on');
+      await page.keyboard.press('ArrowLeft');
+      await expect(game(page)).toHaveAttribute('data-dim', 'off');
+    }
+    await up();
+    await up();
+    await expect(game(page)).toHaveAttribute('data-title-row', 'start');
+    await expect(status(page)).toHaveText('Start. A starts the game.');
+    await a();
+    await expect(game(page)).toHaveAttribute('data-scene', 'world');
+    await expect(game(page)).toHaveAttribute('data-title-row', '');
+    // What was chosen on the title holds in the game.
+    await expect(game(page)).toHaveAttribute('data-mode', 'gb');
+    await expect(game(page)).toHaveAttribute('data-dim', 'off');
+    expect(errors).toEqual([]);
+  });
+
   test('is switched with B on the title screen too, by key or by the on-screen B', async ({ page, isMobile }) => {
     const { errors } = await play(page);
     const shell = game(page).locator('[data-wide]');
     await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    await expect(shell).toHaveAttribute('data-mode', 'gbc');
     if (isMobile) await touch(page, 'B');
     else await page.keyboard.press('x');
-    await expect(shell).toHaveAttribute('data-mode', 'gbc');
-    await expect(status(page)).toHaveText('Game Boy Color mode');
-    await expect(game(page)).toHaveAttribute('data-scene', 'title');
-    await expect.poll(async () => (await colours(page)).green).toBe(0);
-    await page.keyboard.press('x');
     await expect(shell).toHaveAttribute('data-mode', 'gb');
     await expect(status(page)).toHaveText('Game Boy mode');
+    await expect(game(page)).toHaveAttribute('data-scene', 'title');
+    // Whichever row the cursor is on: B is the mode switch of the title.
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(game(page)).toHaveAttribute('data-title-row', 'light');
+    await page.keyboard.press('x');
+    await expect(shell).toHaveAttribute('data-mode', 'gbc');
+    await expect(status(page)).toHaveText('Game Boy Color mode');
+    await expect(game(page)).toHaveAttribute('data-dim', 'on');
+    await expect.poll(async () => (await colours(page)).green).toBe(0);
     expect(errors).toEqual([]);
   });
 
   test('is switched on the fourth row of the Settings tab: the picture turns to colour and the console to a Game Boy Color', async ({ page }) => {
     const { pilot, errors } = await play(page);
     const storage = await page.evaluate(() => Object.keys(localStorage).sort());
+    // A bright Game Boy first (MODE GB and LIGHT BRIGHT on the title), so the switch to colour can be seen.
+    await pilot.gameBoy();
     await pilot.start();
     const shell = game(page).locator('[data-wide]');
     await expect(game(page)).toHaveAttribute('data-mode', 'gb');
@@ -661,6 +735,8 @@ test.describe('beyond the town', () => {
 
   test('a hop over a ledge is an arc through the air when motion is allowed', async ({ page }) => {
     const { pilot } = await play(page);
+    // The pixels are read in the Game Boy's greens: a bright Game Boy (the game starts as a dim Game Boy Color).
+    await pilot.gameBoy();
     await pilot.start();
     await pilot.goTo('town:(');
     // Out to the chest in the far band of grass of the West Road, and back to the road left of the first line of
@@ -725,6 +801,8 @@ test.describe('beyond the town', () => {
 
   test('the cave is dark: light around the player, black further off, and the tune changes', async ({ page }) => {
     const { pilot, errors } = await play(page);
+    // The pixels are read in the Game Boy's greens: a bright Game Boy (the game starts as a dim Game Boy Color).
+    await pilot.gameBoy();
     await pilot.start();
     // Level 3 first: the FINAL EXAM is worth that.
     await pilot.goTo('town:A');
@@ -808,6 +886,8 @@ test.describe('the deep cave', () => {
   test('a ladder behind a cracked wall leads down to it; boulders are pushed onto plates, slick rock is slid over, and the last door asks for level 5; the puzzles are played with motion', async ({ page }) => {
     test.slow();
     const { pilot, errors } = await play(page);
+    // The pixels are read in the Game Boy's greens: a bright Game Boy (the game starts as a dim Game Boy Color).
+    await pilot.gameBoy();
     await pilot.start();
     // Level 3 first: the FINAL EXAM is worth that.
     await pilot.goTo('town:A');
@@ -951,6 +1031,8 @@ test.describe('the name of a place', () => {
 
   test('is shown on a label at the top when the game starts and on the way into a building, and said once', async ({ page }) => {
     const { pilot, errors } = await play(page);
+    // The label's edge is read in the darkest green: a bright Game Boy (the game starts as a dim Game Boy Color).
+    await pilot.gameBoy();
     await pilot.start();
     await expect(game(page)).toHaveAttribute('data-banner', 'Career Town');
     const shown = await edge(page, 'Career Town');
@@ -991,6 +1073,13 @@ test.describe('the name of a place', () => {
     await input(page).fill('play');
     await page.keyboard.press('Enter');
     await expect(game(page)).toBeFocused();
+    // The label's edge is read in the darkest green: MODE GB and LIGHT BRIGHT on the title, then back to START.
+    // With motion the game reads the keys on its next tick, so each one is waited for before the next.
+    const steps = [['ArrowDown', 'title-row', 'mode'], ['z', 'mode', 'gb'], ['ArrowDown', 'title-row', 'light'], ['z', 'dim', 'off'], ['ArrowUp', 'title-row', 'mode'], ['ArrowUp', 'title-row', 'start']] as const;
+    for (const [key, name, value] of steps) {
+      await page.keyboard.press(key);
+      await expect(game(page)).toHaveAttribute(`data-${name}`, value);
+    }
     await page.keyboard.press('z');
     await expect(game(page)).toHaveAttribute('data-dialogue', 'true');
     // The label waits above the screen while the intro is read: the game clock stands still in a text box.

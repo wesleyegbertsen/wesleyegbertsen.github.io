@@ -69,10 +69,15 @@ test.describe('the adventure in the terminal', () => {
     expect(errors).toEqual([]);
   });
 
-  test('draws the screen from the sprite sheets, in four shades of green', async ({ page }) => {
+  test('draws the screen from the sprite sheets: in colour at the start, in four shades of green as a bright Game Boy', async ({ page }) => {
     const { pilot } = await play(page);
-    // The title: light paper, dark letters, the grass and the trees.
-    await expect.poll(() => colours(page)).toEqual(['136,192,112', '224,248,208', '52,104,86', '8,24,32']);
+    const greens = ['136,192,112', '224,248,208', '52,104,86', '8,24,32'];
+    // The game starts as a Game Boy Color with the dim screen: more than four colours, none of them a green.
+    await expect.poll(async () => (await colours(page)).length).toBeGreaterThan(4);
+    expect((await colours(page)).filter((colour) => greens.includes(colour))).toEqual([]);
+    // MODE GB and LIGHT BRIGHT on the title. The title: light paper, dark letters, the grass and the trees.
+    await pilot.gameBoy();
+    await expect.poll(() => colours(page)).toEqual(greens);
 
     await pilot.start();
     const town = await colours(page);
@@ -417,8 +422,9 @@ test.describe('the adventure in the terminal', () => {
     await expect(game(page)).toHaveAttribute('data-scene', 'world');
     await expect(game(page)).toHaveAttribute('data-x', place.x);
     await expect(game(page)).toHaveAttribute('data-y', place.y);
-    // The picture is back too, not a blank screen.
-    await expect.poll(async () => (await colours(page)).length).toBe(4);
+    // The picture is back too, not a blank screen: still in colour (the game started as a Game Boy Color).
+    await expect(game(page)).toHaveAttribute('data-mode', 'gbc');
+    await expect.poll(async () => (await colours(page)).length).toBeGreaterThan(4);
     expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual(storageBefore);
     expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
   });

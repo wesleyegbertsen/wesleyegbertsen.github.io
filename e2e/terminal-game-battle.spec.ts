@@ -75,6 +75,8 @@ const darkIn = (page: Page, x: number, y: number, w: number, h: number) =>
 /** With reduced motion: to the examiner of the Academy, who is a boss. One more A starts the talk that ends in the battle. */
 async function toTheExaminer(page: Page) {
   const { pilot, errors } = await play(page);
+  // The screen is read in the Game Boy's greens: a bright Game Boy (the game starts as a dim Game Boy Color).
+  await pilot.gameBoy();
   await pilot.start();
   await pilot.goTo('town:A');
   await pilot.goTo('academy:E');
@@ -146,6 +148,8 @@ test.describe('the way into a battle', () => {
 
   test('a wild enemy: one blink and blinds, shorter, then the battle tune', async ({ page }) => {
     const { pilot } = await play(page);
+    // The blinks are read in the Game Boy's lightest green: a bright Game Boy.
+    await pilot.gameBoy();
     await pilot.start();
     // Into the meadow at the bottom left of town; whatever jumps out on the way is fought off.
     await pilot.goTo('town:3');

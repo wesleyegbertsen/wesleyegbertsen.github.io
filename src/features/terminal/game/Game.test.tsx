@@ -493,58 +493,114 @@ describe('Game', () => {
     expect(screen.getByRole('status')).toHaveTextContent('LCD look on');
   });
 
-  it('dims the screen from the LIGHT row of the settings, and keeps it through a switch of the mode', async () => {
+  it('brightens the dim screen from the LIGHT row of the settings, and keeps it through a switch of the mode', async () => {
     const { game, sound, user } = setup(started());
-    expect(game).toHaveAttribute('data-dim', 'off');
+    // Dim at the start (DIM_START).
+    expect(game).toHaveAttribute('data-dim', 'on');
     await user.keyboard('p{ArrowLeft}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
     expect(game).toHaveAttribute('data-row', 'light');
     await user.keyboard('z');
-    expect(sound.dim()).toBe(true);
-    expect(game).toHaveAttribute('data-dim', 'on');
-    expect(screen.getByRole('status')).toHaveTextContent('Screen dim');
-    // The mode, one row up: the light stays as it is.
-    await user.keyboard('{ArrowUp}z');
-    expect(sound.colour()).toBe(true);
-    expect(game).toHaveAttribute('data-dim', 'on');
-    await user.keyboard('{ArrowDown}z');
     expect(sound.dim()).toBe(false);
     expect(game).toHaveAttribute('data-dim', 'off');
     expect(screen.getByRole('status')).toHaveTextContent('Screen bright');
+    // The mode, one row up: the light stays as it is.
+    await user.keyboard('{ArrowUp}z');
+    expect(sound.colour()).toBe(false);
+    expect(game).toHaveAttribute('data-dim', 'off');
+    await user.keyboard('{ArrowDown}z');
+    expect(sound.dim()).toBe(true);
+    expect(game).toHaveAttribute('data-dim', 'on');
+    expect(screen.getByRole('status')).toHaveTextContent('Screen dim');
   });
 
-  it('switches between Game Boy and Game Boy Color with B on the title, and says so', async () => {
+  it('switches between Game Boy Color and Game Boy with B on the title, and says so', async () => {
     const { game, sound, user } = setup(initialGame(world));
     expect(game).toHaveAttribute('data-scene', 'title');
-    await user.keyboard('x');
-    expect(sound.colour()).toBe(true);
     expect(game).toHaveAttribute('data-mode', 'gbc');
-    expect(game).toHaveAttribute('data-scene', 'title');
-    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
     await user.keyboard('x');
     expect(sound.colour()).toBe(false);
+    expect(game).toHaveAttribute('data-mode', 'gb');
+    expect(game).toHaveAttribute('data-scene', 'title');
     expect(screen.getByRole('status')).toHaveTextContent('Game Boy mode');
+    await user.keyboard('x');
+    expect(sound.colour()).toBe(true);
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
   });
 
-  it('switches between Game Boy and Game Boy Color from the settings: the console follows, in memory only', async () => {
+  it('has three rows on the title: START is chosen at first, MODE and LIGHT switch the settings, up and down choose', async () => {
+    const { game, sound, user } = setup(initialGame(world));
+    const status = screen.getByRole('status');
+    expect(game).toHaveAttribute('data-title-row', 'start');
+    expect(game).toHaveAttribute('data-mode', 'gbc');
+    expect(game).toHaveAttribute('data-dim', 'on');
+    await user.keyboard('{ArrowDown}');
+    expect(game).toHaveAttribute('data-title-row', 'mode');
+    expect(status).toHaveTextContent('Mode. A switches between Game Boy and Game Boy Color.');
+    await user.keyboard('z');
+    expect(sound.colour()).toBe(false);
+    expect(game).toHaveAttribute('data-mode', 'gb');
+    expect(game).toHaveAttribute('data-scene', 'title');
+    expect(status).toHaveTextContent('Game Boy mode');
+    await user.keyboard('{ArrowRight}');
+    expect(sound.colour()).toBe(true);
+    expect(status).toHaveTextContent('Game Boy Color mode');
+    await user.keyboard('{ArrowDown}');
+    expect(game).toHaveAttribute('data-title-row', 'light');
+    await user.keyboard('z');
+    expect(sound.dim()).toBe(false);
+    expect(game).toHaveAttribute('data-dim', 'off');
+    expect(status).toHaveTextContent('Screen bright');
+    await user.keyboard('{ArrowLeft}');
+    expect(sound.dim()).toBe(true);
+    expect(status).toHaveTextContent('Screen dim');
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(game).toHaveAttribute('data-title-row', 'start');
+    expect(status).toHaveTextContent('Start. A starts the game.');
+    await user.keyboard('z');
+    expect(game).toHaveAttribute('data-scene', 'world');
+    expect(game).toHaveAttribute('data-title-row', '');
+  });
+
+  it('chooses and switches the rows of the title with the on-screen D-pad and A', () => {
+    const { game, sound } = setup(initialGame(world), true);
+    const tap = (name: string) => {
+      fireEvent.pointerDown(screen.getByRole('button', { name }));
+      fireEvent.pointerUp(screen.getByRole('button', { name }));
+    };
+    tap('Down');
+    expect(game).toHaveAttribute('data-title-row', 'mode');
+    tap('A');
+    expect(sound.colour()).toBe(false);
+    tap('Down');
+    tap('A');
+    expect(sound.dim()).toBe(false);
+    tap('Up');
+    tap('Up');
+    expect(game).toHaveAttribute('data-title-row', 'start');
+    tap('A');
+    expect(game).toHaveAttribute('data-scene', 'world');
+  });
+
+  it('switches between Game Boy Color and Game Boy from the settings: the console follows, in memory only', async () => {
     const { game, sound, user } = setup(started());
     const shell = () => game.querySelector('[data-wide]')!;
-    expect(game).toHaveAttribute('data-mode', 'gb');
-    expect(shell()).toHaveAttribute('data-mode', 'gb');
-    expect(shell()).toHaveTextContent('CAREER QUEST');
-    expect(shell().textContent).not.toMatch(/COLOR/);
+    expect(game).toHaveAttribute('data-mode', 'gbc');
+    expect(shell()).toHaveAttribute('data-mode', 'gbc');
+    expect(shell().textContent).toMatch(/CAREER QUEST\s*COLOR/);
     await user.keyboard('p{ArrowLeft}{ArrowDown}{ArrowDown}{ArrowDown}');
     expect(game).toHaveAttribute('data-row', 'mode');
     expect(screen.getByRole('status')).toHaveTextContent('Mode. A switches between Game Boy and Game Boy Color.');
     await user.keyboard('z');
-    expect(sound.colour()).toBe(true);
-    expect(game).toHaveAttribute('data-mode', 'gbc');
-    expect(shell()).toHaveAttribute('data-mode', 'gbc');
-    expect(shell().textContent).toMatch(/CAREER QUEST\s*COLOR/);
-    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
-    await user.keyboard('z');
     expect(sound.colour()).toBe(false);
     expect(game).toHaveAttribute('data-mode', 'gb');
+    expect(shell()).toHaveAttribute('data-mode', 'gb');
+    expect(shell()).toHaveTextContent('CAREER QUEST');
+    expect(shell().textContent).not.toMatch(/COLOR/);
     expect(screen.getByRole('status')).toHaveTextContent('Game Boy mode');
+    await user.keyboard('z');
+    expect(sound.colour()).toBe(true);
+    expect(game).toHaveAttribute('data-mode', 'gbc');
+    expect(screen.getByRole('status')).toHaveTextContent('Game Boy Color mode');
   });
 });
 

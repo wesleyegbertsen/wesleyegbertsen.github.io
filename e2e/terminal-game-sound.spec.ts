@@ -84,7 +84,8 @@ test.describe('the sound of the adventure', () => {
   test('the speaker on the screen is crossed out while the sound is off', async ({ page }) => {
     await play(page);
     const picture = () => game(page).locator('canvas').evaluate((el) => (el as HTMLCanvasElement).toDataURL());
-    // Wait for the title to be drawn from the sheets: all four shades are on the screen then.
+    // Wait for the title to be drawn from the sheets: four shades or more are on the screen then (it starts in
+    // colour, so more than the Game Boy's four).
     const shades = () =>
       game(page)
         .locator('canvas')
@@ -94,7 +95,7 @@ test.describe('the sound of the adventure', () => {
           for (let i = 0; i < data.length; i += 4) seen.add(data[i]!);
           return seen.size;
         });
-    await expect.poll(shades).toBe(4);
+    await expect.poll(shades).toBeGreaterThanOrEqual(4);
     const on = await picture();
     await page.keyboard.press('m');
     const off = await picture();
