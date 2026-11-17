@@ -19,10 +19,12 @@ import { buildWorld } from './world.ts';
  * first and third beat only), the octave voice (one tone of the left hand's chords; its arpeggios on the beat) and
  * one more chord tone. A step is a sixteenth at 120 quarter notes a minute; the sixteenth triplets of bar 76 are two
  * sixteenths a triplet. The fermata of bar 8 (on whole notes) adds two beats to its bar, those of bars 41 and 113 one.
- * A tied note stays in the bar where it starts, so a bar can be longer or shorter, or empty, in a voice.
+ * A tied note stays in the bar where it starts, so a bar can be longer or shorter, or empty, in a voice. The leading
+ * rests of the printed first bar are left out (bar 1 is the pickup alone, 4 steps), and bar 117 ends on a rest of 12
+ * steps, so the track is still a multiple of 16 steps.
  */
 const BARS: { bar: number; melody: string; second: string; bass: string; octave: string; inner: string }[] = [
-  { bar: 1, melody: '-:12 G3:4', second: '-:16', bass: '-:16', octave: '-:16', inner: '-:16' },
+  { bar: 1, melody: 'G3:4', second: '-:4', bass: '-:4', octave: '-:4', inner: '-:4' },
   { bar: 2, melody: 'C4:4 B3:2 A3:4 G3:4 G3:4', second: 'C5:2 G4:2 C5:2 G5:2 C5:2 G4:2 C5:2 G5:2', bass: 'C3:14 G2:18', octave: 'F3:14 D3:18', inner: 'A3:14 -:2' },
   { bar: 3, melody: 'D3:4 E3:6 F3:4', second: 'C5:2 G4:2 C5:2 G5:2 C5:2 G4:2 C5:2 G5:2', bass: '', octave: '', inner: '-:16' },
   { bar: 4, melody: 'E3:4 F3:2 E3:4 F3:4 E3:4', second: 'C5:2 G4:2 C5:2 G5:2 C5:2 G4:2 C5:2 G5:2', bass: 'A2:14 E2:18', octave: 'C3:14 G2:18', inner: '-:14 C3:18' },
@@ -138,7 +140,7 @@ const BARS: { bar: number; melody: string; second: string; bass: string; octave:
   { bar: 114, melody: '-:4 C4:2 C4:2 C4:2 C4:2 C4:2 C4:2', second: '-:16', bass: '-:4 C2:4 C2:4 C2:4', octave: '-:16', inner: '-:16' },
   { bar: 115, melody: 'C4:2 C4:2 C4:2 C4:2 C4:2 C4:2 C4:2 C4:2', second: '-:16', bass: 'C2:4 C2:4 C2:4 C2:4', octave: '-:16', inner: '-:16' },
   { bar: 116, melody: 'C4:2 C4:2 C4:28', second: '-:4 E3:28', bass: 'C2:4 C2:28', octave: '-:16', inner: '-:4 C3:28' },
-  { bar: 117, melody: '', second: '', bass: '', octave: '-:16', inner: '' },
+  { bar: 117, melody: '-:12', second: '-:12', bass: '-:12', octave: '-:28', inner: '-:12' },
 ];
 
 describe('My Dearest (Guilty Crown) on the player piano, written out from the score', () => {
@@ -152,11 +154,16 @@ describe('My Dearest (Guilty Crown) on the player piano, written out from the sc
     expect(piece.loop).toBe(false);
   });
 
+  it('sounds at once: the leading rests of the printed first bar are left out, so a voice starts on a note', () => {
+    expect(Math.min(...piece.voices.map((voice) => parseVoice(voice.notes).notes[0]?.step ?? Infinity))).toBe(0);
+  });
+
   it('has the 117 bars of the score, the three fermatas longer: 3:56', () => {
     for (let voice = 0; voice < 5; voice++) expect(bars(voice)).toHaveLength(117);
     expect(trackSteps(piece)).toBe(1888);
     for (const voice of piece.voices) expect(parseVoice(voice.notes).steps).toBe(trackSteps(piece));
-    // 468 beats as written at 120 a minute, two for the fermata of bar 8 and one for each of the other two: 236 seconds.
+    // 468 beats as written at 120 a minute, two for the fermata of bar 8 and one for each of the other two: 236 seconds;
+    // the three beats of rest before the pickup are left out and come back as a rest at the end (the multiple of 16).
     const { length } = flatten(piece);
     expect(length).toBeCloseTo(236, 6);
     expect(length).toBeLessThan(360);

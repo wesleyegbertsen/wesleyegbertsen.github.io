@@ -342,7 +342,7 @@ test('the eleventh piece of the player piano: My Dearest chosen with down ten ti
   for (let i = 0; i < 10; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'guilty-crown');
   await expect(status(page)).toHaveText('MY DEAREST, SUPERCELL, 3:56. 11 of 12.');
-  // A: My Dearest. Every voice starts on a rest; its first notes are the melody's G3 (at 1.5 s) and C4 (at 2 s).
+  // A: My Dearest. The first bar's leading rests are left out; its first notes are the melody's G3 (at once) and C4 (at 0.5 s).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-piece', 'guilty-crown');
