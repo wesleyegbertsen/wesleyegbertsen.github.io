@@ -39,7 +39,7 @@ test('the music corner of the cafe: the selector of the piano, the Moonlight Son
   // A: the selector, on the Moonlight Sonata. B: closed, and nothing plays.
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
-  await expect(status(page)).toHaveText('The player piano. MOONLIGHT SONATA MVT 1, L. VAN BEETHOVEN, 4:57. 1 of 11.');
+  await expect(status(page)).toHaveText('The player piano. MOONLIGHT SONATA MVT 1, L. VAN BEETHOVEN, 4:57. 1 of 12.');
   await pilot.press('b');
   await expect(game(page)).toHaveAttribute('data-pick', '');
   await expect(game(page)).toHaveAttribute('data-piano', 'off');
@@ -95,7 +95,7 @@ test('the second piece of the player piano: Scarborough Fair chosen with down, i
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'scarborough-fair');
-  await expect(status(page)).toHaveText('SCARBOROUGH FAIR, KATO TATSUYA, 2:26. 2 of 11.');
+  await expect(status(page)).toHaveText('SCARBOROUGH FAIR, KATO TATSUYA, 2:26. 2 of 12.');
   // A: Scarborough Fair, not the Moonlight Sonata. Its first note: the left hand's C3 (the other voices start on a rest).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -123,7 +123,7 @@ test('the third piece of the player piano: Always in my heart chosen with down t
   await pilot.press('down');
   await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'always-in-my-heart');
-  await expect(status(page)).toHaveText('ALWAYS IN MY HEART, KATO TATSUYA, 3:46. 3 of 11.');
+  await expect(status(page)).toHaveText('ALWAYS IN MY HEART, KATO TATSUYA, 3:46. 3 of 12.');
   // A: Always in my heart. Its first notes: the right hand's B6, A6 and G6 and the left hand's D5.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -152,7 +152,7 @@ test('the fourth piece of the player piano: Unravel chosen with down three times
   await pilot.press('down');
   await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'unravel');
-  await expect(status(page)).toHaveText('UNRAVEL, TK, LING TOSITE SIGURE, 1:27. 4 of 11.');
+  await expect(status(page)).toHaveText('UNRAVEL, TK, LING TOSITE SIGURE, 1:27. 4 of 12.');
   // A: Unravel. Every voice starts on a rest; its first notes are the melody's A#5 (932 Hz) and the left hand's G4.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -179,7 +179,7 @@ test('the fifth piece of the player piano: aLIEz chosen with down four times, it
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 4; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'aliez');
-  await expect(status(page)).toHaveText('ALIEZ, ALDNOAH.ZERO ED 2, 1:39. 5 of 11.');
+  await expect(status(page)).toHaveText('ALIEZ, ALDNOAH.ZERO ED 2, 1:39. 5 of 12.');
   // A: aLIEz. Its first note: the melody's E4 (the other voices start on a rest).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -206,7 +206,7 @@ test('the sixth piece of the player piano: Guren no Yumiya chosen with down five
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 5; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'guren-no-yumiya');
-  await expect(status(page)).toHaveText('GUREN NO YUMIYA, SHINGEKI NO KYOJIN OP, 1:34. 6 of 11.');
+  await expect(status(page)).toHaveText('GUREN NO YUMIYA, SHINGEKI NO KYOJIN OP, 1:34. 6 of 12.');
   // A: Guren no Yumiya. Its first notes: the right hand's C#5 and G#4, the left hand's C#2 and C#3, and E4.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -233,7 +233,7 @@ test('the seventh piece of the player piano: Ichiban no Takaramono chosen with d
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 6; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'ichiban-no-takaramono');
-  await expect(status(page)).toHaveText('ICHIBAN NO TAKARAMONO, ANANT-GARDE EYES, 2:42. 7 of 11.');
+  await expect(status(page)).toHaveText('ICHIBAN NO TAKARAMONO, ANANT-GARDE EYES, 2:42. 7 of 12.');
   // A: Ichiban no Takaramono. Its first notes are the first of each voice that starts on a note.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -260,7 +260,7 @@ test('the eighth piece of the player piano: Bauklotze chosen with down seven tim
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 7; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'bauklotze');
-  await expect(status(page)).toHaveText('BAUKLOTZE, HIROYUKI SAWANO, 3:44. 8 of 11.');
+  await expect(status(page)).toHaveText('BAUKLOTZE, HIROYUKI SAWANO, 3:44. 8 of 12.');
   // A: Bauklotze. Its first notes are the first of each voice that starts on a note.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -287,7 +287,7 @@ test('the ninth piece of the player piano: My Soul, Your Beats! chosen with down
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 8; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'my-soul-your-beats');
-  await expect(status(page)).toHaveText('MY SOUL, YOUR BEATS!, ANGEL BEATS, 1:29. 9 of 11.');
+  await expect(status(page)).toHaveText('MY SOUL, YOUR BEATS!, ANGEL BEATS, 1:29. 9 of 12.');
   // A: My Soul, Your Beats!. Every voice starts on a rest (the vocal not until 21 s); the piano's first notes are F#5 (1.4 s) and B2.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -314,7 +314,7 @@ test('the tenth piece of the player piano: Lilium chosen with down nine times, i
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 9; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'lilium');
-  await expect(status(page)).toHaveText('LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 11.');
+  await expect(status(page)).toHaveText('LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 12.');
   // A: Lilium. Every voice starts on a rest; its first notes are the melody's F#4 (at 3 s) and C#5 (at 3.5 s).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -332,7 +332,7 @@ test('the tenth piece of the player piano: Lilium chosen with down nine times, i
   await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
   expect(errors).toEqual([]);
 });
-test('the eleventh piece of the player piano, the last: My Dearest chosen with down ten times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+test('the eleventh piece of the player piano: My Dearest chosen with down ten times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
   const { pilot, errors } = await play(page);
   await pilot.start();
   await pilot.goTo('town:X');
@@ -341,11 +341,7 @@ test('the eleventh piece of the player piano, the last: My Dearest chosen with d
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 10; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'guilty-crown');
-  await expect(status(page)).toHaveText('MY DEAREST, SUPERCELL, 3:56. 11 of 11.');
-  // The end of the list: down again changes nothing.
-  await pilot.press('down');
-  await expect(game(page)).toHaveAttribute('data-pick', 'guilty-crown');
-  await expect(status(page)).toHaveText('MY DEAREST, SUPERCELL, 3:56. 11 of 11.');
+  await expect(status(page)).toHaveText('MY DEAREST, SUPERCELL, 3:56. 11 of 12.');
   // A: My Dearest. Every voice starts on a rest; its first notes are the melody's G3 (at 1.5 s) and C4 (at 2 s).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
@@ -353,6 +349,38 @@ test('the eleventh piece of the player piano, the last: My Dearest chosen with d
   await expect(game(page)).toHaveAttribute('data-music', 'guilty-crown');
   await expect(status(page)).toHaveText('The player piano plays MY DEAREST.');
   await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([Math.round(frequencyOf('G3')), Math.round(frequencyOf('C4'))]));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
+
+test('the twelfth piece of the player piano, the last: Idol chosen with down eleven times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  for (let i = 0; i < 11; i++) await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'idol');
+  await expect(status(page)).toHaveText('IDOL (OSHI NO KO), YOASOBI, 3:28. 12 of 12.');
+  // The end of the list: down again changes nothing.
+  await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'idol');
+  await expect(status(page)).toHaveText('IDOL (OSHI NO KO), YOASOBI, 3:28. 12 of 12.');
+  // A: Idol. Its first notes are the bass's Ab1 at once and the melody's Ab4 and Fb4 after an eighth rest.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'idol');
+  await expect(game(page)).toHaveAttribute('data-music', 'idol');
+  await expect(status(page)).toHaveText('The player piano plays IDOL (OSHI NO KO).');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([Math.round(frequencyOf('Ab1')), Math.round(frequencyOf('Ab4')), Math.round(frequencyOf('Fb4'))]));
   // A: stopped. A, A: the first piece of the list again.
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-piano', 'off');
