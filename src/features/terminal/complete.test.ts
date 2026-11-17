@@ -23,6 +23,10 @@ describe('complete', () => {
     expect(complete('ne', ctx).line).toBe('neofetch ');
   });
 
+  it('completes play', () => {
+    expect(complete('pl', ctx)).toEqual({ line: 'play ', candidates: [] });
+  });
+
   it('completes a file for cat', () => {
     expect(complete('cat ab', ctx)).toEqual({ line: 'cat about.txt ', candidates: [] });
   });
@@ -53,11 +57,35 @@ describe('complete', () => {
   it('completes a command name for help', () => {
     expect(complete('help ne', ctx).line).toBe('help neofetch ');
     expect(complete('help c', ctx).candidates).toEqual(['cat', 'cd', 'clear', 'contact', 'cowsay']);
-    expect(complete('help ', ctx).candidates).toHaveLength(23);
+    expect(complete('help ', ctx).candidates).toHaveLength(24);
   });
 
   it('completes a theme name', () => {
     expect(complete('theme b', ctx).line).toBe('theme blue ');
+  });
+
+  it('completes skip for play, in any case', () => {
+    expect(complete('play s', ctx)).toEqual({ line: 'play skip ', candidates: [] });
+    expect(complete('PLAY S', ctx).line).toBe('PLAY skip ');
+    expect(complete('play x', ctx)).toEqual({ line: 'play x', candidates: [] });
+  });
+
+  it('completes command names and fixed words typed in another case to the lowercase word', () => {
+    expect(complete('PL', ctx)).toEqual({ line: 'play ', candidates: [] });
+    expect(complete('Wh', ctx)).toEqual({ line: 'whoami ', candidates: [] });
+    expect(complete('CL', ctx).line).toBe('clear ');
+    expect(complete('C', ctx).candidates).toEqual(['cat', 'cd', 'clear', 'contact', 'cowsay']);
+    expect(complete('Help NE', ctx).line).toBe('Help neofetch ');
+    expect(complete('THEME B', ctx).line).toBe('THEME blue ');
+    expect(complete('theme Wh', ctx).line).toBe('theme white ');
+    expect(complete('OPEN car', ctx).line).toBe('OPEN cardipaw ');
+    expect(complete('open CAR', ctx).line).toBe('open cardipaw ');
+  });
+
+  it('keeps paths case-sensitive, like the filesystem', () => {
+    expect(complete('cat AB', ctx)).toEqual({ line: 'cat AB', candidates: [] });
+    expect(complete('CAT ab', ctx).line).toBe('CAT about.txt ');
+    expect(complete('CD pro', ctx).line).toBe('CD projects/');
   });
 
   it('leaves alone what it cannot complete', () => {

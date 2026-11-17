@@ -36,6 +36,177 @@ export async function playsOf(page: Page, name: string) {
   return (await plays(page)).filter((p) => p.src.includes(name));
 }
 
+/**
+ * Waits until a sound whose file name contains `name` was started and the browser let it play, and returns the
+ * first such play. The wait happens inside the page and has no time limit of its own (the test's limit holds),
+ * so a page that stands still for a few seconds only makes it later. Polling `playsOf` from the test against a
+ * deadline does not survive that: see trap 16 in the site-e2e skill.
+ */
+export async function played(page: Page, name: string): Promise<PlayLog> {
+  await page.waitForFunction((part) => (window as unknown as { __plays: PlayLog[] }).__plays.some((p) => p.src.includes(part) && p.ok), name);
+  const [first] = (await playsOf(page, name)).filter((play) => play.ok);
+  if (!first) throw new Error(`no play of '${name}' after all`);
+  return first;
+}
+
+export type AudioLog = {
+  /** State of the context: suspended, running or closed. */
+  state: string;
+  resumes: number;
+  suspends: number;
+  closes: number;
+  /** The value of the gain that feeds the speakers, or null when there is none yet. */
+  master: number | null;
+  /** How many sounds were started (oscillators and noise). */
+  started: number;
+  /** The first frequency of every oscillator that was started, in order. */
+  frequencies: number[];
+};
+
+/**
+ * Puts a recording AudioContext where the browser's is, so a test can see what the game's sound does without a
+ * sound being made: how many contexts there are, whether they were woken, frozen or closed, what the master
+ * volume is, and which notes were started. The stub starts asleep, as a browser may. Must run before the page loads.
+ */
+export async function stubAudioContext(page: Page) {
+  await page.addInitScript(() => {
+    type Sink = { to?: unknown };
+    const contexts: unknown[] = [];
+    (window as unknown as { __audio: unknown[] }).__audio = contexts;
+
+    class Param {
+      first: number | null = null;
+      constructor(public value: number) {}
+      setValueAtTime(value: number) {
+        this.first ??= value;
+        this.value = value;
+      }
+      linearRampToValueAtTime() {}
+      exponentialRampToValueAtTime() {}
+      cancelScheduledValues() {}
+    }
+    class Node implements Sink {
+      to?: unknown;
+      connect(target: unknown) {
+        this.to = target;
+      }
+      disconnect() {}
+    }
+    class Gain extends Node {
+      gain = new Param(1);
+    }
+    class Source extends Node {
+      type = 'sine';
+      frequency = new Param(440);
+      playbackRate = new Param(1);
+      buffer: unknown = null;
+      loop = false;
+      constructor(private readonly log: { type: string; frequency: number }[]) {
+        super();
+      }
+      setPeriodicWave() {
+        this.type = 'custom';
+      }
+      start() {
+        this.log.push({ type: this.type, frequency: this.frequency.first ?? this.frequency.value });
+      }
+      stop() {}
+    }
+    class StubAudioContext {
+      state = 'suspended';
+      sampleRate = 8000;
+      destination = { name: 'destination' };
+      resumes = 0;
+      suspends = 0;
+      closes = 0;
+      gains: Gain[] = [];
+      started: { type: string; frequency: number }[] = [];
+      private ran = 0;
+      private since = 0;
+      constructor() {
+        contexts.push(this);
+      }
+      get currentTime() {
+        return this.ran + (this.state === 'running' ? (performance.now() - this.since) / 1000 : 0);
+      }
+      private halt(state: string) {
+        this.ran = this.currentTime;
+        this.state = state;
+      }
+      createGain() {
+        const gain = new Gain();
+        this.gains.push(gain);
+        return gain;
+      }
+      createOscillator() {
+        return new Source(this.started);
+      }
+      createBufferSource() {
+        const source = new Source(this.started);
+        source.type = 'noise';
+        return source;
+      }
+      createBuffer(_channels: number, length: number) {
+        const data = new Float32Array(length);
+        return { getChannelData: () => data };
+      }
+      createPeriodicWave() {
+        return {};
+      }
+      resume() {
+        this.resumes++;
+        if (this.state === 'suspended') {
+          this.since = performance.now();
+          this.state = 'running';
+        }
+        return Promise.resolve();
+      }
+      suspend() {
+        this.suspends++;
+        if (this.state === 'running') this.halt('suspended');
+        return Promise.resolve();
+      }
+      close() {
+        this.closes++;
+        this.halt('closed');
+        return Promise.resolve();
+      }
+    }
+    Object.assign(window, { AudioContext: StubAudioContext, webkitAudioContext: undefined });
+  });
+}
+
+/** Takes the AudioContext away, as in a browser that has none. Must run before the page loads. */
+export async function removeAudioContext(page: Page) {
+  await page.addInitScript(() => {
+    Object.assign(window, { AudioContext: undefined, webkitAudioContext: undefined });
+  });
+}
+
+/** What the stubbed contexts were asked to do so far, one entry per context the page made. */
+export async function audioLog(page: Page): Promise<AudioLog[]> {
+  return page.evaluate(() => {
+    type Stub = {
+      state: string;
+      resumes: number;
+      suspends: number;
+      closes: number;
+      destination: unknown;
+      gains: { to?: unknown; gain: { value: number } }[];
+      started: { type: string; frequency: number }[];
+    };
+    return (window as unknown as { __audio: Stub[] }).__audio.map((context) => ({
+      state: context.state,
+      resumes: context.resumes,
+      suspends: context.suspends,
+      closes: context.closes,
+      master: context.gains.find((gain) => gain.to === context.destination)?.gain.value ?? null,
+      started: context.started.length,
+      frequencies: context.started.filter((source) => source.type !== 'noise').map((source) => Math.round(source.frequency)),
+    }));
+  });
+}
+
 /** Keeps the tests offline: the hidden video is a YouTube embed. */
 export async function stubYouTube(page: Page) {
   // Opaque like the real player: a transparent stub would show the rain through the iframe.

@@ -9,8 +9,12 @@ import { skills } from '../../data/skills.ts';
 import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
 import { useTheme } from '../theme/ThemeContext.ts';
 import { complete } from './complete.ts';
+import { careerLines, contactLines } from './content.ts';
 import type { Effect } from './commands.ts';
 import { buildFileSystem, displayPath } from './fs.ts';
+import { buildWorld } from './game/content/world.ts';
+import { initialGame, startsAgain } from './game/engine/engine.ts';
+import { Game } from './game/Game.tsx';
 import { useTerminalSession, type Entry } from './SessionContext.ts';
 import { execute, type Env } from './shell.ts';
 import styles from './Terminal.module.css';
@@ -18,7 +22,9 @@ import { useMatrixRun } from './useMatrixRun.ts';
 
 const data = { profile, skills, experience, education, projects };
 const fs = buildFileSystem(data);
+const world = buildWorld(data);
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+const TOUCH = '(pointer: coarse)';
 
 const promptFor = (cwd: string) => `guest@wesleyegbertsen:${displayPath(cwd)}$`;
 
@@ -27,9 +33,10 @@ export function Terminal() {
   const navigate = useNavigate();
   const { index, theme, select, preview } = useTheme();
   const reducedMotion = useMediaQuery(REDUCED_MOTION);
+  const touch = useMediaQuery(TOUCH);
 
   // The scrollback, folder and history live above the routes, so they outlast a visit to another page.
-  const { entries, setEntries, shell, setShell, nextId } = useTerminalSession();
+  const { entries, setEntries, shell, setShell, mode, setMode, game: progressRef, settings: settingsStore, nextId } = useTerminalSession();
   const [input, setInput] = useState('');
   // Where the Up/Down arrows are in the history (null: not browsing), and the line typed before browsing.
   const [cursor, setCursor] = useState<number | null>(null);
@@ -38,6 +45,7 @@ export function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const gameRef = useRef<HTMLDivElement>(null);
   const inputId = useId();
 
   const newEntries = (kind: Entry['kind'], lines: string[], prompt?: string): Entry[] =>
@@ -50,9 +58,10 @@ export function Terminal() {
     print: (line) => setEntries((current) => [...current, ...newEntries('rain', [line])]),
   });
 
+  // Focus follows the mode: the command line in the shell, the game while it runs.
   useEffect(() => {
-    inputRef.current?.focus({ preventScroll: true });
-  }, []);
+    (mode === 'game' ? gameRef.current : inputRef.current)?.focus({ preventScroll: true });
+  }, [mode]);
 
   // A native listener: a click handler on a plain div is something the keyboard cannot reach, and the input
   // below it already is the keyboard way in.
@@ -62,7 +71,7 @@ export function Terminal() {
     const focusInput = () => {
       // Leave a selection alone, so the output can be copied.
       if (window.getSelection()?.toString()) return;
-      inputRef.current?.focus({ preventScroll: true });
+      (inputRef.current ?? gameRef.current)?.focus({ preventScroll: true });
     };
     container.addEventListener('click', focusInput);
     return () => container.removeEventListener('click', focusInput);
@@ -89,6 +98,15 @@ export function Terminal() {
         // The screen is emptied by submit(); a run still printing rain would refill it.
         matrix.cancel();
         break;
+      case 'game':
+        matrix.cancel();
+        // A finished game starts again; an unfinished one is picked up where it was left. The seed makes the
+        // battles differ from visit to visit.
+        if (startsAgain(progressRef.current)) {
+          progressRef.current = initialGame(world, Math.floor(Math.random() * 0x7fffffff));
+        }
+        setMode('game');
+        break;
       case 'cd':
         // Applied by execute() and never passed on.
         break;
@@ -114,6 +132,15 @@ export function Terminal() {
     setCursor(null);
     result.effects.forEach(apply);
   };
+
+  const leaveGame = (lines: string[]) => {
+    setMode('shell');
+    setEntries((current) => [...current, ...newEntries('output', lines)]);
+  };
+  // After the ending 'play' starts again from the title, so the line must not promise a continuation.
+  const leave = () =>
+    leaveGame([progressRef.current && startsAgain(progressRef.current) ? "Left the game. Type 'play' to play again." : "Left the game. Type 'play' to carry on."]);
+  const skip = () => leaveGame(careerLines(data));
 
   const recall = (direction: 'up' | 'down') => {
     const { history } = shell;
@@ -162,6 +189,25 @@ export function Terminal() {
       }
     }
   };
+
+  if (mode === 'game') {
+    return (
+      <div ref={containerRef} className={styles.terminal}>
+        <Game
+          focusRef={gameRef}
+          world={world}
+          storeRef={progressRef}
+          settingsStore={settingsStore}
+          reducedMotion={reducedMotion}
+          touch={touch}
+          contact={contactLines(data.profile)}
+          prompt={promptFor(shell.cwd)}
+          onLeave={leave}
+          onSkip={skip}
+        />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={styles.terminal}>

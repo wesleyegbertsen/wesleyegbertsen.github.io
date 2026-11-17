@@ -166,6 +166,26 @@ test.describe('the terminal page', () => {
     await expect(log(page).getByText('Welcome.')).toBeInViewport({ ratio: 1 });
   });
 
+  test('takes commands and their fixed words in any case', async ({ page }) => {
+    const { errors } = await openSite(page, '/#/terminal');
+
+    await run(page, 'HELP');
+    await expect(log(page)).toContainText('guest@wesleyegbertsen:~$ HELP');
+    await expect(log(page)).toContainText('neofetch');
+    await expect(log(page)).not.toContainText('command not found');
+
+    await run(page, 'PLAY SKIP');
+    await expect(log(page)).toContainText('guest@wesleyegbertsen:~$ PLAY SKIP');
+    await expect(log(page)).toContainText('Betabit');
+    await expect(log(page)).toContainText(profile.links.email);
+    await expect(log(page)).not.toContainText('Usage: play');
+    await expect(page.getByRole('application')).toHaveCount(0);
+
+    await run(page, 'WHOAMI');
+    await expect(log(page)).toContainText(/WHOAMI\s*guest/);
+    expect(errors).toEqual([]);
+  });
+
   test('keeps its size however much is printed', async ({ page }) => {
     await openSite(page, '/#/terminal');
     const size = async () => {

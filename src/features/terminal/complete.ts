@@ -1,5 +1,5 @@
 import { THEMES } from '../theme/themes.ts';
-import { commandNames, openTargets, type Context } from './commands.ts';
+import { commandNames, keyword, openTargets, type Context } from './commands.ts';
 import { getNode, listNames, resolvePath } from './fs.ts';
 
 export type CompleteContext = Pick<Context, 'cwd' | 'fs' | 'data' | 'navItems'>;
@@ -25,27 +25,31 @@ function pathCandidates(word: string, ctx: CompleteContext, foldersOnly: boolean
 }
 
 function candidatesFor(command: string | undefined, word: string, ctx: CompleteContext): string[] {
-  switch (command) {
+  // Fixed words match a prefix in any case and complete to their own (lowercase) spelling; paths keep their case.
+  const fixed = (names: string[]) => names.filter((name) => name.startsWith(keyword(word)));
+  switch (command === undefined ? undefined : keyword(command)) {
     case undefined:
     case 'help':
-      return commandNames.filter((name) => name.startsWith(word));
+      return fixed(commandNames);
     case 'cd':
       return pathCandidates(word, ctx, true);
     case 'ls':
     case 'cat':
       return pathCandidates(word, ctx, false);
     case 'open':
-      return Object.keys(openTargets(ctx)).filter((name) => name.startsWith(word));
+      return fixed(Object.keys(openTargets(ctx)));
     case 'theme':
-      return THEMES.map((theme) => theme.name as string).filter((name) => name.startsWith(word));
+      return fixed(THEMES.map((theme) => theme.name as string));
+    case 'play':
+      return fixed(['skip']);
     default:
       return [];
   }
 }
 
 /**
- * Completes the last word of `line`: the command name for the first word, then paths, open targets or theme
- * names depending on the command. One match completes it. Several extend to their common prefix and are returned
+ * Completes the last word of `line`: the command name for the first word, then paths, open targets, theme names
+ * or `skip` (for `play`) depending on the command. One match completes it. Several extend to their common prefix and are returned
  * for printing.
  */
 export function complete(line: string, ctx: CompleteContext): Completion {

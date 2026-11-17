@@ -14,6 +14,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
+  // Assertions wait up to 10 s, not the default 5: with the game's long tests (the last fight played with motion,
+  // about 45 s) running beside them, a page now and then stands still for seconds (the rain, trap 16 of the
+  // site-e2e skill), and the quick checks of the site (an image loaded, a colour faded in) failed on that alone.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',

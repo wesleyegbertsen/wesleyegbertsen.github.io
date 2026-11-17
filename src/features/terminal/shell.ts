@@ -1,4 +1,4 @@
-import { commands, type Context, type Effect } from './commands.ts';
+import { findCommand, type Context, type Effect } from './commands.ts';
 import { HOME } from './fs.ts';
 import { parse } from './parser.ts';
 
@@ -24,7 +24,8 @@ export function execute(line: string, state: ShellState, env: Env): Execution {
   if (!parsed) return { state, lines: [], effects: [] };
 
   const history = [...state.history, line.trim()].slice(-MAX_HISTORY);
-  const command = commands.find((candidate) => candidate.name === parsed.name);
+  // Names ignore case (`PLAY` is `play`); the message and the history keep what was typed.
+  const command = findCommand(parsed.name);
   if (!command) {
     return {
       state: { ...state, history },

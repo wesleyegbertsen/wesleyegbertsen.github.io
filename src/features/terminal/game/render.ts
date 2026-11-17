@@ -1,0 +1,842 @@
+import { FONT, PALETTE, TILE, sprites, tiles } from './assets/atlas.ts';
+import { bannerOut } from './engine/banner.ts';
+import { BATTLE_MENU, enterOffset, faintLook, hitLook, idleOffset, shakeOffset, usableItems } from './engine/battle.ts';
+import { ENDING_HOLD, JUMP_TICKS, NOTICE_TICKS, TRAIL_TICKS, WALK_TICKS, learnRows, ownedItems, pieceLength, restScene, rustles } from './engine/engine.ts';
+import { xpProgress } from './engine/level.ts';
+import { money } from './engine/shop.ts';
+import { lit } from './engine/light.ts';
+import { COLS, fold, wrap } from './engine/text.ts';
+import { curtainOf, type Curtain } from './engine/transition.ts';
+import { SETTINGS, TITLE_ROWS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
+import { placeOf, strollProgress } from './engine/wander.ts';
+import { gone, spriteOf } from './engine/world.ts';
+import { PALETTES, dimmed, paletteOf, type Palette, type PaletteId } from './palettes.ts';
+
+/** The Game Boy's screen, in pixels. */
+export const SCREEN_W = 160;
+export const SCREEN_H = 144;
+/**
+ * Where the enemy stands in a battle (its top left corner, 32 by 32): top right, beside the row of its name (the
+ * longest name at Lv10 ends before it), and never touching the right edge while it breathes or sways (a test checks
+ * every enemy).
+ */
+export const FOE_AT = { x: 124, y: 6 } as const;
+
+/** The three sheets, loaded. */
+export type Sheets = {
+  tiles: CanvasImageSource;
+  sprites: CanvasImageSource;
+  font: CanvasImageSource;
+  /** The same three, recoloured once per palette of Game Boy Color mode (palettes.ts). Made when colour is first asked for. */
+  colour?: Record<PaletteId, { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }>;
+  /**
+   * The same, dimmed (palettes.ts `dim`) for the dim LCD: the Game Boy's three, and one set per palette of Game Boy
+   * Color mode. Made when the dim screen is first asked for.
+   */
+  dim?: { gb: { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }; colour?: Record<PaletteId, { tiles: CanvasImageSource; sprites: CanvasImageSource; font: CanvasImageSource }> };
+};
+
+/** What the renderer needs of a 2D context, so a test can hand it a recorder. */
+export type Painter = Pick<CanvasRenderingContext2D, 'drawImage' | 'fillRect' | 'fillStyle' | 'imageSmoothingEnabled'>;
+
+/** What is shown on top of the game that is not part of its state: whether the sound is off, and how loud it is (0 to 10). */
+export type Hud = {
+  muted: boolean;
+  volume: number;
+  lcd?: boolean;
+  /** Game Boy Color mode: drawn in colour. */
+  colour?: boolean;
+  /** The dim LCD (LIGHT: DIM): drawn from the dimmed sheets, the boxes and bars in the dimmed shades. */
+  dim?: boolean;
+  /** Reduced motion: the player piano shows one still picture and no note. */
+  still?: boolean;
+};
+
+/** The volume wheel has this many steps. */
+export const VOLUME_STEPS = 10;
+
+/**
+ * The shades of the boxes, bars and lines: the Game Boy's own, or in colour mode those of the `ui` palette. Set at
+ * the start of every drawGame, with the sheets to draw from (`tint`, null for the Game Boy).
+ */
+let [LIGHTEST, , DARK, DARKEST] = PALETTE as readonly [string, string, string, string];
+let tint: Sheets['colour'] | null = null;
+/** Reduced motion: whatever would move stands still (the player piano). Set at the start of every drawGame. */
+let STILL = false;
+/** The darkest shade of the dark in a cave. */
+let NIGHT = PALETTE[3] as string;
+const LINE = 10;
+const BOX_Y = 104;
+/** The height of the note in the corner and of the label with the name of a place. */
+const NOTE_H = 16;
+/** How many ticks of the game clock each of the two pictures of an animated tile is shown. */
+export const FRAME_TICKS = 30;
+/**
+ * The Start menu, top to bottom: the tabs (6), the level and the XP (18), the energy and the coins (28), a rule
+ * (38), the list of the open tab from 42 (five rows of the bag ten pixels apart, or the three settings fourteen
+ * apart), what was collected (94), a rule (105) and three lines of note from 110.
+ */
+/** How many items the bag shows at once; a longer list scrolls with the cursor. */
+const BAG_ROWS = 5;
+/** The line of the things to collect, under the list. */
+const COLLECT_Y = 94;
+/** The settings: where the first row is, and how far apart they are. */
+const SETTINGS_Y = 42;
+const SETTINGS_LINE = 10;
+/** The most coins the menu has room to show beside the energy: four digits. The purse itself has no limit. */
+const COINS_SHOWN = 9999;
+/** The see-through tiles that darken a cell of a dark place: a sparse dither, then a dense one. Past those it is black. */
+const SHADES = ['', 'shade-1', 'shade-2'] as const;
+
+/** The picture to show now: the plain one, or its `-b` twin every other beat when it is animated. */
+const frameOf = (sprite: string, animated: boolean | undefined, clock: number) =>
+  animated && Math.floor(clock / FRAME_TICKS) % 2 === 1 ? `${sprite}-b` : sprite;
+
+function rect(ctx: Painter, x: number, y: number, w: number, h: number, shade: string) {
+  ctx.fillStyle = shade;
+  ctx.fillRect(x, y, w, h);
+}
+
+/** A text box: light, with a double dark border. */
+function box(ctx: Painter, x: number, y: number, w: number, h: number) {
+  rect(ctx, x, y, w, h, DARKEST);
+  rect(ctx, x + 1, y + 1, w - 2, h - 2, LIGHTEST);
+  rect(ctx, x + 2, y + 2, w - 4, h - 4, DARKEST);
+  rect(ctx, x + 3, y + 3, w - 6, h - 6, LIGHTEST);
+}
+
+/** Text in the bitmap font. `scale` 2 is the big title lettering. */
+export function drawText(ctx: Painter, sheets: Sheets, text: string, x: number, y: number, light = false, scale = 1) {
+  const { cellW, cellH, cols, first, last, lightY } = FONT;
+  [...fold(text)].forEach((char, i) => {
+    const code = char.charCodeAt(0);
+    const index = (code >= first && code <= last ? code : 63) - first;
+    if (index === 0) return;
+    ctx.drawImage(
+      tint ? tint.ui.font : sheets.font,
+      (index % cols) * cellW,
+      Math.floor(index / cols) * cellH + (light ? lightY : 0),
+      cellW,
+      cellH,
+      x + i * cellW * scale,
+      y,
+      cellW * scale,
+      cellH * scale,
+    );
+  });
+}
+
+const centred = (text: string, scale = 1) => Math.floor((SCREEN_W - text.length * FONT.cellW * scale) / 2);
+
+const drawable = (name: string) => Object.hasOwn(sprites, name) || Object.hasOwn(tiles, name);
+
+/**
+ * The picture of a thing that can look somewhere: turned to the player while it is talked to, else the way of
+ * its last step. People have a picture per side (the plain one looks at you). The dog is drawn from the side
+ * (the plain one looks left) and has its own pictures going away (`-up`) and coming closer (`-down`); an animal
+ * without those keeps its side when it goes up or down. Anything else has just the one picture.
+ */
+export function facingSprite(sprite: string, object: GameObject, state: GameState): string {
+  const roaming = state.roam[object.id];
+  const dir: Dir | undefined = state.face?.id === object.id ? state.face.dir : roaming?.dir;
+  if (!dir) return sprite;
+  if (drawable(`${sprite}-${dir}`)) return `${sprite}-${dir}`;
+  if (dir === 'down' && drawable(`${sprite}-up`)) return sprite;
+  const side = dir === 'left' || dir === 'right' ? dir : roaming?.side;
+  return side && drawable(`${sprite}-${side}`) ? `${sprite}-${side}` : sprite;
+}
+
+/** A tile or a sprite by name, whichever sheet it is on. Unknown names draw nothing. */
+function drawSprite(ctx: Painter, sheets: Sheets, name: string, x: number, y: number, scale = 1) {
+  if (Object.hasOwn(sprites, name)) {
+    const [sx, sy, w, h] = sprites[name as keyof typeof sprites];
+    ctx.drawImage(tint ? tint[paletteOf(name)].sprites : sheets.sprites, sx, sy, w, h, x, y, w * scale, h * scale);
+  } else if (Object.hasOwn(tiles, name)) {
+    const [sx, sy] = tiles[name as keyof typeof tiles];
+    ctx.drawImage(tint ? tint[paletteOf(name)].tiles : sheets.tiles, sx, sy, TILE, TILE, x, y, TILE * scale, TILE * scale);
+  }
+}
+
+/** The top `rows` rows of a sprite only, at x, y: a fighter sinking out of sight, its feet cut off at the ground. */
+function drawSpriteTop(ctx: Painter, sheets: Sheets, name: keyof typeof sprites, x: number, y: number, rows: number) {
+  const [sx, sy, w] = sprites[name];
+  if (rows > 0) ctx.drawImage(tint ? tint[paletteOf(name)].sprites : sheets.sprites, sx, sy, w, rows, x, y, w, rows);
+}
+
+function hpBar(ctx: Painter, x: number, y: number, w: number, value: number, max: number, h = 6) {
+  rect(ctx, x, y, w, h, DARKEST);
+  rect(ctx, x + 1, y + 1, w - 2, h - 2, LIGHTEST);
+  const fill = value <= 0 ? 0 : Math.max(1, Math.round(((w - 2) * value) / max));
+  if (fill > 0) rect(ctx, x + 1, y + 1, Math.min(w - 2, fill), h - 2, DARK);
+}
+
+/** The XP bar: thinner than the energy bar, and full at the top level. */
+function xpBar(ctx: Painter, x: number, y: number, w: number, state: GameState, world: World, h = 4) {
+  const progress = xpProgress(state, world);
+  hpBar(ctx, x, y, w, progress ? progress.into : 1, progress ? progress.span : 1, h);
+}
+
+const rightAligned = (text: string, right: number) => right - text.length * FONT.cellW;
+
+/** A move's numbers, short enough for a column: power and accuracy, or what it heals. */
+const moveStats = (move: MoveDef) => (move.heal !== undefined ? `+${move.heal}` : `${move.power} ${Math.round(move.accuracy * 100)}%`);
+
+/** The volume wheel as the Game Boy would draw it: ten steps that grow, filled up to the level. */
+function drawVolume(ctx: Painter, x: number, y: number, hud: Hud) {
+  for (let i = 0; i < VOLUME_STEPS; i++) {
+    const h = 2 + Math.round((i * 6) / (VOLUME_STEPS - 1));
+    if (i < hud.volume) rect(ctx, x + i * 4, y + 8 - h, 3, h, hud.muted ? DARK : DARKEST);
+    else rect(ctx, x + i * 4, y + 7, 3, 1, DARK);
+  }
+}
+
+/** Lines of text, of which only the first `shown` characters are drawn (the typewriter). */
+function drawLines(ctx: Painter, sheets: Sheets, lines: readonly string[], x: number, y: number, shown = Infinity) {
+  let left = shown;
+  lines.forEach((line, i) => {
+    if (left <= 0) return;
+    drawText(ctx, sheets, line.slice(0, left), x, y + i * LINE);
+    left -= line.length;
+  });
+}
+
+/** Where the view starts on one axis: centred on the player, kept inside the map; a small map is centred. */
+export function camera(centre: number, size: number, view: number): number {
+  if (size <= view) return -Math.floor((view - size) / 2);
+  return Math.max(0, Math.min(size - view, Math.round(centre - view / 2)));
+}
+
+/** How high a hop over a ledge is at the top of its arc, in pixels. */
+export const HOP_PIXELS = 7;
+
+/** How far off the ground the player is during a hop, by how far along it is (0 to 1): up, over and down again. */
+export function hopHeight(progress: number): number {
+  return Math.max(0, Math.round(Math.sin(Math.PI * Math.max(0, Math.min(1, progress))) * HOP_PIXELS));
+}
+
+/** How long a picture of the playing piano stays (0.4 s: fewer than 3 changes a second), and a note's rise. */
+export const PIANO_FRAME = 24;
+export const PIANO_NOTE = 48;
+
+/**
+ * The player piano while it plays: its two playing pictures in turn, and a note that floats up from it and starts
+ * again, on the ticks of its piece. With reduced motion (STILL) the first picture alone, and no note.
+ */
+function drawPiano(ctx: Painter, sheets: Sheets, ticks: number, x: number, y: number) {
+  const other = !STILL && Math.floor(ticks / PIANO_FRAME) % 2 === 1;
+  drawSprite(ctx, sheets, other ? 'piano-play-b' : 'piano-play', x, y);
+  if (STILL) return;
+  const rise = (PIANO_NOTE - (ticks % PIANO_NOTE)) % PIANO_NOTE;
+  const top = y - 2 - Math.floor(rise / 4);
+  // An eighth note: a head, a stem and a flag.
+  rect(ctx, x + 9, top + 4, 3, 2, DARKEST);
+  rect(ctx, x + 11, top, 1, 4, DARKEST);
+  rect(ctx, x + 12, top, 1, 2, DARKEST);
+}
+
+function drawWorld(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const map = world.maps[state.map]!;
+  const progress = state.walk ? state.walk.t / (state.walk.jump ? JUMP_TICKS : WALK_TICKS) : 1;
+  const from = state.walk ?? { fromX: state.x, fromY: state.y };
+  // A hop over a ledge: the player leaves the ground in an arc, and a shadow stays on it.
+  const hop = state.walk?.jump ? hopHeight(progress) : 0;
+  const px = Math.round((from.fromX + (state.x - from.fromX) * progress) * TILE);
+  const py = Math.round((from.fromY + (state.y - from.fromY) * progress) * TILE);
+  const camX = camera(px + TILE / 2, map.width * TILE, SCREEN_W);
+  const camY = camera(py + TILE / 2, map.height * TILE, SCREEN_H);
+
+  rect(ctx, 0, 0, SCREEN_W, SCREEN_H, DARKEST);
+  for (let cy = Math.max(0, Math.floor(camY / TILE)); cy < map.height && cy * TILE < camY + SCREEN_H; cy++) {
+    for (let cx = Math.max(0, Math.floor(camX / TILE)); cx < map.width && cx * TILE < camX + SCREEN_W; cx++) {
+      const tile = map.tiles[map.cells[cy]![cx]!];
+      if (!tile) continue;
+      // The ground under it moves with it when it has a second picture (the water under the lily pads).
+      if (tile.under) drawSprite(ctx, sheets, tile.animated && drawable(`${tile.under}-b`) ? frameOf(tile.under, true, state.clock) : tile.under, cx * TILE - camX, cy * TILE - camY);
+      drawSprite(ctx, sheets, frameOf(tile.look ?? tile.sprite, tile.animated, state.clock), cx * TILE - camX, cy * TILE - camY);
+    }
+  }
+  // The tall grass just walked through rustles: blades bent and a leaf or two, then the second picture, over the
+  // grass and under everyone on it.
+  for (const cell of state.trail ?? []) {
+    const age = state.clock - cell.at;
+    // Only where the ground is tall grass: a rustle is a picture of grass, out of place in the rubble of a cave.
+    if (cell.map !== map.id || age < 0 || age >= TRAIL_TICKS || !rustles(map.tiles[map.cells[cell.y]?.[cell.x] ?? ''])) continue;
+    drawSprite(ctx, sheets, age < TRAIL_TICKS / 2 ? 'rustle' : 'rustle-b', cell.x * TILE - camX, cell.y * TILE - camY);
+  }
+  for (const object of map.objects) {
+    const sprite = spriteOf(object, state);
+    if (!sprite || gone(object, state)) continue;
+    // The player piano while it plays in this room.
+    if (sprite === 'piano' && state.piano?.map === map.id) {
+      drawPiano(ctx, sheets, state.piano.ticks, object.x * TILE - camX, object.y * TILE - camY);
+      continue;
+    }
+    const roaming = state.roam[object.id];
+    if (!roaming) {
+      drawSprite(ctx, sheets, frameOf(facingSprite(sprite, object, state), object.animated, state.clock), object.x * TILE - camX, object.y * TILE - camY);
+      continue;
+    }
+    // Someone on a stroll: between two cells while the step lasts, with a little bob.
+    const along = strollProgress(roaming, state.clock);
+    const at = placeOf(object, state);
+    const ox = Math.round((roaming.fromX + (at.x - roaming.fromX) * along) * TILE);
+    const oy = Math.round((roaming.fromY + (at.y - roaming.fromY) * along) * TILE);
+    drawSprite(ctx, sheets, facingSprite(sprite, object, state), ox - camX, oy - camY - (along < 1 && Math.floor(along * 4) % 2 === 1 ? 1 : 0));
+  }
+  // The player steps with one foot, then the other, and the arms swing against them: the cell tells which.
+  const foot = (state.x + state.y) % 2 === 1 ? 2 : 1;
+  // On slippery ground the legs stand still: the player slides.
+  const frame = state.walk && !state.walk.slide && (state.walk.jump ? hop > 0 : state.walk.t >= WALK_TICKS / 2) ? foot : 0;
+  if (hop > 0) rect(ctx, px - camX + 4, py - camY + 13, 8, 2, DARK);
+  drawSprite(ctx, sheets, `player-${state.dir}-${frame}`, px - camX, py - camY - hop);
+
+  // A dark place: the light reaches a few cells around the player and falls off to black. It only moves with
+  // the player, so nothing flickers. A fire bowl lights the cells around it the same way, wherever the player is.
+  if (map.dark !== undefined) {
+    for (let cy = Math.floor(camY / TILE); cy * TILE < camY + SCREEN_H; cy++) {
+      for (let cx = Math.floor(camX / TILE); cx * TILE < camX + SCREEN_W; cx++) {
+        const dim = lit(cx, cy, px / TILE, py / TILE, map.dark, map.lights);
+        if (dim === 0) continue;
+        if (dim === 3) rect(ctx, cx * TILE - camX, cy * TILE - camY, TILE, TILE, NIGHT);
+        else drawSprite(ctx, sheets, SHADES[dim], cx * TILE - camX, cy * TILE - camY);
+      }
+    }
+  }
+
+  // One label at a time: of the name of a place and the note after a find, only the newer one (the game clears
+  // the older one; this keeps a state that has both from drawing them on top of each other).
+  const noted = state.notice && state.clock < state.notice.until ? state.notice : null;
+  const named = state.banner && (!noted || state.banner.at > noted.until - NOTICE_TICKS);
+  // The name of a place that was just entered: a label in the style of the note below, centred, that slides
+  // down from above the screen and back. It is drawn after the darkness, so a cave shows it too.
+  const drop = named ? Math.round(bannerOut(state) * NOTE_H) : 0;
+  if (drop > 0) {
+    const name = fold(state.banner!.text);
+    const width = name.length * FONT.cellW + 11;
+    const left = Math.floor((SCREEN_W - width) / 2);
+    box(ctx, left, drop - NOTE_H, width, NOTE_H);
+    drawText(ctx, sheets, name, left + 6, drop - NOTE_H + 4);
+  }
+
+  // A rest at the cafe: a tray with four mugs that are poured one after another with the tune, a sparkle with its
+  // last note, and the energy filling up under them. Each mug lights once and stays lit: nothing blinks.
+  const scene = restScene(state);
+  if (scene) {
+    box(ctx, 24, 20, 112, 56);
+    for (let i = 0; i < 4; i++) drawSprite(ctx, sheets, i < scene.mugs ? 'mug-lit' : 'mug', 34 + i * 24, 28);
+    if (scene.sparkle) {
+      drawSprite(ctx, sheets, 'sparkle', 26, 20);
+      drawSprite(ctx, sheets, 'sparkle', 118, 20);
+    }
+    drawText(ctx, sheets, 'HP', 34, 54);
+    hpBar(ctx, 50, 55, 76, scene.hp, state.maxHp, 6);
+  }
+
+  // The note after a find: the count, in the corner, for a moment. A thing to collect with a picture of its own
+  // shows that picture in the place of its mark.
+  if (noted && !named) {
+    const { text } = noted;
+    box(ctx, 0, 0, text.length * FONT.cellW + 11, NOTE_H);
+    const icon = world.collect?.find((collect) => collect.icon && text.startsWith(`${collect.mark} `))?.icon;
+    if (icon) drawSprite(ctx, sheets, icon, 5, 4);
+    drawText(ctx, sheets, icon ? ` ${text.slice(1)}` : text, 6, 4);
+  }
+}
+
+/** A small speaker in the corner: with sound waves, or crossed out when the sound is off. */
+function drawSpeaker(ctx: Painter, muted: boolean) {
+  const x = 146;
+  const y = 2;
+  rect(ctx, x, y, 13, 11, DARKEST);
+  rect(ctx, x + 1, y + 1, 11, 9, LIGHTEST);
+  rect(ctx, x + 2, y + 4, 2, 3, DARKEST);
+  rect(ctx, x + 4, y + 3, 1, 5, DARKEST);
+  rect(ctx, x + 5, y + 2, 1, 7, DARKEST);
+  if (muted) {
+    for (const [dx, dy] of [[7, 4], [9, 4], [8, 5], [7, 6], [9, 6]] as const) rect(ctx, x + dx, y + dy, 1, 1, DARKEST);
+  } else {
+    rect(ctx, x + 7, y + 4, 1, 3, DARKEST);
+    rect(ctx, x + 9, y + 3, 1, 5, DARKEST);
+  }
+}
+
+function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
+  const dialogue = state.dialogue!;
+  const page = dialogue.pages[dialogue.page]!;
+  box(ctx, 0, BOX_Y, SCREEN_W, SCREEN_H - BOX_Y);
+  drawLines(ctx, sheets, page, 8, BOX_Y + 6, dialogue.shown);
+  const whole = dialogue.shown >= page.reduce((sum, line) => sum + line.length, 0);
+  if (whole && dialogue.page < dialogue.pages.length - 1) {
+    // More to read: a small arrow in the corner.
+    moreMark(ctx, 146, 134);
+  }
+}
+
+/** The settings tab: the sound, how loud it is, and the look of the screen. */
+function drawSettings(ctx: Painter, sheets: Sheets, cursor: number, hud?: Hud): string {
+  const at = SETTINGS[Math.min(cursor, SETTINGS.length - 1)]!;
+  const row = (name: (typeof SETTINGS)[number]) => SETTINGS_Y + SETTINGS.indexOf(name) * SETTINGS_LINE;
+  drawText(ctx, sheets, '>', 10, row(at));
+  drawText(ctx, sheets, 'SOUND', 18, row('sound'));
+  drawText(ctx, sheets, 'VOLUME', 18, row('volume'));
+  drawText(ctx, sheets, 'SCREEN', 18, row('screen'));
+  drawText(ctx, sheets, 'MODE', 18, row('mode'));
+  drawText(ctx, sheets, 'LIGHT', 18, row('light'));
+  if (hud) {
+    drawText(ctx, sheets, hud.muted ? 'OFF' : 'ON', 64, row('sound'));
+    drawVolume(ctx, 64, row('volume') - 1, hud);
+    drawText(ctx, sheets, `${hud.volume * 10}%`, 110, row('volume'));
+    drawText(ctx, sheets, hud.lcd === false ? 'PLAIN' : 'LCD', 64, row('screen'));
+    drawText(ctx, sheets, hud.colour ? 'GBC' : 'GB', 64, row('mode'));
+    drawText(ctx, sheets, hud.dim ? 'DIM' : 'BRIGHT', 64, row('light'));
+  }
+  if (at === 'sound') return 'A switches the sound off or on. So does the M key.';
+  if (at === 'volume') return 'Left and right change the volume.';
+  if (at === 'screen') return 'A switches the LCD look: a pixel grid, as on the real thing.';
+  if (at === 'mode') return 'A switches between Game Boy and Game Boy Color.';
+  return 'A switches the screen: bright, or dim like an old LCD.';
+}
+
+/**
+ * The page of a monster in the DEX: its number and name, its battle picture with where it lives (or BOSS) beside it,
+ * a few lines about it, and the two buttons, CRY and BACK, with the cursor on one.
+ */
+function drawDexPage(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const detail = state.menu!.detail!;
+  const entry = world.dex![detail.at]!;
+  const enemy = world.enemies[entry.enemy]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, `No.${detail.at + 1} ${enemy.name}`, 12, 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  drawSprite(ctx, sheets, enemy.sprite, 12, 24);
+  drawText(ctx, sheets, entry.area ?? 'BOSS', 52, 28);
+  drawLines(ctx, sheets, wrap(fold(entry.text), COLS).slice(0, 4), 8, 60);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  drawText(ctx, sheets, 'CRY', 18, BOX_Y + 6);
+  drawText(ctx, sheets, 'BACK', 66, BOX_Y + 6);
+  drawText(ctx, sheets, '>', detail.focus === 0 ? 10 : 58, BOX_Y + 6);
+  drawText(ctx, sheets, 'UP/DOWN: NEXT SEEN', 8, BOX_Y + 6 + LINE);
+}
+
+function drawMenu(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
+  const menu = state.menu!;
+  if (menu.detail && world.dex?.[menu.detail.at]) return drawDexPage(ctx, sheets, state, world);
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  const tabs = { items: ['BAG', 8], badges: ['BADGES', 29], dex: ['DEX', 68], settings: ['SETTINGS', 89] } as const;
+  for (const [name, x] of Object.values(tabs)) drawText(ctx, sheets, name, x, 6);
+  rect(ctx, tabs[menu.tab][1], 15, tabs[menu.tab][0].length * FONT.cellW - 1, 1, DARKEST);
+  drawText(ctx, sheets, '<>', 140, 6);
+
+  // Who you are by now, in two rows that end at the same places: the level, a bar and the XP towards the next
+  // one; the energy, a bar and the money. Both bars end at 90, and the numbers on the right end at the margin.
+  const progress = xpProgress(state, world);
+  const xp = progress ? `XP ${progress.into}/${progress.span}` : 'XP MAX';
+  drawText(ctx, sheets, `LV ${state.level}`, 14, 18);
+  xpBar(ctx, 50, 20, 40, state, world);
+  drawText(ctx, sheets, xp, rightAligned(xp, SCREEN_W - 8), 18);
+  const purse = `${world.economy.currency} ${Math.min(state.coins, COINS_SHOWN)}`;
+  drawText(ctx, sheets, `HP ${state.hp}/${state.maxHp}`, 14, 28);
+  hpBar(ctx, 66, 29, 24, state.hp, state.maxHp);
+  drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 28);
+  rect(ctx, 8, 38, SCREEN_W - 16, 1, DARK);
+
+  let note: string;
+  if (menu.tab === 'items') {
+    const owned = ownedItems(state, world);
+    const cursor = Math.min(menu.cursor, owned.length - 1);
+    // A long bag scrolls: the cursor stays in view.
+    const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, owned.length - BAG_ROWS));
+    owned.slice(top, top + BAG_ROWS).forEach((id, i) => {
+      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      drawText(ctx, sheets, `${world.items[id]!.name} x${state.items[id]}`, 18, 42 + i * LINE);
+    });
+    note = owned.length === 0 ? 'Your bag is empty.' : world.items[owned[cursor]!]!.description;
+  } else if (menu.tab === 'settings') {
+    note = drawSettings(ctx, sheets, menu.cursor, hud);
+  } else if (menu.tab === 'dex') {
+    // Every monster by its number: the name once seen, ??? before. A long list scrolls like the bag.
+    const dex = world.dex ?? [];
+    const seen = state.seen ?? [];
+    const cursor = Math.min(menu.cursor, dex.length - 1);
+    const top = Math.max(0, Math.min(cursor - BAG_ROWS + 2, dex.length - BAG_ROWS));
+    dex.slice(top, top + BAG_ROWS).forEach((entry, i) => {
+      if (top + i === cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      drawText(ctx, sheets, `${top + i + 1}. ${seen.includes(entry.enemy) ? world.enemies[entry.enemy]!.name : '???'}`, 18, 42 + i * LINE);
+    });
+    const count = dex.filter((entry) => seen.includes(entry.enemy)).length;
+    const open = dex[cursor] && seen.includes(dex[cursor].enemy);
+    note = `SEEN ${count}/${dex.length}. ${open ? 'A: its page.' : 'Not seen yet.'}`;
+  } else {
+    world.badges.slice(0, BAG_ROWS).forEach((badge, i) => {
+      const earned = state.badges.includes(badge.id);
+      if (i === menu.cursor) drawText(ctx, sheets, '>', 10, 42 + i * LINE);
+      drawText(ctx, sheets, earned ? `* ${badge.name}` : '- ???', 18, 42 + i * LINE);
+    });
+    note = `${state.badges.length} of ${world.badges.length} badges.`;
+  }
+
+  // The foot of the list: what was found of the things to collect.
+  (world.collect ?? []).slice(0, 2).forEach((collect, i) => {
+    const text = `${collect.label} ${state.items[collect.item] ?? 0}/${collect.total}`;
+    // A picture of its own goes before the word.
+    const indent = collect.icon ? 10 : 0;
+    const left = i === 0 ? 8 : rightAligned(text, SCREEN_W - 8) - indent;
+    if (collect.icon) drawSprite(ctx, sheets, collect.icon, left, COLLECT_Y);
+    drawText(ctx, sheets, text, left + indent, COLLECT_Y);
+  });
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
+}
+
+/** The offer of a new move: what it does, and the moves that can make room for it. */
+function drawLearn(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const learn = state.learn!;
+  const offered = world.moves[learn.move]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, 'NEW MOVE', 14, 8);
+  drawText(ctx, sheets, `LV ${state.level}`, rightAligned(`LV ${state.level}`, SCREEN_W - 14), 8);
+  drawText(ctx, sheets, offered.name, 14, 20);
+  const stats = offered.heal !== undefined ? `HEALS ${offered.heal}  PP ${offered.pp}` : `POW ${offered.power}  HIT ${Math.round(offered.accuracy * 100)}%  PP ${offered.pp}`;
+  drawText(ctx, sheets, stats, 14, 30);
+  rect(ctx, 8, 41, SCREEN_W - 16, 1, DARK);
+  drawText(ctx, sheets, 'REPLACE WHICH?', 14, 46);
+  const rows = learnRows(state);
+  rows.forEach((id, i) => {
+    const move = world.moves[id]!;
+    const numbers = moveStats(move);
+    drawText(ctx, sheets, move.name, 18, 58 + i * LINE);
+    drawText(ctx, sheets, numbers, rightAligned(numbers, SCREEN_W - 8), 58 + i * LINE);
+  });
+  drawText(ctx, sheets, 'KEEP MY MOVES', 18, 58 + rows.length * LINE);
+  drawText(ctx, sheets, '>', 10, 58 + Math.min(learn.cursor, rows.length) * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  if (learn.confirm !== undefined) {
+    // The question: the move that would be forgotten, and YES or NO.
+    const old = world.moves[rows[learn.cursor]!]!.name;
+    drawLines(ctx, sheets, wrap(fold(`Replace ${old} with ${offered.name}?`), COLS).slice(0, 2), 8, BOX_Y + 6);
+    drawText(ctx, sheets, 'YES', 18, BOX_Y + 26);
+    drawText(ctx, sheets, 'NO', 66, BOX_Y + 26);
+    drawText(ctx, sheets, '>', learn.confirm === 0 ? 10 : 58, BOX_Y + 26);
+    return;
+  }
+  drawLines(ctx, sheets, [`${world.moves[state.moves[0]!]!.name} always stays.`, 'A: swap it in.', 'B: keep your moves.'], 8, BOX_Y + 6);
+}
+
+/**
+ * A shop: its name and the player's coins at the top, then what it sells (how many of it are in the bag, and the
+ * price) and the way out. The row under the cursor also shows how many A buys, between arrows (left and right
+ * change it), and its price is that of all of them. The foot says what the item under the cursor does, or what
+ * the last press led to.
+ */
+function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const open = state.shop!;
+  const shop = world.shops[open.id]!;
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, shop.name, 14, 8);
+  const purse = money(state.coins, world);
+  drawText(ctx, sheets, purse, rightAligned(purse, SCREEN_W - 8), 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  const cursor = Math.min(open.cursor, shop.stock.length);
+  // A row: the name (12 letters at most) from 18, the count in the bag from 94, the picker from 111, the price up to 152.
+  shop.stock.forEach((entry, i) => {
+    const picked = i === cursor ? open.amount : 1;
+    const price = String(entry.price * picked);
+    drawText(ctx, sheets, world.items[entry.item]!.name, 18, 24 + i * LINE);
+    drawText(ctx, sheets, `x${state.items[entry.item] ?? 0}`, 94, 24 + i * LINE);
+    if (i === cursor) drawText(ctx, sheets, `<${picked}>`, 111, 24 + i * LINE);
+    drawText(ctx, sheets, price, rightAligned(price, SCREEN_W - 8), 24 + i * LINE);
+  });
+  drawText(ctx, sheets, 'LEAVE', 18, 24 + shop.stock.length * LINE);
+  drawText(ctx, sheets, '>', 10, 24 + cursor * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  const entry = shop.stock[cursor];
+  const note = open.note || (entry ? world.items[entry.item]!.description : 'A: buy. B: leave.');
+  drawLines(ctx, sheets, wrap(fold(note), COLS).slice(0, 3), 8, BOX_Y + 6);
+}
+
+/** How many pieces the selector of the player piano shows at a time; a longer list scrolls like the bag. */
+const PICK_ROWS = 7;
+
+/**
+ * The small arrow of the text box that says there is more (rows of 5, 3 and 1 pixels), its tip down, or turned
+ * over with its tip up. It stands still: it never blinks.
+ */
+function moreMark(ctx: Painter, x: number, y: number, up = false) {
+  for (let row = 0; row < 3; row++) rect(ctx, x + row, up ? y + 2 - row : y + row, 5 - 2 * row, 1, DARKEST);
+}
+
+/**
+ * The selector of the player piano, in the style of the shop: its name at the top with the cursor's place of how
+ * many (`3/10`, at the right like the shop's purse), a row per piece (its name) with the cursor, an arrow at the
+ * right of the list where pieces are out of view above or below it, and at the foot the artist and the length
+ * (m:ss) of the piece under the cursor.
+ */
+function drawPick(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  const pieces = world.pieces ?? [];
+  const cursor = Math.min(state.pick!.cursor, pieces.length - 1);
+  box(ctx, 0, 0, SCREEN_W, SCREEN_H);
+  drawText(ctx, sheets, 'PLAYER PIANO', 14, 8);
+  const count = `${cursor + 1}/${pieces.length}`;
+  drawText(ctx, sheets, count, rightAligned(count, SCREEN_W - 8), 8);
+  rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
+  const top = Math.max(0, Math.min(cursor - PICK_ROWS + 2, pieces.length - PICK_ROWS));
+  pieces.slice(top, top + PICK_ROWS).forEach((piece, i) => drawText(ctx, sheets, piece.name, 18, 24 + i * LINE));
+  // More above the rows: an arrow a pixel under the rule; more below: one under the last row. None at the ends.
+  if (top > 0) moreMark(ctx, 146, 21, true);
+  if (top + PICK_ROWS < pieces.length) moreMark(ctx, 146, 24 + PICK_ROWS * LINE - 1);
+  if (cursor >= 0) drawText(ctx, sheets, '>', 10, 24 + (cursor - top) * LINE);
+  rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
+  const piece = pieces[cursor];
+  if (!piece) return;
+  drawText(ctx, sheets, piece.artist, 8, BOX_Y + 6);
+  drawText(ctx, sheets, `${pieceLength(piece.ticks)}  A: play  B: back`, 8, BOX_Y + 6 + LINE);
+}
+
+/** Where the two boxes of the battle screen stand, the pitch of their rows and the width of an energy bar. */
+const HUD = { enemy: { x: 4, y: 6 }, you: { x: 76, y: 58 }, row: 10, bar: 62 } as const;
+
+/**
+ * A painter that draws everything `dy` pixels lower (higher when negative): the whole battle screen shaken. What
+ * goes past the edge of the canvas is cut off by the canvas itself; the frame around the screen does not move.
+ */
+function shifted(ctx: Painter, dy: number): Painter {
+  if (dy === 0) return ctx;
+  const draw = ctx.drawImage.bind(ctx) as (image: CanvasImageSource, ...args: number[]) => void;
+  return {
+    get fillStyle() {
+      return ctx.fillStyle;
+    },
+    set fillStyle(value) {
+      ctx.fillStyle = value;
+    },
+    get imageSmoothingEnabled() {
+      return ctx.imageSmoothingEnabled;
+    },
+    set imageSmoothingEnabled(value) {
+      ctx.imageSmoothingEnabled = value;
+    },
+    fillRect: (x, y, w, h) => ctx.fillRect(x, y + dy, w, h),
+    // The place on the screen is the last four numbers (or the last two): only its y moves.
+    drawImage: ((image: CanvasImageSource, ...args: number[]) => {
+      const at = args.length === 8 ? 5 : 1;
+      draw(image, ...args.map((value, i) => (i === at ? value + dy : value)));
+    }) as Painter['drawImage'],
+  };
+}
+
+function drawBattle(screen: Painter, sheets: Sheets, state: GameState, world: World) {
+  const battle = state.battle!;
+  const enemy = world.enemies[battle.enemy]!;
+  rect(screen, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  // The player hit: the whole battle screen shakes up and down, every part of it by the same pixels (shakeOffset).
+  const ctx = shifted(screen, shakeOffset(battle));
+
+  // Each fighter has a box in one style: the name and the level, the energy under it, and a bracket down one
+  // side and along the bottom. The enemy's is top left with the bracket on its left, the player's bottom right
+  // with the bracket on its right. Labels, bars and rows are the same in both.
+  const { enemy: foe, you } = HUD;
+  // A hit being shown (with motion): the one hit blinks with a spark on it, and its bar holds, then drains.
+  const look = hitLook(battle);
+  const shown = (who: 'foe' | 'you') => !look || look.who !== who || look.visible;
+  const enemyHp = look?.who === 'foe' ? look.hp : battle.enemyHp;
+  const hp = look?.who === 'you' ? look.hp : state.hp;
+  // A fighter fainting slides down into its ground (with motion); one that has fainted is gone.
+  const fall = faintLook(battle);
+  const fighter = (who: 'foe' | 'you', name: string, x: number, y: number) => {
+    if (battle.fainted === who) return;
+    if (fall?.who === who) drawSpriteTop(ctx, sheets, name as keyof typeof sprites, x, y + fall.dy, 32 - fall.dy);
+    else drawSprite(ctx, sheets, name, x, y);
+  };
+
+  // The enemy: no numbers, its picture on the right. The longest name at Lv10 (19 characters) ends before it.
+  rect(ctx, foe.x, foe.y, 2, 22, DARKEST);
+  rect(ctx, foe.x, foe.y + 20, 94, 2, DARKEST);
+  rect(ctx, foe.x + 94, foe.y + 21, 4, 1, DARKEST);
+  drawText(ctx, sheets, `${enemy.name} Lv${battle.level}`, foe.x + 5, foe.y);
+  drawText(ctx, sheets, 'HP', foe.x + 5, foe.y + HUD.row);
+  hpBar(ctx, foe.x + 19, foe.y + HUD.row + 2, HUD.bar, enemyHp, battle.enemyMax, 5);
+  // The fighters breathe (with motion): a pixel up and down, a boss swaying sideways.
+  const foeAt = idleOffset(battle, 'foe');
+  const youAt = idleOffset(battle, 'you');
+  // Coming in from the right edge once the way in is over (with motion), on the ground that is already there.
+  if (shown('foe')) fighter('foe', enemy.sprite, FOE_AT.x + enterOffset(battle) + foeAt.dx, FOE_AT.y - foeAt.dy);
+  if (look?.who === 'foe' && look.spark) drawSprite(ctx, sheets, 'spark', FOE_AT.x + 8, FOE_AT.y + 8);
+  // The ground under it, which stays where it is while the enemy breathes or sways.
+  rect(ctx, FOE_AT.x - 6, FOE_AT.y + 34, 40, 2, DARK);
+
+  // The player: the trainer seen from behind on the left, 32 by 32 like the enemy, looking up at it. The energy with
+  // its numbers, and the XP as the rail of the box: a thin bar that runs into the upright.
+  if (shown('you')) fighter('you', 'trainer-back', 12 + youAt.dx, 60 - youAt.dy);
+  if (look?.who === 'you' && look.spark) drawSprite(ctx, sheets, 'spark', 20, 68);
+  rect(ctx, 4, 92, 48, 2, DARK);
+  const energy = `${hp}/${state.maxHp}`;
+  const end = you.x + 14 + HUD.bar;
+  drawText(ctx, sheets, `YOU Lv${state.level}`, you.x, you.y);
+  drawText(ctx, sheets, 'HP', you.x, you.y + HUD.row);
+  hpBar(ctx, you.x + 14, you.y + HUD.row + 2, HUD.bar, hp, state.maxHp, 5);
+  drawText(ctx, sheets, energy, rightAligned(energy, end), you.y + 2 * HUD.row - 1);
+  drawText(ctx, sheets, 'XP', you.x, you.y + 3 * HUD.row - 1);
+  xpBar(ctx, you.x + 14, you.y + 33, HUD.bar + 2, state, world, 3);
+  rect(ctx, end + 2, you.y, 2, 36, DARKEST);
+
+  if (battle.phase === 'steps') {
+    box(ctx, 0, BOX_Y, SCREEN_W, SCREEN_H - BOX_Y);
+    drawLines(ctx, sheets, wrap(battle.steps[0]?.text ?? '', COLS).slice(0, 3), 8, BOX_Y + 6, battle.shown);
+    return;
+  }
+  if (battle.phase === 'menu') {
+    box(ctx, 0, BOX_Y, 100, SCREEN_H - BOX_Y);
+    drawLines(ctx, sheets, ['What will', 'you do?'], 8, BOX_Y + 6);
+    box(ctx, 98, BOX_Y, SCREEN_W - 98, SCREEN_H - BOX_Y);
+    BATTLE_MENU.forEach((label, i) => {
+      if (i === battle.cursor) drawText(ctx, sheets, '>', 104, BOX_Y + 6 + i * LINE);
+      drawText(ctx, sheets, label, 112, BOX_Y + 6 + i * LINE);
+    });
+    return;
+  }
+  // The moves or the items: a box that hugs its rows, one entry per line, and at its foot what the entry under the
+  // cursor does (power and accuracy, or what it restores).
+  const ids = battle.phase === 'moves' ? state.moves : usableItems(state, world);
+  const entries = (battle.phase === 'moves'
+    ? ids.map((id) => [world.moves[id]!.name, `${state.pp[id] ?? 0}/${world.moves[id]!.pp}`] as const)
+    : ids.map((id) => [world.items[id]!.name, `x${state.items[id]}`] as const)
+  ).slice(0, PICKER_ROWS);
+  const top = SCREEN_H - 44 - entries.length * LINE;
+  box(ctx, 0, top, SCREEN_W, SCREEN_H - top);
+  drawText(ctx, sheets, battle.phase === 'moves' ? 'MOVE' : 'ITEM', 16, top + 6);
+  drawText(ctx, sheets, battle.phase === 'moves' ? 'PP' : '', 128, top + 6);
+  rect(ctx, 8, top + 16, SCREEN_W - 16, 1, DARK);
+  entries.forEach(([name, amount], i) => {
+    if (i === battle.cursor) drawText(ctx, sheets, '>', 8, top + 21 + i * LINE);
+    drawText(ctx, sheets, name, 16, top + 21 + i * LINE);
+    drawText(ctx, sheets, amount, SCREEN_W - 8 - amount.length * FONT.cellW, top + 21 + i * LINE);
+  });
+  rect(ctx, 8, SCREEN_H - 20, SCREEN_W - 16, 1, DARK);
+  const picked = ids[Math.min(battle.cursor, ids.length - 1)];
+  if (picked) drawText(ctx, sheets, battle.phase === 'moves' ? moveLine(world.moves[picked]!) : itemLine(world.items[picked]!), 16, SCREEN_H - 15);
+}
+
+/** How many entries the move and item pickers of a battle show. */
+const PICKER_ROWS = 6;
+
+/** A move at the foot of the picker: what it does in a few capitals. */
+const moveLine = (move: MoveDef) => (move.heal !== undefined ? `HEALS ${move.heal}` : `POW ${move.power}  HIT ${Math.round(move.accuracy * 100)}%`);
+
+/** An item at the foot of the picker: what it restores. */
+const itemLine = (item: ItemDef) => (item.restore ? 'RESTORES ALL PP' : item.heal !== undefined && item.heal >= 99 ? 'RESTORES ALL HP' : `RESTORES ${item.heal ?? 0} HP`);
+
+/**
+ * The way into a battle, over the map. A blink washes the whole screen out to the lightest shade; then the dark
+ * closes: blinds from both sides for a wild enemy, an iris around the middle for a boss. It moves on whole steps
+ * of 8 (blinds) and 4 (iris) pixels, like the Game Boy would.
+ */
+function drawCurtain(ctx: Painter, curtain: Curtain) {
+  if (curtain.flash) return rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  if (curtain.cover <= 0) return;
+  if (curtain.shape === 'blinds') {
+    const width = Math.min(SCREEN_W, Math.ceil((curtain.cover * SCREEN_W) / 8) * 8);
+    for (let row = 0; row * TILE < SCREEN_H; row++) rect(ctx, row % 2 === 0 ? 0 : SCREEN_W - width, row * TILE, width, TILE, DARKEST);
+    return;
+  }
+  // The iris: a frame that grows inwards until nothing is left of the hole.
+  const side = Math.min(SCREEN_W / 2, Math.ceil((curtain.cover * SCREEN_W) / 2 / 4) * 4);
+  const lid = Math.min(SCREEN_H / 2, Math.ceil((curtain.cover * SCREEN_H) / 2 / 4) * 4);
+  rect(ctx, 0, 0, SCREEN_W, lid, DARKEST);
+  rect(ctx, 0, SCREEN_H - lid, SCREEN_W, lid, DARKEST);
+  rect(ctx, 0, lid, side, SCREEN_H - 2 * lid, DARKEST);
+  rect(ctx, SCREEN_W - side, lid, side, SCREEN_H - 2 * lid, DARKEST);
+}
+
+function drawScenery(ctx: Painter, sheets: Sheets, cast: string[]) {
+  for (let x = 0; x < SCREEN_W; x += TILE) {
+    drawSprite(ctx, sheets, x < 32 || x >= SCREEN_W - 32 ? 'tree' : 'grass', x, 112);
+    drawSprite(ctx, sheets, 'path', x, 128);
+  }
+  cast.forEach((name, i) => drawSprite(ctx, sheets, name, 80 - cast.length * 10 + i * 20, 124));
+}
+
+/** The rows of the title: where they start, how far apart they are, and the columns of the cursor, labels and values. */
+const TITLE_Y = 82;
+const TITLE_LINE = 10;
+const TITLE_X = 40;
+
+function drawTitle(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
+  // (The speaker is drawn on top by drawGame.)
+  rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  rect(ctx, 8, 14, SCREEN_W - 16, 2, DARK);
+  drawText(ctx, sheets, world.title, centred(world.title, 2), 22, false, 2);
+  rect(ctx, 8, 44, SCREEN_W - 16, 2, DARK);
+  drawText(ctx, sheets, 'the career of', centred('the career of'), 56);
+  const name = fold(world.subtitle);
+  drawText(ctx, sheets, name, centred(name), 68);
+  // START, MODE and LIGHT, with a still cursor on the chosen one (nothing blinks, so reduced motion changes nothing).
+  const row = (name: (typeof TITLE_ROWS)[number]) => TITLE_Y + TITLE_ROWS.indexOf(name) * TITLE_LINE;
+  const at = TITLE_ROWS[Math.min(state.title ?? 0, TITLE_ROWS.length - 1)]!;
+  drawText(ctx, sheets, '>', TITLE_X, row(at));
+  drawText(ctx, sheets, 'START', TITLE_X + 8, row('start'));
+  drawText(ctx, sheets, 'MODE', TITLE_X + 8, row('mode'));
+  drawText(ctx, sheets, 'LIGHT', TITLE_X + 8, row('light'));
+  if (hud) {
+    drawText(ctx, sheets, hud.colour ? 'GBC' : 'GB', TITLE_X + 44, row('mode'));
+    drawText(ctx, sheets, hud.dim ? 'DIM' : 'BRIGHT', TITLE_X + 44, row('light'));
+  }
+  drawScenery(ctx, sheets, ['player-down-0', 'cat']);
+}
+
+/** The ending: its lines, and under them the purse as a score, where there is money and room (five lines at most). */
+function drawEnding(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
+  rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
+  const [head = '', ...rest] = world.ending.map(fold);
+  drawText(ctx, sheets, head, centred(head, 2), 14, false, 2);
+  rect(ctx, 8, 36, SCREEN_W - 16, 2, DARK);
+  // Once it has held for a moment, KEEP EXPLORING takes the place of a sixth line.
+  const keep = (state.ending?.ticks ?? 0) >= ENDING_HOLD;
+  const lines = rest.flatMap((line) => wrap(line, COLS)).slice(0, keep ? 5 : 6);
+  lines.forEach((line, i) => drawText(ctx, sheets, line, centred(line), 46 + i * LINE));
+  const purse = `Your purse: ${money(state.coins, world)}.`;
+  if (Object.keys(world.shops).length > 0 && lines.length < 5) drawText(ctx, sheets, purse, centred(purse), 52 + lines.length * LINE);
+  // Once it has held for a moment: the way back into the world (A or Start), over the scenery.
+  if (keep) {
+    const keep = '> KEEP EXPLORING';
+    drawText(ctx, sheets, keep, centred(keep), 102);
+  }
+  drawScenery(ctx, sheets, ['player-right-0', 'wesley', 'cat']);
+}
+
+/** Draws the whole screen for a state: the map, or a battle, with the menu and the text box on top. */
+export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
+  ctx.imageSmoothingEnabled = false;
+  // Game Boy Color: every picture from the copy of its sheet in its palette, the boxes and lines in the `ui` one.
+  STILL = !!hud?.still;
+  // The dim LCD: the dimmed copies of the sheets and the dimmed shades, where they have been made.
+  const dark = hud?.dim && sheets.dim ? sheets.dim : null;
+  tint = hud?.colour && sheets.colour ? (dark ? (dark.colour ?? sheets.colour) : sheets.colour) : null;
+  if (dark && !tint) sheets = { ...sheets, ...dark.gb };
+  const shades = (palette: readonly string[]) => (dark ? dimmed(palette as unknown as Palette) : palette);
+  [LIGHTEST, , DARK, DARKEST] = shades(tint ? PALETTES.ui : PALETTE) as readonly [string, string, string, string];
+  NIGHT = shades(tint ? PALETTES.cave : PALETTE)[3]!;
+  if (state.scene === 'title') {
+    drawTitle(ctx, sheets, state, world, hud);
+    if (hud) drawSpeaker(ctx, hud.muted);
+    return;
+  }
+  if (state.scene === 'ending') return drawEnding(ctx, sheets, state, world);
+  const curtain = state.battle && curtainOf(state.battle);
+  if (curtain) {
+    // The way into a battle: still the map, with the transition closing over everything on it.
+    drawWorld(ctx, sheets, state, world);
+    if (hud) drawSpeaker(ctx, hud.muted);
+    drawCurtain(ctx, curtain);
+    return;
+  }
+  if (state.battle) drawBattle(ctx, sheets, state, world);
+  else if (state.learn) drawLearn(ctx, sheets, state, world);
+  else if (state.shop) drawShop(ctx, sheets, state, world);
+  else if (state.pick) drawPick(ctx, sheets, state, world);
+  else if (state.menu) drawMenu(ctx, sheets, state, world, hud);
+  else {
+    drawWorld(ctx, sheets, state, world);
+    if (hud) drawSpeaker(ctx, hud.muted);
+  }
+  if (state.dialogue) drawDialogue(ctx, sheets, state);
+}

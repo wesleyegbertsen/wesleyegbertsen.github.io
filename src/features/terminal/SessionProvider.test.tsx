@@ -41,4 +41,45 @@ describe('SessionProvider', () => {
     expect(result.current.entries).toHaveLength(MAX_ENTRIES);
     expect(result.current.entries.at(-1)!.text).toBe('line 10004');
   });
+
+  it('starts in shell mode with no game progress', () => {
+    const { result } = renderHook(() => useTerminalSession(), { wrapper });
+    expect(result.current.mode).toBe('shell');
+    expect(result.current.game.current).toBeNull();
+  });
+
+  it('starts with the sound on, and keeps the choice for as long as the session lives', () => {
+    const { result, rerender } = renderHook(() => useTerminalSession(), { wrapper });
+    const store = result.current.settings;
+    expect(store.muted()).toBe(false);
+    const heard = vi.fn();
+    const stop = store.subscribe(heard);
+    store.setMuted(true);
+    store.setMuted(true);
+    expect(heard).toHaveBeenCalledTimes(1);
+    rerender();
+    expect(result.current.settings).toBe(store);
+    expect(result.current.settings.muted()).toBe(true);
+    stop();
+    store.setMuted(false);
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the game store across a remount, and writing to it does not re-render', () => {
+    let renders = 0;
+    const { result, rerender } = renderHook(
+      () => {
+        renders++;
+        return useTerminalSession();
+      },
+      { wrapper },
+    );
+    const store = result.current.game;
+    const before = renders;
+    store.current = { x: 7 } as never;
+    expect(renders).toBe(before);
+    rerender();
+    expect(result.current.game).toBe(store);
+    expect(result.current.game.current).toEqual({ x: 7 });
+  });
 });

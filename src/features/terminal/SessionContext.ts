@@ -1,4 +1,6 @@
 import { createContext, useContext, type Dispatch, type SetStateAction } from 'react';
+import type { GameState } from './game/engine/types.ts';
+import type { SettingsStore } from './game/settingsStore.ts';
 import type { ShellState } from './shell.ts';
 
 /** One line of the scrollback: what was typed, what a command printed, or a line of matrix rain. */
@@ -13,6 +15,19 @@ export type TerminalSession = {
   setEntries: Dispatch<SetStateAction<Entry[]>>;
   shell: ShellState;
   setShell: Dispatch<SetStateAction<ShellState>>;
+  /** Whether the pane shows the shell or the game. */
+  mode: 'shell' | 'game';
+  setMode: Dispatch<SetStateAction<'shell' | 'game'>>;
+  /**
+   * The game's progress. A plain store, not React state: the game writes it every frame and nothing
+   * should re-render for that. It outlasts a visit to another page and is lost on reload.
+   */
+  game: { current: GameState | null };
+  /**
+   * The game's settings (sound off, volume, LCD look). Beside the progress and kept the same way: it outlasts leaving the game and
+   * a visit to another page, and a reload starts with the defaults again. Never written to storage.
+   */
+  settings: SettingsStore;
   /** A fresh id for an entry, unique for the whole session. */
   nextId: () => number;
 };
