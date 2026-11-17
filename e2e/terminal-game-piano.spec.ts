@@ -304,3 +304,30 @@ test('the ninth piece of the player piano: Clannad Medley chosen with down eight
   await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
   expect(errors).toEqual([]);
 });
+
+test('the tenth piece of the player piano: My Soul, Your Beats! chosen with down nine times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  for (let i = 0; i < 9; i++) await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'my-soul-your-beats');
+  await expect(status(page)).toHaveText('MY SOUL, YOUR BEATS!, ANGEL BEATS, 1:29.');
+  // A: My Soul, Your Beats!. Every voice starts on a rest; the first notes are F#4 (the vocal), F#5, B2, F#3 and B3.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'my-soul-your-beats');
+  await expect(game(page)).toHaveAttribute('data-music', 'my-soul-your-beats');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([370,740,123,185,247]));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
