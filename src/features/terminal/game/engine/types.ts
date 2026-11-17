@@ -287,6 +287,8 @@ export type Dialogue = { pages: string[][]; page: number; shown: number };
 export type Menu = { tab: 'items' | 'badges' | 'dex' | 'settings'; cursor: number; detail?: { at: number; focus: 0 | 1 } };
 /** The rows of the settings tab, in order. */
 export const SETTINGS = ['sound', 'volume', 'screen', 'mode', 'light'] as const;
+/** The rows of the title screen, in order: the start of the game (chosen at first), the mode and the light. */
+export const TITLE_ROWS = ['start', 'mode', 'light'] as const;
 /**
  * The offer of a new move: the cursor runs over the moves that can make room, and a last entry that keeps them.
  * `confirm` is there while the game asks whether to really forget the move under the cursor: 0 on YES, 1 on NO.
@@ -338,6 +340,8 @@ export type Battle = {
 
 export type GameState = {
   scene: 'title' | 'world' | 'ending';
+  /** On the title: the row under its cursor (TITLE_ROWS), START (0) when absent. Gone once the game has started. */
+  title?: number;
   map: string;
   x: number;
   y: number;

@@ -7,7 +7,7 @@ import { money } from './engine/shop.ts';
 import { lit } from './engine/light.ts';
 import { COLS, fold, wrap } from './engine/text.ts';
 import { curtainOf, type Curtain } from './engine/transition.ts';
-import { SETTINGS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
+import { SETTINGS, TITLE_ROWS, type Dir, type GameObject, type GameState, type ItemDef, type MoveDef, type World } from './engine/types.ts';
 import { placeOf, strollProgress } from './engine/wander.ts';
 import { gone, spriteOf } from './engine/world.ts';
 import { PALETTES, dimmed, paletteOf, type Palette, type PaletteId } from './palettes.ts';
@@ -755,7 +755,12 @@ function drawScenery(ctx: Painter, sheets: Sheets, cast: string[]) {
   cast.forEach((name, i) => drawSprite(ctx, sheets, name, 80 - cast.length * 10 + i * 20, 124));
 }
 
-function drawTitle(ctx: Painter, sheets: Sheets, world: World) {
+/** The rows of the title: where they start, how far apart they are, and the columns of the cursor, labels and values. */
+const TITLE_Y = 82;
+const TITLE_LINE = 10;
+const TITLE_X = 40;
+
+function drawTitle(ctx: Painter, sheets: Sheets, state: GameState, world: World, hud?: Hud) {
   // (The speaker is drawn on top by drawGame.)
   rect(ctx, 0, 0, SCREEN_W, SCREEN_H, LIGHTEST);
   rect(ctx, 8, 14, SCREEN_W - 16, 2, DARK);
@@ -764,8 +769,17 @@ function drawTitle(ctx: Painter, sheets: Sheets, world: World) {
   drawText(ctx, sheets, 'the career of', centred('the career of'), 56);
   const name = fold(world.subtitle);
   drawText(ctx, sheets, name, centred(name), 68);
-  drawText(ctx, sheets, '- PRESS A -', centred('- PRESS A -'), 92);
-  drawText(ctx, sheets, 'B: GB / GBC', centred('B: GB / GBC'), 102);
+  // START, MODE and LIGHT, with a still cursor on the chosen one (nothing blinks, so reduced motion changes nothing).
+  const row = (name: (typeof TITLE_ROWS)[number]) => TITLE_Y + TITLE_ROWS.indexOf(name) * TITLE_LINE;
+  const at = TITLE_ROWS[Math.min(state.title ?? 0, TITLE_ROWS.length - 1)]!;
+  drawText(ctx, sheets, '>', TITLE_X, row(at));
+  drawText(ctx, sheets, 'START', TITLE_X + 8, row('start'));
+  drawText(ctx, sheets, 'MODE', TITLE_X + 8, row('mode'));
+  drawText(ctx, sheets, 'LIGHT', TITLE_X + 8, row('light'));
+  if (hud) {
+    drawText(ctx, sheets, hud.colour ? 'GBC' : 'GB', TITLE_X + 44, row('mode'));
+    drawText(ctx, sheets, hud.dim ? 'DIM' : 'BRIGHT', TITLE_X + 44, row('light'));
+  }
   drawScenery(ctx, sheets, ['player-down-0', 'cat']);
 }
 
@@ -802,7 +816,7 @@ export function drawGame(ctx: Painter, sheets: Sheets, state: GameState, world: 
   [LIGHTEST, , DARK, DARKEST] = shades(tint ? PALETTES.ui : PALETTE) as readonly [string, string, string, string];
   NIGHT = shades(tint ? PALETTES.cave : PALETTE)[3]!;
   if (state.scene === 'title') {
-    drawTitle(ctx, sheets, world);
+    drawTitle(ctx, sheets, state, world, hud);
     if (hud) drawSpeaker(ctx, hud.muted);
     return;
   }

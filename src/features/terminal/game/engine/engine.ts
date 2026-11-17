@@ -5,7 +5,7 @@ import { covered, loose, platesDown, putBack, roomFor } from './push.ts';
 import { random } from './rng.ts';
 import { money, openShop, stepShop } from './shop.ts';
 import { pageLength, paginate } from './text.ts';
-import { SETTINGS, type Piece, type TileDef, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
+import { SETTINGS, TITLE_ROWS, type Piece, type TileDef, type Action, type Cue, type Dir, type GameEvent, type GameMap, type GameObject, type GameState, type Input, type MoveDef, type Result, type World } from './types.ts';
 import { placeOf, stroll } from './wander.ts';
 import { DELTA, areaAt, branchFor, gone, holds, home, landing, objectAt, passable, resolveSpot, tileAt } from './world.ts';
 
@@ -641,6 +641,39 @@ const pieceRow = (pieces: Piece[], at: number) => {
   return `${piece.name}, ${piece.artist}, ${pieceLength(piece.ticks)}. ${at + 1} of ${pieces.length}.`;
 };
 
+const TITLE_NAMES = { start: 'Start. A starts the game.', mode: SETTING_NAMES.mode, light: SETTING_NAMES.light };
+
+/**
+ * The title: three rows, START (chosen at first), MODE and LIGHT; up and down choose. A on START, or Start on any
+ * row, begins the game. A, left or right on MODE or LIGHT asks for the other mode or light, and B for the other mode
+ * from any row: the game does not know them, whoever draws the screen switches them (as in the settings).
+ */
+function stepTitle(state: GameState, input: Input, ctx: Ctx): GameState {
+  const at = Math.min(state.title ?? 0, TITLE_ROWS.length - 1);
+  const row = TITLE_ROWS[at]!;
+  const begin = () => {
+    ctx.cues.push('confirm');
+    return runScript({ ...state, title: undefined, scene: 'world', script: [{ say: ctx.world.intro }] }, ctx);
+  };
+  if (input.start) return begin();
+  if (input.b) {
+    ctx.cues.push('mode');
+    return state;
+  }
+  // A direction first, as in the menus: a tick that holds both a move of the cursor and A (two quick keys with
+  // motion) moves the cursor, and never starts the game from the row it is leaving.
+  if (input.pressed === 'up' || input.pressed === 'down') {
+    const next = Math.max(0, Math.min(TITLE_ROWS.length - 1, at + (input.pressed === 'up' ? -1 : 1)));
+    if (next === at) return state;
+    ctx.cues.push('cursor');
+    ctx.events.push({ kind: 'menu', text: TITLE_NAMES[TITLE_ROWS[next]!] });
+    return { ...state, title: next };
+  }
+  if (row === 'start') return input.a ? begin() : state;
+  if (input.a || input.pressed === 'left' || input.pressed === 'right') ctx.cues.push(row);
+  return state;
+}
+
 /** The piece selector of the player piano: up and down choose, A plays the piece from its start, B closes it. */
 function stepPick(state: GameState, input: Input, ctx: Ctx): GameState {
   const pieces = ctx.world.pieces ?? [];
@@ -686,16 +719,7 @@ export function step(given: GameState, input: Input, world: World, options: Opti
   const done = (next: GameState): Result => ({ state: letGo(arrived(next, state.map, ctx)), events: ctx.events, cues: ctx.cues });
 
   if (state.scene === 'ending') return done(stepEnding(state, input, ctx));
-  if (state.scene === 'title') {
-    // B on the title asks for the other mode, Game Boy or Game Boy Color: whoever draws the screen switches it.
-    if (input.b) {
-      ctx.cues.push('mode');
-      return done(state);
-    }
-    if (!input.a && !input.start) return done(state);
-    ctx.cues.push('confirm');
-    return done(runScript({ ...state, scene: 'world', script: [{ say: world.intro }] }, ctx));
-  }
+  if (state.scene === 'title') return done(stepTitle(state, input, ctx));
   // A rest is being played through: every key waits, and then whatever comes after it runs.
   if (state.pause) {
     const left = ctx.instant ? 0 : state.pause - 1;

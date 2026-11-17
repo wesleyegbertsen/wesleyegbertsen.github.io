@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, 
 import { ENDING_HOLD } from './engine/engine.ts';
 import { bannerText } from './engine/banner.ts';
 import { pageLength } from './engine/text.ts';
-import { SETTINGS, type Cue, type Dir, type GameEvent, type GameState, type World } from './engine/types.ts';
+import { SETTINGS, TITLE_ROWS, type Cue, type Dir, type GameEvent, type GameState, type World } from './engine/types.ts';
 import { placeOf } from './engine/wander.ts';
 import styles from './Game.module.css';
 import { SCREEN_H, SCREEN_W, drawGame } from './render.ts';
@@ -165,7 +165,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
     // The ending screen takes a press (KEEP EXPLORING) once it has held for a moment.
     const keep = state.scene === 'ending' && (state.ending?.ticks ?? 0) >= ENDING_HOLD;
     const root = focusRef.current;
-    const key = [keep, state.piano?.map, state.piano?.piece, state.pick?.cursor, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
+    const key = [state.title, keep, state.piano?.map, state.piano?.piece, state.pick?.cursor, !!state.walk, state.dialogue?.page, typed, pushed, state.scene, state.map, state.x, state.y, state.dir, !!state.dialogue, state.battle?.enemy, state.battle?.level, state.menu?.tab, state.menu?.cursor, state.menu?.detail?.at, state.menu?.detail?.focus, state.seen?.length, state.learn?.move, state.shop?.id, state.shop?.cursor, state.shop?.amount, state.coins, state.badges.length, state.hp, state.level, state.xp, state.finished, music, banner, transition, !!state.walk?.jump].join('|');
     if (root && key !== shown.current) {
       shown.current = key;
       Object.assign(root.dataset, {
@@ -183,6 +183,8 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
         page: state.dialogue ? String(state.dialogue.page) : '',
         typed: String(typed),
         scene: state.scene,
+        // The row under the cursor of the title (start, mode or light); empty once the game has started.
+        titleRow: state.scene === 'title' ? (TITLE_ROWS[state.title ?? 0] ?? '') : '',
         map: state.map,
         x: String(state.x),
         y: String(state.y),
@@ -348,7 +350,7 @@ export function Game({ focusRef, world, storeRef, settingsStore, reducedMotion, 
       ref={focusRef}
       className={styles.game}
       role="application"
-      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Dex of the monsters met, and a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color; on the title screen B switches the mode too."
+      aria-label="Career Quest, a Game Boy style adventure with music. Arrow keys or W A S D to walk, Z or Enter for A, X for B, P for Start, H for Select, M to switch the sound off or on, Escape or Q to leave. The Start menu has a Dex of the monsters met, and a Settings tab for the sound, the volume, the look of the screen and the mode, Game Boy or Game Boy Color, and the light, dim or bright. The title screen has three rows, up and down to choose: Start, the mode and the light; A on Start begins, A or left and right on the others switch them, and B switches the mode."
       tabIndex={0}
       data-sound={sound.muted ? 'off' : 'on'}
       data-volume={sound.volume * 10}

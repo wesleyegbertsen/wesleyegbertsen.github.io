@@ -94,9 +94,28 @@ describe('drawGame', () => {
     expect(smooth()).toBe(false);
     const big = draws.filter((draw) => draw.sheet === 'font' && draw.w === 12);
     expect(big).toHaveLength(world.title.length);
-    expect(textAt(draws, 92)).toBe('-PRESSA-');
-    // And under it, how to switch between Game Boy and Game Boy Color.
-    expect(textAt(draws, 102)).toBe('B:GB/GBC');
+  });
+
+  it('lists START, MODE and LIGHT on the title, with the cursor on the row it is on and the values from the hud', () => {
+    const hud: Hud = { muted: false, volume: 5, colour: true, dim: true };
+    expect(textAt(drawn(initialGame(world), hud).draws, 82)).toBe('>START');
+    expect(textAt(drawn(initialGame(world), hud).draws, 92)).toBe('MODEGBC');
+    expect(textAt(drawn(initialGame(world), hud).draws, 102)).toBe('LIGHTDIM');
+    // The cursor, the labels and the values stand in columns, in the same place on every row.
+    const { draws } = drawn({ ...initialGame(world), title: 2 }, { ...hud, colour: false, dim: false });
+    expect(textAt(draws, 82)).toBe('START');
+    expect(textAt(draws, 92)).toBe('MODEGB');
+    expect(textAt(draws, 102)).toBe('>LIGHTBRIGHT');
+    const row = (y: number) => draws.filter((draw) => draw.sheet === 'font' && draw.y === y).sort((a, b) => a.x - b.x);
+    expect(row(102)[0]!.x).toBe(40);
+    expect(row(82)[0]!.x).toBe(48);
+    expect(row(102)[1]!.x).toBe(48);
+    expect(row(92)[4]!.x).toBe(84);
+    expect(row(102)[6]!.x).toBe(84);
+    // All of it within the screen and above the scenery (from y 112).
+    expect(Math.max(...row(102).map((draw) => draw.x + draw.w))).toBeLessThanOrEqual(SCREEN_W - 8);
+    expect(102 + FONT.cellH).toBeLessThanOrEqual(112);
+    expect(textAt(drawn({ ...initialGame(world), title: 1 }, hud).draws, 92)).toBe('>MODEGBC');
   });
 
   it('draws every cell of the map, the things on it and the player facing down', () => {

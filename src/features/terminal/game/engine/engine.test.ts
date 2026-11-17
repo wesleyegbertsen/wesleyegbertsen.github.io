@@ -2,7 +2,7 @@ import { TRAIL_TICKS, WALK_TICKS, initialGame, ownedItems, restScene, step } fro
 import { random } from './rng.ts';
 import { play, testWorld as world } from './testWorld.ts';
 import { fold, paginate, wrap } from './text.ts';
-import { NO_INPUT, type GameState } from './types.ts';
+import { NO_INPUT, TITLE_ROWS, type GameState } from './types.ts';
 import { holds, objectAt, parseMap, spriteOf } from './world.ts';
 
 const fresh = () => initialGame(world, 7);
@@ -99,6 +99,69 @@ describe('the title and dialogue', () => {
     const pressed = step(fresh(), { ...NO_INPUT, b: true }, world);
     expect(pressed.cues).toEqual(['mode']);
     expect(pressed.state.scene).toBe('title');
+  });
+
+  it('has three rows on the title, START, MODE and LIGHT, with the cursor on START at first', () => {
+    expect(TITLE_ROWS).toEqual(['start', 'mode', 'light']);
+    expect(fresh().title ?? 0).toBe(0);
+  });
+
+  it('moves the cursor of the title with up and down, says the row, and stops at the ends', () => {
+    const down = step(fresh(), { ...NO_INPUT, pressed: 'down', dir: 'down' }, world);
+    expect(down.state.title).toBe(1);
+    expect(down.state.scene).toBe('title');
+    expect(down.cues).toEqual(['cursor']);
+    expect(down.events).toEqual([{ kind: 'menu', text: 'Mode. A switches between Game Boy and Game Boy Color.' }]);
+    const light = step(down.state, { ...NO_INPUT, pressed: 'down', dir: 'down' }, world);
+    expect(light.state.title).toBe(2);
+    expect(light.events).toEqual([{ kind: 'menu', text: 'Light. A switches the screen between bright and dim.' }]);
+    // The last row: down again goes nowhere and changes nothing.
+    const still = step(light.state, { ...NO_INPUT, pressed: 'down', dir: 'down' }, world);
+    expect(still.state).toBe(light.state);
+    expect(still.cues).toEqual([]);
+    const up = step(light.state, { ...NO_INPUT, pressed: 'up', dir: 'up' }, world);
+    expect(up.state.title).toBe(1);
+    const top = step(step(up.state, { ...NO_INPUT, pressed: 'up', dir: 'up' }, world).state, { ...NO_INPUT, pressed: 'up', dir: 'up' }, world);
+    expect(top.state.title).toBe(0);
+    expect(top.cues).toEqual([]);
+    expect(step(up.state, { ...NO_INPUT, pressed: 'up', dir: 'up' }, world).events).toEqual([{ kind: 'menu', text: 'Start. A starts the game.' }]);
+  });
+
+  it('asks for the other mode with A, left or right on MODE, and for the other light on LIGHT, and stays on the title', () => {
+    const mode = { ...fresh(), title: 1 };
+    const light = { ...fresh(), title: 2 };
+    for (const input of [{ a: true }, { pressed: 'left' as const, dir: 'left' as const }, { pressed: 'right' as const, dir: 'right' as const }]) {
+      const onMode = step(mode, { ...NO_INPUT, ...input }, world);
+      expect(onMode.cues).toEqual(['mode']);
+      expect(onMode.state.scene).toBe('title');
+      expect(onMode.state.title).toBe(1);
+      const onLight = step(light, { ...NO_INPUT, ...input }, world);
+      expect(onLight.cues).toEqual(['light']);
+      expect(onLight.state.scene).toBe('title');
+    }
+    // Left and right on START do nothing.
+    expect(step(fresh(), { ...NO_INPUT, pressed: 'left', dir: 'left' }, world).cues).toEqual([]);
+    // B still asks for the other mode from any row.
+    expect(step(light, { ...NO_INPUT, b: true }, world).cues).toEqual(['mode']);
+  });
+
+  it('moves the cursor first when a tick holds both a direction and A, and does not start the game from START', () => {
+    const both = step(fresh(), { ...NO_INPUT, pressed: 'down', dir: 'down', a: true }, world);
+    expect(both.state.scene).toBe('title');
+    expect(both.state.title).toBe(1);
+    expect(both.cues).toEqual(['cursor']);
+  });
+
+  it('starts the game with A on START, and with Start on any row, and forgets the cursor', () => {
+    const viaA = step(fresh(), { ...NO_INPUT, a: true }, world);
+    expect(viaA.state.scene).toBe('world');
+    expect(viaA.cues).toEqual(['confirm']);
+    for (const title of [0, 1, 2]) {
+      const viaStart = step({ ...fresh(), title }, { ...NO_INPUT, start: true }, world);
+      expect(viaStart.state.scene).toBe('world');
+      expect(viaStart.state.title).toBeUndefined();
+      expect(viaStart.state.dialogue?.pages).toEqual([['Welcome.']]);
+    }
   });
 
   it('waits on the title, then opens the intro', () => {
