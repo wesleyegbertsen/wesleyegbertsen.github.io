@@ -780,7 +780,9 @@ test.describe('beyond the town', () => {
     const hop = frames.filter((frame) => frame.jump === 'true');
     // Sixteen ticks at sixty a second, about a quarter of a second. The game counts the player as landed from the
     // start, two cells on: never a stop on the ledge's own cell. After it, plain steps again.
-    expect(hop.length).toBeGreaterThanOrEqual(5);
+    // How many frames that is depends on the frame rate (16 at 60 Hz, 5 at 20 Hz): at any rate it is at least two,
+    // as one frame moves the game 6 ticks at the most (`MAX_FRAME_MS`). How long it lasted is checked in time below.
+    expect(hop.length).toBeGreaterThanOrEqual(2);
     // It ended somewhere between the last frame that showed it and the first frame after. When the browser skips
     // a few frames right at the landing, the frames in the air alone look too short (112 ms was seen once), so
     // the least it must have lasted is measured up to the first frame on the ground, the most over the frames in the air.
@@ -854,20 +856,39 @@ test.describe('the deep cave', () => {
     return { x: x * 16 - left, y: y * 16 - top };
   };
 
+  type Seen = { walking: number; walkingTicks: number; typing: number; typingTicks: number; cells: string[]; on: boolean };
   /**
    * Starts writing down, frame by frame in the page, what the game shows while motion is on: how many frames a
-   * step was under way, how many a text was half typed, and every cell the player was on, in order.
+   * step was under way and how many a text was half typed, the same two as game time (in ticks), and every cell
+   * the player was on, in order.
+   *
+   * How many frames a step takes depends on the frame rate (ten ticks are ten frames at 60 Hz, three on a CI runner
+   * at 20 Hz), so a count of frames only shows that a step was seen under way. The game time does not: the loop
+   * runs 60 ticks a second of the frame times it is given, each frame counted for 100 ms at the most (`STEP_MS` and
+   * `MAX_FRAME_MS` in `useGameLoop.ts`). This callback runs after the game's in the same frame, with the same
+   * time, so the time from a frame that showed a step under way to the next frame is game time the step went on
+   * for (it ends in that span or later). Per step of ten ticks that adds up to at least 10 - 6 = 4 ticks at any
+   * frame rate (a frame moves the game 6 ticks at the most), about 9 at 60 Hz; a step that took no time adds none.
    */
   const watch = (page: Page) =>
     page.evaluate(() => {
-      const seen = { walking: 0, typing: 0, cells: [] as string[], on: true };
-      (window as unknown as { __seen: typeof seen }).__seen = seen;
+      const seen: Seen = { walking: 0, walkingTicks: 0, typing: 0, typingTicks: 0, cells: [], on: true };
+      (window as unknown as { __seen: Seen }).__seen = seen;
       const el = document.querySelector<HTMLElement>('[role="application"]')!;
       let last = `${el.dataset.x},${el.dataset.y}`;
-      const look = () => {
+      let before: { time: number; walking: boolean; typing: boolean } | null = null;
+      const look = (time: number) => {
         if (!seen.on) return;
-        if (el.dataset.walking === 'true') seen.walking++;
-        if (el.dataset.dialogue === 'true' && el.dataset.typed === 'false') seen.typing++;
+        if (before) {
+          const ticks = Math.min(time - before.time, 100) / (1000 / 60);
+          if (before.walking) seen.walkingTicks += ticks;
+          if (before.typing) seen.typingTicks += ticks;
+        }
+        const walking = el.dataset.walking === 'true';
+        const typing = el.dataset.dialogue === 'true' && el.dataset.typed === 'false';
+        if (walking) seen.walking++;
+        if (typing) seen.typing++;
+        before = { time, walking, typing };
         const cell = `${el.dataset.x},${el.dataset.y}`;
         if (cell !== last) seen.cells.push(cell);
         last = cell;
@@ -878,7 +899,7 @@ test.describe('the deep cave', () => {
   /** Stops it and hands over what was seen. */
   const watched = (page: Page) =>
     page.evaluate(() => {
-      const { __seen: seen } = window as unknown as { __seen: { walking: number; typing: number; cells: string[]; on: boolean } };
+      const { __seen: seen } = window as unknown as { __seen: Seen };
       seen.on = false;
       return seen;
     });
@@ -973,11 +994,14 @@ test.describe('the deep cave', () => {
     // The last page of what is said then (the first one says that both plates are down).
     await expect(status(page)).toContainText('will not move again.');
     await expect(game(page)).toHaveAttribute('data-dialogue', 'false');
-    // It really moved: steps were seen under way, about ten ticks each, and the text was seen half typed.
+    // It really moved: every step was seen under way and went on for game time, about ten ticks each (at least
+    // four at any frame rate, see `watch`), and the text was seen half typed for a while, one letter a tick.
     const hall = await watched(page);
     const steps = pushes.filter((key) => key !== 'a').length;
-    expect(hall.walking).toBeGreaterThan(steps * 4);
-    expect(hall.typing).toBeGreaterThan(10);
+    expect(hall.walking).toBeGreaterThanOrEqual(steps);
+    expect(hall.walkingTicks).toBeGreaterThanOrEqual(steps * 4);
+    expect(hall.typing).toBeGreaterThan(0);
+    expect(hall.typingTicks).toBeGreaterThan(50);
 
     // Through the open gate and on to the slick rock. Once with reduced motion: one press is the whole slide.
     await pilot.motion(false);
