@@ -23,4 +23,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'guren-no-yumiya', name: 'GUREN NO YUMIYA', artist: 'SHINGEKI NO KYOJIN OP', track: 'guren-no-yumiya' },
   { id: 'ichiban-no-takaramono', name: 'ICHIBAN NO TAKARAMONO', artist: 'ANANT-GARDE EYES', track: 'ichiban-no-takaramono' },
   { id: 'bauklotze', name: 'BAUKLOTZE', artist: 'PIANO VERSION', track: 'bauklotze' },
+  { id: 'clannad-medley', name: 'CLANNAD MEDLEY', artist: 'CLANNAD', track: 'clannad-medley' },
 ];
