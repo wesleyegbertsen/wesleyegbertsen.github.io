@@ -315,12 +315,12 @@ test('the tenth piece of the player piano: My Soul, Your Beats! chosen with down
   for (let i = 0; i < 9; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'my-soul-your-beats');
   await expect(status(page)).toHaveText('MY SOUL, YOUR BEATS!, ANGEL BEATS, 1:29.');
-  // A: My Soul, Your Beats!. Every voice starts on a rest; the first notes are F#4 (the vocal), F#5, B2, F#3 and B3.
+  // A: My Soul, Your Beats!. Every voice starts on a rest (the vocal not until 21 s); the piano's first notes are F#5 (1.4 s) and B2.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-piece', 'my-soul-your-beats');
   await expect(game(page)).toHaveAttribute('data-music', 'my-soul-your-beats');
-  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([370,740,123,185,247]));
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining([740, 123]));
   // A: stopped. A, A: the first piece of the list again.
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-piano', 'off');
