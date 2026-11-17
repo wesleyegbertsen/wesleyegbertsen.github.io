@@ -250,3 +250,30 @@ test('the seventh piece of the player piano: Ichiban no Takaramono chosen with d
   await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
   expect(errors).toEqual([]);
 });
+
+test('the eighth piece of the player piano: Bauklotze chosen with down seven times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  for (let i = 0; i < 7; i++) await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'bauklotze');
+  await expect(status(page)).toHaveText('BAUKLOTZE, PIANO VERSION, 3:44.');
+  // A: Bauklotze. Its first notes are the first of each voice that starts on a note.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'bauklotze');
+  await expect(game(page)).toHaveAttribute('data-music', 'bauklotze');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining(firstOf('bauklotze')));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
