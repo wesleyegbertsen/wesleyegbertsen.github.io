@@ -412,8 +412,8 @@ export const TRACKS: Record<string, Track> = {
     ],
   },
   /**
-   * Bauklotze, full piano version; converted here from a MIDI file linked from sheet.host (page ZBNZH5); reduced to
-   * five chiptune voices and quantized.
+   * Bauklotze, full piano version, by Hiroyuki Sawano (as the user states); converted here from a MIDI file linked
+   * from sheet.host (page ZBNZH5); reduced to five chiptune voices and quantized.
    *
    * HOW IT WAS CONVERTED (the MIDI is not in the repository; the rules of always-in-my-heart above): the MIDI keeps
    * 90 a minute but slows many times, some of them deeply to hold a chord; the format takes one bpm, so every note's

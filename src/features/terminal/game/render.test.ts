@@ -1552,10 +1552,10 @@ describe('the piece selector of the player piano', () => {
     expect(Math.max(...tenthRow.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     // The eighth: the list scrolls by one, the cursor on its last row, the second piece at the top.
     const eighth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 7 } }, undefined, real).draws;
-    // With nine pieces the eighth is on the sixth row, the list scrolled by two.
+    // With nine pieces the eighth is on the sixth row, the list scrolled by two, and its composer at the foot.
     expect(textAt(eighth, 24)).toBe('ALWAYSINMYHEART');
     expect(textAt(eighth, 74)).toBe('>BAUKLOTZE');
-    expect(textAt(eighth, 110)).toBe('PIANOVERSION');
+    expect(textAt(eighth, 110)).toBe('HIROYUKISAWANO');
     expect(textAt(eighth, 120)).toBe('3:44A:playB:back');
     for (const y of [74, 110]) {
       const text = seventh.filter((draw) => draw.sheet === 'font' && draw.y === y);

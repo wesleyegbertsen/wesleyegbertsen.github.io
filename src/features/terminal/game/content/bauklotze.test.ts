@@ -82,7 +82,7 @@ describe('the selector, its first eight pieces', () => {
   const ids = ['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel', 'aliez', 'guren-no-yumiya', 'ichiban-no-takaramono', 'bauklotze'];
 
   it('lists the eight pieces, each with the length of its own track', () => {
-    expect(PIECES.find((entry) => entry.id === 'bauklotze')).toEqual({ id: 'bauklotze', name: 'BAUKLOTZE', artist: 'PIANO VERSION', track: 'bauklotze' });
+    expect(PIECES.find((entry) => entry.id === 'bauklotze')).toEqual({ id: 'bauklotze', name: 'BAUKLOTZE', artist: 'HIROYUKI SAWANO', track: 'bauklotze' });
     // The first eight of the list; what follows is another piece's test.
     expect(world.pieces!.map((piece) => piece.id).slice(0, 8)).toEqual(ids);
     expect(world.pieces![7]!.ticks).toBe(Math.round(flatten(TRACKS['bauklotze']!).length * 60));

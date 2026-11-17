@@ -260,7 +260,7 @@ test('the eighth piece of the player piano: Bauklotze chosen with down seven tim
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 7; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'bauklotze');
-  await expect(status(page)).toHaveText('BAUKLOTZE, PIANO VERSION, 3:44. 8 of 9.');
+  await expect(status(page)).toHaveText('BAUKLOTZE, HIROYUKI SAWANO, 3:44. 8 of 9.');
   // A: Bauklotze. Its first notes are the first of each voice that starts on a note.
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
