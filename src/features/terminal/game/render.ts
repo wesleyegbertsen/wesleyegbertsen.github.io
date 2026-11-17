@@ -581,8 +581,8 @@ function drawPick(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
   rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
   const top = Math.max(0, Math.min(cursor - PICK_ROWS + 2, pieces.length - PICK_ROWS));
   pieces.slice(top, top + PICK_ROWS).forEach((piece, i) => drawText(ctx, sheets, piece.name, 18, 24 + i * LINE));
-  // More above the rows: an arrow under the rule; more below: one under the last row. None at the ends.
-  if (top > 0) moreMark(ctx, 146, 20, true);
+  // More above the rows: an arrow a pixel under the rule; more below: one under the last row. None at the ends.
+  if (top > 0) moreMark(ctx, 146, 21, true);
   if (top + PICK_ROWS < pieces.length) moreMark(ctx, 146, 24 + PICK_ROWS * LINE - 1);
   if (cursor >= 0) drawText(ctx, sheets, '>', 10, 24 + (cursor - top) * LINE);
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);

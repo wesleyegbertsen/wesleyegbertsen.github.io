@@ -1696,13 +1696,14 @@ describe('how many pieces the selector of the player piano holds', () => {
           expect(part.y).toBeGreaterThanOrEqual(6);
           expect(part.y + part.h).toBeLessThanOrEqual(SCREEN_H - 6);
         }
-        // No arrow pixel under a letter's cell, and none on the rules at y 19 and 105.
+        // No arrow pixel under a letter's cell, and none on or against the rules at y 19 and 105 (a pixel free).
         for (const mark of marks) {
           for (const glyph of glyphs) {
             const apart = mark.x + mark.w <= glyph.x || glyph.x + FONT.cellW <= mark.x || mark.y + mark.h <= glyph.y || glyph.y + FONT.cellH <= mark.y;
             expect(apart).toBe(true);
           }
-          expect([19, BOX_Y_TEST + 1]).not.toContain(mark.y);
+          expect(mark.y).toBeGreaterThanOrEqual(21);
+          expect(mark.y).toBeLessThan(BOX_Y_TEST);
         }
       }
     }
