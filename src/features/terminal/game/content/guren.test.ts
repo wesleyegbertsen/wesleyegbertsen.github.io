@@ -78,7 +78,7 @@ describe('Guren no Yumiya on the player piano, as converted from the MIDI', () =
   });
 });
 
-describe('the selector with six pieces', () => {
+describe('the selector, its first six pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
@@ -87,9 +87,10 @@ describe('the selector with six pieces', () => {
 
   it('lists the six pieces, each with the length of its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'guren-no-yumiya')).toEqual({ id: 'guren-no-yumiya', name: 'GUREN NO YUMIYA', artist: 'SHINGEKI NO KYOJIN OP', track: 'guren-no-yumiya' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
+    // The first six of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 6)).toEqual(ids);
     expect(world.pieces![5]!.ticks).toBe(Math.round(flatten(TRACKS['guren-no-yumiya']!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(6);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays the sixth piece with A on its row, and the first five still their own', () => {

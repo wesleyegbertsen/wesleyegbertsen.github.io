@@ -21,4 +21,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'unravel', name: 'UNRAVEL', artist: 'TK, LING TOSITE SIGURE', track: 'unravel' },
   { id: 'aliez', name: 'ALIEZ', artist: 'ALDNOAH.ZERO ED 2', track: 'aliez' },
   { id: 'guren-no-yumiya', name: 'GUREN NO YUMIYA', artist: 'SHINGEKI NO KYOJIN OP', track: 'guren-no-yumiya' },
+  { id: 'ichiban-no-takaramono', name: 'ICHIBAN NO TAKARAMONO', artist: 'ANANT-GARDE EYES', track: 'ichiban-no-takaramono' },
 ];
