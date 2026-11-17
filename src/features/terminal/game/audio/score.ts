@@ -4,7 +4,7 @@
  * them out bit by bit (and round and round, for a track that loops), so all of it can be tested with numbers.
  *
  * The notation of a voice, tokens separated by spaces:
- *   C4  F#3  Bb5   a note: name, optional # or b, octave (A4 is 440 Hz)
+ *   C4  F#3  Bb5   a note: name, optional # or b (or ## for a double sharp: F##4 is G4), octave (A4 is 440 Hz)
  *   -              a rest
  *   k  s  h        on a noise voice: kick, snare, hi-hat
  *   :n             after any of these: how many steps it lasts (C4:4). Without it, one step.
