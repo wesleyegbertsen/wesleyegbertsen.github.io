@@ -591,6 +591,7 @@ describe('the player piano on the page', () => {
     expect(game).toHaveAttribute('data-pick', '');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-pick', 'moon');
+    expect(screen.getByRole('status')).toHaveTextContent('The player piano. MOONLIGHT SONATA, BEETHOVEN, 0:00. 1 of 1.');
     expect(game).toHaveAttribute('data-piano', 'off');
     await user.keyboard('z');
     expect(game).toHaveAttribute('data-pick', '');

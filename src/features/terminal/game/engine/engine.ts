@@ -149,7 +149,7 @@ function apply(state: GameState, action: Action, ctx: Ctx): GameState {
       return { ...state, piano: undefined };
     }
     if (!world.pieces?.length) return state;
-    ctx.events.push({ kind: 'menu', text: `The player piano. ${pieceRow(world.pieces[0]!)}` });
+    ctx.events.push({ kind: 'menu', text: `The player piano. ${pieceRow(world.pieces, 0)}` });
     return { ...state, pick: { cursor: 0 } };
   }
   if ('battle' in action) return startBattle(state, action.battle, action.win, false, ctx, 0, action.quick);
@@ -635,8 +635,11 @@ export const pieceLength = (ticks: number): string => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 };
 
-/** A row of the piece selector as the status region says it. */
-const pieceRow = (piece: Piece) => `${piece.name}, ${piece.artist}, ${pieceLength(piece.ticks)}.`;
+/** A row of the piece selector as the status region says it, with its place in the list: `... 4:57. 1 of 10.` */
+const pieceRow = (pieces: Piece[], at: number) => {
+  const piece = pieces[at]!;
+  return `${piece.name}, ${piece.artist}, ${pieceLength(piece.ticks)}. ${at + 1} of ${pieces.length}.`;
+};
 
 /** The piece selector of the player piano: up and down choose, A plays the piece from its start, B closes it. */
 function stepPick(state: GameState, input: Input, ctx: Ctx): GameState {
@@ -656,7 +659,7 @@ function stepPick(state: GameState, input: Input, ctx: Ctx): GameState {
     const next = Math.max(0, Math.min(pieces.length - 1, cursor + (input.pressed === 'up' ? -1 : 1)));
     if (next === cursor) return state;
     ctx.cues.push('cursor');
-    ctx.events.push({ kind: 'menu', text: pieceRow(pieces[next]!) });
+    ctx.events.push({ kind: 'menu', text: pieceRow(pieces, next) });
     return { ...state, pick: { cursor: next } };
   }
   return state;

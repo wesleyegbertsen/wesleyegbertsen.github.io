@@ -31,13 +31,15 @@ describe('the piece selector of the player piano', () => {
     const open = tick(atPiano(), { a: true }, true);
     expect(open.state.pick).toEqual({ cursor: 0 });
     expect(open.state.piano).toBeUndefined();
-    expect(open.events.map((event) => event.text)).toEqual(['The player piano. MOONLIGHT SONATA, BEETHOVEN, 0:10.']);
+    expect(open.events.map((event) => event.text)).toEqual(['The player piano. MOONLIGHT SONATA, BEETHOVEN, 0:10. 1 of 2.']);
     const down = tick(open.state, { dir: 'down', pressed: 'down' }, true);
     expect(down.state.pick).toEqual({ cursor: 1 });
     expect(down.cues).toEqual(['cursor']);
-    expect(down.events.map((event) => event.text)).toEqual(['ANOTHER PIECE, SOMEONE, 0:05.']);
+    expect(down.events.map((event) => event.text)).toEqual(['ANOTHER PIECE, SOMEONE, 0:05. 2 of 2.']);
     // The ends hold, and the player does not walk meanwhile.
     expect(play(down.state, 'down').pick).toEqual({ cursor: 1 });
+    // Up again: the first, and its place in the list.
+    expect(tick(down.state, { dir: 'up', pressed: 'up' }, true).events.map((event) => event.text)).toEqual(['MOONLIGHT SONATA, BEETHOVEN, 0:10. 1 of 2.']);
     expect(play(down.state, 'down')).toMatchObject({ x: 4, y: 1 });
     const cancelled = tick(down.state, { b: true }, true);
     expect(cancelled.state.pick).toBeUndefined();
