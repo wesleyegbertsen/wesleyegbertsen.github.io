@@ -64,6 +64,12 @@ describe('complete', () => {
     expect(complete('theme b', ctx).line).toBe('theme blue ');
   });
 
+  it('completes skip for play, in any case', () => {
+    expect(complete('play s', ctx)).toEqual({ line: 'play skip ', candidates: [] });
+    expect(complete('PLAY S', ctx).line).toBe('PLAY skip ');
+    expect(complete('play x', ctx)).toEqual({ line: 'play x', candidates: [] });
+  });
+
   it('completes command names and fixed words typed in another case to the lowercase word', () => {
     expect(complete('PL', ctx)).toEqual({ line: 'play ', candidates: [] });
     expect(complete('Wh', ctx)).toEqual({ line: 'whoami ', candidates: [] });

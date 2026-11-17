@@ -40,14 +40,16 @@ function candidatesFor(command: string | undefined, word: string, ctx: CompleteC
       return fixed(Object.keys(openTargets(ctx)));
     case 'theme':
       return fixed(THEMES.map((theme) => theme.name as string));
+    case 'play':
+      return fixed(['skip']);
     default:
       return [];
   }
 }
 
 /**
- * Completes the last word of `line`: the command name for the first word, then paths, open targets or theme
- * names depending on the command. One match completes it. Several extend to their common prefix and are returned
+ * Completes the last word of `line`: the command name for the first word, then paths, open targets, theme names
+ * or `skip` (for `play`) depending on the command. One match completes it. Several extend to their common prefix and are returned
  * for printing.
  */
 export function complete(line: string, ctx: CompleteContext): Completion {
