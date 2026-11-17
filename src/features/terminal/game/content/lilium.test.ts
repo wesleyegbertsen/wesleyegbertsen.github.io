@@ -18,10 +18,12 @@ import { buildWorld } from './world.ts';
  * figure; in the sextuplet arpeggios only their second, fourth and sixth notes) and one inner chord tone. A step is a
  * twelfth of a quarter note at 60 a minute, so eighths (6), sixteenths (3), sextuplet sixteenths (2) and triplet
  * eighths (4) are exact. The fermatas of bars 22 and 33 add a beat to their bar; bar 44's accelerando is fitted into
- * its bar. A tied note stays in the bar where it starts, so a bar can be longer or shorter in a voice.
+ * its bar. A tied note stays in the bar where it starts, so a bar can be longer or shorter in a voice. The leading rests
+ * of the printed first bar are left out (bar 1 is the pickup alone, 12 steps), and the last bar ends on a rest 4 steps
+ * longer, so the track is a multiple of 16 steps.
  */
 const BARS: { bar: number; melody: string; second: string; bass: string; octave: string; inner: string }[] = [
-  { bar: 1, melody: '-:36 F#4:6 C#5:6', second: '-:48', bass: '-:48', octave: '-:48', inner: '-:48' },
+  { bar: 1, melody: 'F#4:6 C#5:6', second: '-:12', bass: '-:12', octave: '-:12', inner: '-:12' },
   { bar: 2, melody: 'G#4:18 A4:6 A4:12 F#4:6 C#5:6', second: 'E#4:24 F#4:12 -:12', bass: 'E#2:24 F#2:24', octave: 'G#3:24 A3:24', inner: 'C#3:24 -:24' },
   { bar: 3, melody: 'G#4:18 A4:6 B4:6 A4:6', second: 'E#4:24 -:12', bass: 'E#2:24 F#2:12', octave: 'G#3:24 A3:12', inner: '-:36' },
   { bar: 4, melody: 'F#4:24 G#3:6 G#4:6 E4:6 D4:6', second: 'D4:24 -:6 B3:6 B3:6 -:6', bass: 'D2:24 D2:24', octave: 'F#3:24 G#3:24', inner: 'A3:24 -:24' },
@@ -66,7 +68,7 @@ const BARS: { bar: number; melody: string; second: string; bass: string; octave:
   { bar: 43, melody: 'D5:6 B5:6 A5:6 G#5:6 F#5:6 E#5:6 D#5:6 E#5:6', second: 'D4:6 B4:6 A4:6 G#4:6 F#4:6 E#4:6 D#4:6 E#4:6', bass: 'B1:12 C2:12 C#2:12 C#2:6 C#2:2 C#2:2 -:2', octave: '-:2 B2:4 D3:4 F#3:2 -:2 C3:4 D#3:4 F#3:2 -:2 C#4:4 C#3:4 G#2:2 -:2 C#3:2 G#2:2 -:6', inner: 'A4:6 F#5:6 D5:6 -:30' },
   { bar: 44, melody: 'F#5:48', second: 'C#5:6 -:2 A3:2 A3:2 -:2 F#4:2 F#4:2 -:2 A4:2 A4:2 -:2 F#5:2 F#5:2 -:2 A5:2 A5:2 -:2 F#6:2 F#6:2 -:2 A6:2 A6:2', bass: 'F#1:6 F#1:6 C#2:6 F#2:6 C#3:6 F#3:6 C#4:6 F#4:6', octave: 'F#2:6 F#2:6 C#3:6 F#3:6 C#4:6 F#4:6 C#5:6 F#5:6', inner: 'A4:6 -:2 F#3:2 F#3:2 -:2 C#4:2 C#4:2 -:2 F#4:2 F#4:2 -:2 C#5:2 C#5:2 -:2 F#5:2 F#5:2 -:2 C#6:2 C#6:2 -:2 F#6:2 F#6:2' },
   { bar: 45, melody: 'C#6:6 A6:3 A6:3 A6:18 A4:12 -:6', second: 'C#5:6 F#6:3 F#6:3 F#6:18 F#4:12 -:6', bass: '-:30 F#2:12 F#1:6', octave: '-:30 C#3:12 -:6', inner: '-:12 F#5:18 C#4:12 -:6' },
-  { bar: 46, melody: 'F#3:36 -:12', second: 'C#3:36 -:12', bass: 'C#2:36 -:12', octave: 'F#2:36 -:12', inner: 'A2:36 -:12' },
+  { bar: 46, melody: 'F#3:36 -:16', second: 'C#3:36 -:16', bass: 'C#2:36 -:16', octave: 'F#2:36 -:16', inner: 'A2:36 -:16' },
 ];
 
 describe('Lilium on the player piano, written out from the score', () => {
@@ -80,13 +82,18 @@ describe('Lilium on the player piano, written out from the score', () => {
     expect(piece.loop).toBe(false);
   });
 
-  it('has the 46 bars of the score, the two fermatas a beat longer: 3:04', () => {
+  it('sounds at once: the leading rests of the printed first bar are left out, so a voice starts on a note', () => {
+    expect(Math.min(...piece.voices.map((voice) => parseVoice(voice.notes).notes[0]?.step ?? Infinity))).toBe(0);
+  });
+
+  it('has the 46 bars of the score, the two fermatas a beat longer, the first bar\'s leading rests left out: 3:01', () => {
     for (let voice = 0; voice < 5; voice++) expect(bars(voice)).toHaveLength(46);
-    expect(trackSteps(piece)).toBe(2208);
+    expect(trackSteps(piece)).toBe(2176);
     for (const voice of piece.voices) expect(parseVoice(voice.notes).steps).toBe(trackSteps(piece));
-    // 182 beats as written at 60 a minute, and a beat for each fermata.
+    // 182 beats as written at 60 a minute and a beat for each fermata, less the three beats of rest before the pickup,
+    // and a third of a beat of rest at the end for the multiple of 16 steps.
     const { length } = flatten(piece);
-    expect(length).toBeCloseTo(184, 6);
+    expect(length).toBeCloseTo(184 - 3 + 1 / 3, 6);
     expect(length).toBeLessThan(360);
   });
 
@@ -146,6 +153,6 @@ describe('the selector, its first ten pieces', () => {
 
   it('says the tenth row in the status region: its name, artist, length and "10 of 12"', () => {
     const said = tick(down(open, 8), { dir: 'down', pressed: 'down' }).events.map((event) => event.text);
-    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 12.']);
+    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:01. 10 of 12.']);
   });
 });

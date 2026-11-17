@@ -1555,7 +1555,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(tenth, 74)).toBe('>LILIUM(ELFENLIED)');
     expect(textAt(tenth, 84)).toBe('MYDEAREST');
     expect(textAt(tenth, 110)).toBe('NOMAKUMIKO');
-    expect(textAt(tenth, 120)).toBe('3:04A:playB:back');
+    expect(textAt(tenth, 120)).toBe('3:01A:playB:back');
     const tenthRow = tenth.filter((draw) => draw.sheet === 'font' && draw.y === 74);
     expect(Math.max(...tenthRow.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
     // The eleventh: a row below it now, so the list scrolls by five, the cursor on its sixth row.

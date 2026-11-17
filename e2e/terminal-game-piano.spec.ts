@@ -314,8 +314,8 @@ test('the tenth piece of the player piano: Lilium chosen with down nine times, i
   await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
   for (let i = 0; i < 9; i++) await pilot.press('down');
   await expect(game(page)).toHaveAttribute('data-pick', 'lilium');
-  await expect(status(page)).toHaveText('LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 12.');
-  // A: Lilium. Every voice starts on a rest; its first notes are the melody's F#4 (at 3 s) and C#5 (at 3.5 s).
+  await expect(status(page)).toHaveText('LILIUM (ELFEN LIED), NOMA KUMIKO, 3:01. 10 of 12.');
+  // A: Lilium. The first bar's leading rests are left out; its first notes are the melody's F#4 (at once) and C#5 (at 0.5 s).
   const from = (await audioLog(page))[0]!.frequencies.length;
   await pilot.press('a');
   await expect(game(page)).toHaveAttribute('data-piece', 'lilium');
