@@ -20,4 +20,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'always-in-my-heart', name: 'ALWAYS IN MY HEART', artist: 'KATO TATSUYA', track: 'always-in-my-heart' },
   { id: 'unravel', name: 'UNRAVEL', artist: 'TK, LING TOSITE SIGURE', track: 'unravel' },
   { id: 'aliez', name: 'ALIEZ', artist: 'ALDNOAH.ZERO ED 2', track: 'aliez' },
+  { id: 'guren-no-yumiya', name: 'GUREN NO YUMIYA', artist: 'SHINGEKI NO KYOJIN OP', track: 'guren-no-yumiya' },
 ];

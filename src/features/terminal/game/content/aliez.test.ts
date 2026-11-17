@@ -76,7 +76,7 @@ describe('aLIEz on the player piano, as converted from the MIDI', () => {
   });
 });
 
-describe('the selector with five pieces', () => {
+describe('the selector, its first five pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true }).state;
   const open: GameState = { ...initialGame(world), scene: 'world', map: 'cafe', pick: { cursor: 0 } };
@@ -85,9 +85,10 @@ describe('the selector with five pieces', () => {
 
   it('lists the five pieces, each with the length of its own track', () => {
     expect(PIECES.find((entry) => entry.id === 'aliez')).toEqual({ id: 'aliez', name: 'ALIEZ', artist: 'ALDNOAH.ZERO ED 2', track: 'aliez' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
+    // The first five of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 5)).toEqual(ids);
     expect(world.pieces![4]!.ticks).toBe(Math.round(flatten(TRACKS.aliez!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(5);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays the fifth piece with A on its row, and the first four still their own', () => {
