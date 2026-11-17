@@ -1500,7 +1500,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the real pieces, seven rows at a time, and the second to tenth ones\' artists whole and inside the box at the foot', () => {
+  it('lists the real pieces, seven rows at a time, and the second to eleventh ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
@@ -1549,14 +1549,25 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(ninth, 84)).toBe('LILIUM(ELFENLIED)');
     expect(textAt(ninth, 110)).toBe('ANGELBEATS');
     expect(textAt(ninth, 120)).toBe('1:29A:playB:back');
-    // The tenth, the last: the list scrolls by three, the cursor on its last row, the artist and length at the foot.
+    // The tenth: a row below it now, so the list scrolls by four, the cursor on its sixth row.
     const tenth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 9 } }, undefined, real).draws;
-    expect(textAt(tenth, 24)).toBe('UNRAVEL');
-    expect(textAt(tenth, 84)).toBe('>LILIUM(ELFENLIED)');
+    expect(textAt(tenth, 24)).toBe('ALIEZ');
+    expect(textAt(tenth, 74)).toBe('>LILIUM(ELFENLIED)');
+    expect(textAt(tenth, 84)).toBe('MYDEAREST');
     expect(textAt(tenth, 110)).toBe('NOMAKUMIKO');
     expect(textAt(tenth, 120)).toBe('3:04A:playB:back');
-    const tenthRow = tenth.filter((draw) => draw.sheet === 'font' && draw.y === 84);
+    const tenthRow = tenth.filter((draw) => draw.sheet === 'font' && draw.y === 74);
     expect(Math.max(...tenthRow.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
+    // The eleventh, the last: the list scrolls by four, the cursor on its last row, the artist and length at the foot.
+    const eleventh = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 10 } }, undefined, real).draws;
+    expect(textAt(eleventh, 24)).toBe('ALIEZ');
+    expect(textAt(eleventh, 84)).toBe('>MYDEAREST');
+    expect(textAt(eleventh, 110)).toBe('SUPERCELL');
+    expect(textAt(eleventh, 120)).toBe('3:56A:playB:back');
+    for (const y of [84, 110]) {
+      const text = eleventh.filter((draw) => draw.sheet === 'font' && draw.y === y);
+      expect(Math.max(...text.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
+    }
     // The eighth: the list scrolls by one, the cursor on its last row, the second piece at the top.
     const eighth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 7 } }, undefined, real).draws;
     // The eighth is on the sixth row, the list scrolled by two, and its composer at the foot.
@@ -1631,7 +1642,8 @@ describe('how many pieces the selector of the player piano holds', () => {
       [list(99), 98, '99/99'],
       [real, 0, `1/${real.pieces!.length}`],
       [real, 8, `9/${real.pieces!.length}`],
-      [real, 9, '10/10'],
+      [real, 9, '10/11'],
+      [real, 10, '11/11'],
     ];
     for (const look of looks) {
       for (const [on, cursor, count] of cases) {

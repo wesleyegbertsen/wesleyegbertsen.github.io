@@ -122,7 +122,7 @@ describe('Lilium on the player piano, written out from the score', () => {
   });
 });
 
-describe('the selector with ten pieces', () => {
+describe('the selector, its first ten pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const tick = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => tick(state, input).state;
@@ -130,21 +130,22 @@ describe('the selector with ten pieces', () => {
   const down = (state: GameState, times: number): GameState => (times === 0 ? state : down(press(state, { dir: 'down', pressed: 'down' }), times - 1));
   const ids = ['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel', 'aliez', 'guren-no-yumiya', 'ichiban-no-takaramono', 'bauklotze', 'my-soul-your-beats', 'lilium'];
 
-  it('lists the ten pieces, Lilium the tenth and last, each with the length of its own track, and no piano track out of the list', () => {
+  it('lists the first ten pieces, Lilium the tenth, each with the length of its own track, and no piano track out of the list', () => {
     expect(PIECES.find((entry) => entry.id === 'lilium')).toEqual({ id: 'lilium', name: 'LILIUM (ELFEN LIED)', artist: 'NOMA KUMIKO', track: 'lilium' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
+    // The first ten of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 10)).toEqual(ids);
     const piano = Object.entries(TRACKS).filter(([, track]) => track.loop === false && track.voices.every((voice) => voice.pluck)).map(([name]) => name);
     expect(piano.sort()).toEqual(PIECES.map((entry) => entry.track).sort());
     expect(world.pieces![9]!.ticks).toBe(Math.round(flatten(TRACKS['lilium']!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(10);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays Lilium with A on the tenth row, and the others still their own', () => {
     ids.forEach((id, i) => expect(press(down(open, i), { a: true }).piano).toMatchObject({ piece: id, ticks: world.pieces![i]!.ticks }));
   });
 
-  it('says the tenth row in the status region: its name, artist, length and "10 of 10"', () => {
+  it('says the tenth row in the status region: its name, artist, length and "10 of 11"', () => {
     const said = tick(down(open, 8), { dir: 'down', pressed: 'down' }).events.map((event) => event.text);
-    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 10.']);
+    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 11.']);
   });
 });
