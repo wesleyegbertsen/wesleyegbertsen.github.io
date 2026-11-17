@@ -35,6 +35,15 @@ describe('the pieces of the player piano', () => {
     }
   });
 
+  it('sounds every piece at once: its first note, in any voice, starts within half a second', () => {
+    for (const piece of PIECES) {
+      const track = TRACKS[piece.track]!;
+      const first = Math.min(...track.voices.flatMap((voice) => parseVoice(voice.notes).notes.map((note) => note.step)));
+      // A step is a sixteenth: a quarter of the beat of the bpm.
+      expect(first * (15 / track.bpm), `${piece.id} starts its first note late`).toBeLessThanOrEqual(0.5);
+    }
+  });
+
   it('sets every piece by its energy: at the level of the cafe tune, or with its peak at the loudest tune\'s, never over either', () => {
     // The target is the level of the tune the piano replaces; the ceiling the loudest step of any tune (as the cries).
     expect(PIANO_LOUDNESS).toBeCloseTo(loudnessOf(TRACKS.cafe!), 2);
