@@ -196,3 +196,30 @@ test('the fifth piece of the player piano: aLIEz chosen with down four times, it
   await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
   expect(errors).toEqual([]);
 });
+
+test('the sixth piece of the player piano: Guren no Yumiya chosen with down five times, its first notes heard, stopped, the Moonlight Sonata again', async ({ page }) => {
+  const { pilot, errors } = await play(page);
+  await pilot.start();
+  await pilot.goTo('town:X');
+  await pilot.goTo('cafe:k');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-pick', 'moonlight');
+  for (let i = 0; i < 5; i++) await pilot.press('down');
+  await expect(game(page)).toHaveAttribute('data-pick', 'guren-no-yumiya');
+  await expect(status(page)).toHaveText('GUREN NO YUMIYA, SHINGEKI NO KYOJIN OP, 1:34.');
+  // A: Guren no Yumiya. Its first notes: the right hand's C#5 and G#4, the left hand's C#2 and C#3, and E4.
+  const from = (await audioLog(page))[0]!.frequencies.length;
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'guren-no-yumiya');
+  await expect(game(page)).toHaveAttribute('data-music', 'guren-no-yumiya');
+  await expect.poll(() => heardSince(page, from)).toEqual(expect.arrayContaining(firstOf('guren-no-yumiya')));
+  // A: stopped. A, A: the first piece of the list again.
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piano', 'off');
+  await expect(game(page)).toHaveAttribute('data-music', 'cafe');
+  await pilot.press('a');
+  await pilot.press('a');
+  await expect(game(page)).toHaveAttribute('data-piece', 'moonlight');
+  await expect(game(page)).toHaveAttribute('data-music', 'moonlight');
+  expect(errors).toEqual([]);
+});
