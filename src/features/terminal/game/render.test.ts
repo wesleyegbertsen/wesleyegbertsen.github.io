@@ -1500,7 +1500,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the real pieces, seven rows at a time, and the second to tenth ones\' artists whole and inside the box at the foot', () => {
+  it('lists the real pieces, seven rows at a time, and the second to ninth ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
@@ -1542,20 +1542,14 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(seventh, 74)).toBe('>ICHIBANNOTAKARAMONO');
     expect(textAt(seventh, 110)).toBe('ANANT-GARDEEYES');
     expect(textAt(seventh, 120)).toBe('2:42A:playB:back');
-    // The tenth, the last: the list scrolls by three, the cursor on its last row.
-    const tenth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 9 } }, undefined, real).draws;
-    expect(textAt(tenth, 24)).toBe('UNRAVEL');
+    // The ninth, the last: the list scrolls by two, the cursor on its last row.
+    const tenth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 8 } }, undefined, real).draws;
+    expect(textAt(tenth, 24)).toBe('ALWAYSINMYHEART');
     expect(textAt(tenth, 84)).toBe('>MYSOUL,YOURBEATS!');
     expect(textAt(tenth, 110)).toBe('ANGELBEATS');
     expect(textAt(tenth, 120)).toBe('1:29A:playB:back');
     const tenthRow = tenth.filter((draw) => draw.sheet === 'font' && draw.y === 84);
     expect(Math.max(...tenthRow.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
-    // The ninth: with ten pieces the list has scrolled by three, the ninth on the sixth row.
-    const ninth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 8 } }, undefined, real).draws;
-    expect(textAt(ninth, 24)).toBe('UNRAVEL');
-    expect(textAt(ninth, 74)).toBe('>CLANNADMEDLEY');
-    expect(textAt(ninth, 110)).toBe('CLANNAD');
-    expect(textAt(ninth, 120)).toBe('13:46A:playB:back');
     // The eighth: the list scrolls by one, the cursor on its last row, the second piece at the top.
     const eighth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 7 } }, undefined, real).draws;
     // With nine pieces the eighth is on the sixth row, the list scrolled by two.
@@ -1629,7 +1623,8 @@ describe('how many pieces the selector of the player piano holds', () => {
       [list(99), 50, '51/99'],
       [list(99), 98, '99/99'],
       [real, 0, `1/${real.pieces!.length}`],
-      [real, 9, `10/${real.pieces!.length}`],
+      [real, 8, `9/${real.pieces!.length}`],
+      [real, 8, '9/9'],
     ];
     for (const look of looks) {
       for (const [on, cursor, count] of cases) {
@@ -1659,7 +1654,7 @@ describe('how many pieces the selector of the player piano holds', () => {
       ['99 in the middle', list(99), 50, { up: true, down: true }],
       ['99 at the end', list(99), 98, { up: true, down: false }],
       ['the real ones on opening', real, 0, { up: false, down: true }],
-      ['the real ones in the middle', real, 7, { up: true, down: true }],
+      ['the real ones in the middle', real, 6, { up: true, down: true }],
       ['the real ones at the end', real, real.pieces!.length - 1, { up: true, down: false }],
     ];
     for (const look of looks) for (const [name, on, cursor, expected] of cases) expect([look, name, arrows(paint(on, cursor, look).fills)]).toEqual([look, name, expected]);
@@ -1685,7 +1680,7 @@ describe('how many pieces the selector of the player piano holds', () => {
 
   it('keeps the counter, the rows and the arrows inside the box and clear of each other, in GB, GBC and DIM', () => {
     for (const look of looks) {
-      for (const [on, cursor] of [[list(1), 0], [list(7), 6], [list(8), 0], [list(8), 7], [list(99), 50], [list(99), 98], [real, 0], [real, 7], [real, real.pieces!.length - 1]] as const) {
+      for (const [on, cursor] of [[list(1), 0], [list(7), 6], [list(8), 0], [list(8), 7], [list(99), 50], [list(99), 98], [real, 0], [real, 6], [real, real.pieces!.length - 1]] as const) {
         const { glyphs, fills } = paint(on, cursor, look);
         expect(glyphs.length).toBeGreaterThan(0);
         const marks = [...arrow(fills, 'up'), ...arrow(fills, 'down')];
