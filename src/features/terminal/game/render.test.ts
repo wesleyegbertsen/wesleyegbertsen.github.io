@@ -1500,7 +1500,7 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(low, 120)).toBe('0:19A:playB:back');
   });
 
-  it('lists the real pieces, seven rows at a time, and the second to ninth ones\' artists whole and inside the box at the foot', () => {
+  it('lists the real pieces, seven rows at a time, and the second to tenth ones\' artists whole and inside the box at the foot', () => {
     const real = buildWorld({ profile, skills, experience, education, projects });
     const draws = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 1 } }, undefined, real).draws;
     expect([24, 34].map((y) => textAt(draws, y))).toEqual(['MOONLIGHTSONATAMVT1', '>SCARBOROUGHFAIR']);
@@ -1542,10 +1542,18 @@ describe('the piece selector of the player piano', () => {
     expect(textAt(seventh, 74)).toBe('>ICHIBANNOTAKARAMONO');
     expect(textAt(seventh, 110)).toBe('ANANT-GARDEEYES');
     expect(textAt(seventh, 120)).toBe('2:42A:playB:back');
-    // The ninth: the list scrolls by two, the cursor on its last row.
+    // The tenth, the last: the list scrolls by three, the cursor on its last row.
+    const tenth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 9 } }, undefined, real).draws;
+    expect(textAt(tenth, 24)).toBe('UNRAVEL');
+    expect(textAt(tenth, 84)).toBe('>MYSOUL,YOURBEATS!');
+    expect(textAt(tenth, 110)).toBe('ANGELBEATS');
+    expect(textAt(tenth, 120)).toBe('1:29A:playB:back');
+    const tenthRow = tenth.filter((draw) => draw.sheet === 'font' && draw.y === 84);
+    expect(Math.max(...tenthRow.map((draw) => draw.x + FONT.cellW))).toBeLessThanOrEqual(SCREEN_W - 8);
+    // The ninth: with ten pieces the list has scrolled by three, the ninth on the sixth row.
     const ninth = drawn({ ...initialGame(real), scene: 'world', map: 'cafe', pick: { cursor: 8 } }, undefined, real).draws;
-    expect(textAt(ninth, 24)).toBe('ALWAYSINMYHEART');
-    expect(textAt(ninth, 84)).toBe('>CLANNADMEDLEY');
+    expect(textAt(ninth, 24)).toBe('UNRAVEL');
+    expect(textAt(ninth, 74)).toBe('>CLANNADMEDLEY');
     expect(textAt(ninth, 110)).toBe('CLANNAD');
     expect(textAt(ninth, 120)).toBe('13:46A:playB:back');
     // The eighth: the list scrolls by one, the cursor on its last row, the second piece at the top.
