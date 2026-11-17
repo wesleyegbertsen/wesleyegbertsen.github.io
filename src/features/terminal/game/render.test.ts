@@ -1480,7 +1480,7 @@ describe('the piece selector of the player piano', () => {
 
   it('lists the one piece with the cursor on it, and its artist and length under the list', () => {
     const draws = draw(one, 0);
-    expect(textAt(draws, 8)).toBe('PLAYERPIANO');
+    expect(textAt(draws, 8)).toBe('PLAYERPIANO1/1');
     expect(textAt(draws, 24)).toBe('>MOONLIGHTSONATA');
     expect(textAt(draws, 34)).toBe('');
     expect(textAt(draws, 110)).toBe('L.VANBEETHOVEN');
@@ -1582,5 +1582,129 @@ describe('the piece selector of the player piano', () => {
     expect(text.length).toBeGreaterThan(0);
     for (const glyph of text) expect(glyph.sheet).toBe('font:ui');
     for (const fill of record.fills) expect(PALETTES.ui).toContain(fill.shade);
+  });
+});
+
+describe('how many pieces the selector of the player piano holds', () => {
+  const piece = (i: number) => ({ id: `p${i}`, name: `PIECE NUMBER ${i}`, artist: `COMPOSER ${i}`, track: 'moonlight', ticks: 600 });
+  const list = (length: number): World => ({ ...world, pieces: Array.from({ length }, (_, i) => piece(i + 1)) });
+  const real = buildWorld({ profile, skills, experience, education, projects });
+  const ids = Object.keys(PALETTES) as PaletteId[];
+  const set = (suffix: string) => ({ tiles: `tiles${suffix}`, sprites: `sprites${suffix}`, font: `font${suffix}` });
+  const all = {
+    ...sheets,
+    colour: Object.fromEntries(ids.map((id) => [id, set(`:${id}`)])),
+    dim: { gb: set('~dim'), colour: Object.fromEntries(ids.map((id) => [id, set(`:${id}~dim`)])) },
+  } as unknown as Sheets;
+  const LOOKS = {
+    GB: { hud: { muted: false, volume: 5 }, font: 'font', darkest: PALETTE[3] as string },
+    GBC: { hud: { muted: false, volume: 5, colour: true }, font: 'font:ui', darkest: PALETTES.ui[3] },
+    'GB DIM': { hud: { muted: false, volume: 5, dim: true }, font: 'font~dim', darkest: dimmed(PALETTE as unknown as Palette)[3] },
+    'GBC DIM': { hud: { muted: false, volume: 5, colour: true, dim: true }, font: 'font:ui~dim', darkest: dimmed(PALETTES.ui)[3] },
+  } satisfies Record<string, { hud: Hud; font: string; darkest: string }>;
+  type Look = keyof typeof LOOKS;
+  const looks = Object.keys(LOOKS) as Look[];
+  const paint = (on: World, cursor: number, look: Look = 'GB', hud: Partial<Hud> = {}, clock?: number) => {
+    const record = recorder();
+    const base = on === real ? { ...initialGame(real), scene: 'world' as const, map: 'cafe' } : started();
+    drawGame(record.ctx, all, { ...base, ...(clock === undefined ? {} : { clock }), pick: { cursor } }, on, { ...LOOKS[look].hud, ...hud });
+    // The glyphs read back as the GB font sheet, whatever copy drew them.
+    const glyphs = record.draws.filter((draw) => draw.sheet === LOOKS[look].font).map((draw) => ({ ...draw, sheet: 'font' }));
+    return { ...record, glyphs };
+  };
+  /** A small arrow by the list: thin fills (at most 5 by 1) at its right, above the first row or under the last. */
+  const arrow = (fills: Fill[], where: 'up' | 'down') =>
+    fills
+      .filter((fill) => fill.h === 1 && fill.w <= 5 && fill.x >= 140 && (where === 'up' ? fill.y >= 20 && fill.y < 24 : fill.y >= 92 && fill.y < BOX_Y_TEST))
+      .sort((a, b) => a.y - b.y);
+  const arrows = (fills: Fill[]) => ({ up: arrow(fills, 'up').length > 0, down: arrow(fills, 'down').length > 0 });
+
+  it("counts in the title row: the cursor's row and how many there are, right-aligned to the box, also when all fit", () => {
+    const cases: [World, number, string][] = [
+      [list(1), 0, '1/1'],
+      [list(7), 0, '1/7'],
+      [list(7), 6, '7/7'],
+      [list(8), 7, '8/8'],
+      [list(99), 0, '1/99'],
+      [list(99), 50, '51/99'],
+      [list(99), 98, '99/99'],
+      [real, 0, `1/${real.pieces!.length}`],
+      [real, 9, `10/${real.pieces!.length}`],
+    ];
+    for (const look of looks) {
+      for (const [on, cursor, count] of cases) {
+        const { glyphs } = paint(on, cursor, look);
+        expect([look, textAt(glyphs, 8)]).toEqual([look, `PLAYERPIANO${count}`]);
+        const title = glyphs.filter((draw) => draw.y === 8).sort((a, b) => a.x - b.x);
+        // The counter ends at the box's margin, and at least a letter's gap parts it from the name.
+        expect(title.at(-1)!.x + FONT.cellW).toBe(SCREEN_W - 8);
+        const name = title.slice(0, 'PLAYERPIANO'.length);
+        const counter = title.slice('PLAYERPIANO'.length);
+        expect(name[0]!.x).toBe(14);
+        expect(counter[0]!.x).toBeGreaterThanOrEqual(name.at(-1)!.x + 2 * FONT.cellW);
+      }
+    }
+  });
+
+  it('shows an arrow up when pieces are above the rows and down when some are below, none at the ends', () => {
+    const cases: [string, World, number, { up: boolean; down: boolean }][] = [
+      ['one', list(1), 0, { up: false, down: false }],
+      ['seven at the top', list(7), 0, { up: false, down: false }],
+      ['seven in the middle', list(7), 3, { up: false, down: false }],
+      ['seven at the end', list(7), 6, { up: false, down: false }],
+      ['eight at the top', list(8), 0, { up: false, down: true }],
+      ['eight in the middle', list(8), 3, { up: false, down: true }],
+      ['eight at the end', list(8), 7, { up: true, down: false }],
+      ['99 at the top', list(99), 0, { up: false, down: true }],
+      ['99 in the middle', list(99), 50, { up: true, down: true }],
+      ['99 at the end', list(99), 98, { up: true, down: false }],
+      ['the real ones on opening', real, 0, { up: false, down: true }],
+      ['the real ones in the middle', real, 7, { up: true, down: true }],
+      ['the real ones at the end', real, real.pieces!.length - 1, { up: true, down: false }],
+    ];
+    for (const look of looks) for (const [name, on, cursor, expected] of cases) expect([look, name, arrows(paint(on, cursor, look).fills)]).toEqual([look, name, expected]);
+  });
+
+  it("draws the arrows as the text box's 'more' mark (5, 3 and 1 pixels), still, in the darkest shade of GB, GBC and DIM", () => {
+    for (const look of looks) {
+      const { fills } = paint(list(99), 50, look);
+      const down = arrow(fills, 'down');
+      const up = arrow(fills, 'up');
+      expect([look, down.map((fill) => fill.w)]).toEqual([look, [5, 3, 1]]);
+      expect([look, up.map((fill) => fill.w)]).toEqual([look, [1, 3, 5]]);
+      for (const fill of [...up, ...down]) expect([look, fill.shade]).toEqual([look, LOOKS[look].darkest]);
+      // Centred on one column, a fill a row, three rows.
+      for (const mark of [up, down]) {
+        expect(new Set(mark.map((fill) => fill.x * 2 + fill.w)).size).toBe(1);
+        expect(mark.map((fill) => fill.y - mark[0]!.y)).toEqual([0, 1, 2]);
+      }
+    }
+    // The clock and reduced motion change nothing: the marks do not blink.
+    for (const clock of [0, 7, 15, 30, 45, 61]) for (const still of [false, true]) expect(arrows(paint(list(99), 50, 'GB', { still }, clock).fills)).toEqual({ up: true, down: true });
+  });
+
+  it('keeps the counter, the rows and the arrows inside the box and clear of each other, in GB, GBC and DIM', () => {
+    for (const look of looks) {
+      for (const [on, cursor] of [[list(1), 0], [list(7), 6], [list(8), 0], [list(8), 7], [list(99), 50], [list(99), 98], [real, 0], [real, 7], [real, real.pieces!.length - 1]] as const) {
+        const { glyphs, fills } = paint(on, cursor, look);
+        expect(glyphs.length).toBeGreaterThan(0);
+        const marks = [...arrow(fills, 'up'), ...arrow(fills, 'down')];
+        const parts = [...glyphs.map((draw) => ({ x: draw.x, y: draw.y, w: FONT.cellW, h: FONT.cellH })), ...marks];
+        for (const part of parts) {
+          expect(part.x).toBeGreaterThanOrEqual(8);
+          expect(part.x + part.w).toBeLessThanOrEqual(SCREEN_W - 8);
+          expect(part.y).toBeGreaterThanOrEqual(6);
+          expect(part.y + part.h).toBeLessThanOrEqual(SCREEN_H - 6);
+        }
+        // No arrow pixel under a letter's cell, and none on the rules at y 19 and 105.
+        for (const mark of marks) {
+          for (const glyph of glyphs) {
+            const apart = mark.x + mark.w <= glyph.x || glyph.x + FONT.cellW <= mark.x || mark.y + mark.h <= glyph.y || glyph.y + FONT.cellH <= mark.y;
+            expect(apart).toBe(true);
+          }
+          expect([19, BOX_Y_TEST + 1]).not.toContain(mark.y);
+        }
+      }
+    }
   });
 });

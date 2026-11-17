@@ -368,9 +368,7 @@ function drawDialogue(ctx: Painter, sheets: Sheets, state: GameState) {
   const whole = dialogue.shown >= page.reduce((sum, line) => sum + line.length, 0);
   if (whole && dialogue.page < dialogue.pages.length - 1) {
     // More to read: a small arrow in the corner.
-    rect(ctx, 146, 134, 5, 1, DARKEST);
-    rect(ctx, 147, 135, 3, 1, DARKEST);
-    rect(ctx, 148, 136, 1, 1, DARKEST);
+    moreMark(ctx, 146, 134);
   }
 }
 
@@ -560,17 +558,32 @@ function drawShop(ctx: Painter, sheets: Sheets, state: GameState, world: World) 
 const PICK_ROWS = 7;
 
 /**
- * The selector of the player piano, in the style of the shop: its name at the top, a row per piece (its name) with
- * the cursor, and at the foot the artist and the length (m:ss) of the piece under the cursor.
+ * The small arrow of the text box that says there is more (rows of 5, 3 and 1 pixels), its tip down, or turned
+ * over with its tip up. It stands still: it never blinks.
+ */
+function moreMark(ctx: Painter, x: number, y: number, up = false) {
+  for (let row = 0; row < 3; row++) rect(ctx, x + row, up ? y + 2 - row : y + row, 5 - 2 * row, 1, DARKEST);
+}
+
+/**
+ * The selector of the player piano, in the style of the shop: its name at the top with the cursor's place of how
+ * many (`3/10`, at the right like the shop's purse), a row per piece (its name) with the cursor, an arrow at the
+ * right of the list where pieces are out of view above or below it, and at the foot the artist and the length
+ * (m:ss) of the piece under the cursor.
  */
 function drawPick(ctx: Painter, sheets: Sheets, state: GameState, world: World) {
   const pieces = world.pieces ?? [];
   const cursor = Math.min(state.pick!.cursor, pieces.length - 1);
   box(ctx, 0, 0, SCREEN_W, SCREEN_H);
   drawText(ctx, sheets, 'PLAYER PIANO', 14, 8);
+  const count = `${cursor + 1}/${pieces.length}`;
+  drawText(ctx, sheets, count, rightAligned(count, SCREEN_W - 8), 8);
   rect(ctx, 8, 19, SCREEN_W - 16, 1, DARK);
   const top = Math.max(0, Math.min(cursor - PICK_ROWS + 2, pieces.length - PICK_ROWS));
   pieces.slice(top, top + PICK_ROWS).forEach((piece, i) => drawText(ctx, sheets, piece.name, 18, 24 + i * LINE));
+  // More above the rows: an arrow under the rule; more below: one under the last row. None at the ends.
+  if (top > 0) moreMark(ctx, 146, 20, true);
+  if (top + PICK_ROWS < pieces.length) moreMark(ctx, 146, 24 + PICK_ROWS * LINE - 1);
   if (cursor >= 0) drawText(ctx, sheets, '>', 10, 24 + (cursor - top) * LINE);
   rect(ctx, 8, BOX_Y + 1, SCREEN_W - 16, 1, DARK);
   const piece = pieces[cursor];
