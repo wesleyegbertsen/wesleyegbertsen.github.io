@@ -36,12 +36,12 @@ export const STEPS_PER_BEAT = 4;
 
 const SEMITONES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
-/** How far each accidental moves a note, in semitones: `##` is a double sharp (F##4 sounds as G4). */
-const ACCIDENTALS: Record<string, number> = { '': 0, '#': 1, '##': 2, b: -1 };
+/** How far each accidental moves a note, in semitones: `##` a double sharp (F##4 is G4), `bb` a double flat (Bbb2 is A2). */
+const ACCIDENTALS: Record<string, number> = { '': 0, '#': 1, '##': 2, b: -1, bb: -2 };
 
 /** The frequency of a note name in Hz: A4 is 440. Throws on anything that is not a note. */
 export function frequencyOf(name: string): number {
-  const match = /^([A-G])(##|#|b)?(\d)$/.exec(name);
+  const match = /^([A-G])(##|#|bb|b)?(\d)$/.exec(name);
   if (!match) throw new Error(`Not a note: '${name}'`);
   const midi = (Number(match[3]) + 1) * 12 + SEMITONES[match[1]!]! + ACCIDENTALS[match[2] ?? '']!;
   return 440 * 2 ** ((midi - 69) / 12);

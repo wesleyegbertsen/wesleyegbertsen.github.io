@@ -24,4 +24,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'ichiban-no-takaramono', name: 'ICHIBAN NO TAKARAMONO', artist: 'ANANT-GARDE EYES', track: 'ichiban-no-takaramono' },
   { id: 'bauklotze', name: 'BAUKLOTZE', artist: 'HIROYUKI SAWANO', track: 'bauklotze' },
   { id: 'my-soul-your-beats', name: 'MY SOUL, YOUR BEATS!', artist: 'ANGEL BEATS', track: 'my-soul-your-beats' },
+  { id: 'idol', name: 'IDOL (OSHI NO KO)', artist: 'YOASOBI', track: 'idol' },
 ];
