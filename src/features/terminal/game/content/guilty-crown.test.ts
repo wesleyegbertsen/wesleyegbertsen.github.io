@@ -194,7 +194,7 @@ describe('My Dearest (Guilty Crown) on the player piano, written out from the sc
   });
 });
 
-describe('the selector with eleven pieces', () => {
+describe('the selector, its first eleven pieces', () => {
   const world = buildWorld({ profile, skills, experience, education, projects });
   const tick = (state: GameState, input: Partial<typeof NO_INPUT>) => step(state, { ...NO_INPUT, ...input }, world, { instant: true });
   const press = (state: GameState, input: Partial<typeof NO_INPUT>) => tick(state, input).state;
@@ -202,21 +202,22 @@ describe('the selector with eleven pieces', () => {
   const down = (state: GameState, times: number): GameState => (times === 0 ? state : down(press(state, { dir: 'down', pressed: 'down' }), times - 1));
   const ids = ['moonlight', 'scarborough-fair', 'always-in-my-heart', 'unravel', 'aliez', 'guren-no-yumiya', 'ichiban-no-takaramono', 'bauklotze', 'my-soul-your-beats', 'lilium', 'guilty-crown'];
 
-  it('lists the eleven pieces, My Dearest the eleventh and last, each with the length of its own track, and no piano track out of the list', () => {
+  it('lists the first eleven pieces, My Dearest the eleventh, each with the length of its own track, and no piano track out of the list', () => {
     expect(PIECES.find((entry) => entry.id === 'guilty-crown')).toEqual({ id: 'guilty-crown', name: 'MY DEAREST', artist: 'SUPERCELL', track: 'guilty-crown' });
-    expect(world.pieces!.map((piece) => piece.id)).toEqual(ids);
+    // The first eleven of the list; what follows is another piece's test.
+    expect(world.pieces!.map((piece) => piece.id).slice(0, 11)).toEqual(ids);
     const piano = Object.entries(TRACKS).filter(([, track]) => track.loop === false && track.voices.every((voice) => voice.pluck)).map(([name]) => name);
     expect(piano.sort()).toEqual(PIECES.map((entry) => entry.track).sort());
     expect(world.pieces![10]!.ticks).toBe(Math.round(flatten(TRACKS['guilty-crown']!).length * 60));
-    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(11);
+    expect(new Set(world.pieces!.map((piece) => piece.ticks)).size).toBe(world.pieces!.length);
   });
 
   it('plays My Dearest with A on the eleventh row, and the others still their own', () => {
     ids.forEach((id, i) => expect(press(down(open, i), { a: true }).piano).toMatchObject({ piece: id, ticks: world.pieces![i]!.ticks }));
   });
 
-  it('says the eleventh row in the status region: its name, artist, length and "11 of 11"', () => {
+  it('says the eleventh row in the status region: its name, artist, length and "11 of 12"', () => {
     const said = tick(down(open, 9), { dir: 'down', pressed: 'down' }).events.map((event) => event.text);
-    expect(said).toEqual(['MY DEAREST, SUPERCELL, 3:56. 11 of 11.']);
+    expect(said).toEqual(['MY DEAREST, SUPERCELL, 3:56. 11 of 12.']);
   });
 });

@@ -144,8 +144,8 @@ describe('the selector, its first ten pieces', () => {
     ids.forEach((id, i) => expect(press(down(open, i), { a: true }).piano).toMatchObject({ piece: id, ticks: world.pieces![i]!.ticks }));
   });
 
-  it('says the tenth row in the status region: its name, artist, length and "10 of 11"', () => {
+  it('says the tenth row in the status region: its name, artist, length and "10 of 12"', () => {
     const said = tick(down(open, 8), { dir: 'down', pressed: 'down' }).events.map((event) => event.text);
-    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 11.']);
+    expect(said).toEqual(['LILIUM (ELFEN LIED), NOMA KUMIKO, 3:04. 10 of 12.']);
   });
 });

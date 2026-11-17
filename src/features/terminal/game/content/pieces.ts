@@ -26,4 +26,5 @@ export const PIECES: PieceEntry[] = [
   { id: 'my-soul-your-beats', name: 'MY SOUL, YOUR BEATS!', artist: 'ANGEL BEATS', track: 'my-soul-your-beats' },
   { id: 'lilium', name: 'LILIUM (ELFEN LIED)', artist: 'NOMA KUMIKO', track: 'lilium' },
   { id: 'guilty-crown', name: 'MY DEAREST', artist: 'SUPERCELL', track: 'guilty-crown' },
+  { id: 'idol', name: 'IDOL (OSHI NO KO)', artist: 'YOASOBI', track: 'idol' },
 ];
