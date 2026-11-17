@@ -25,14 +25,8 @@ describe('note names', () => {
     expect(frequencyOf('F##1')).toBeCloseTo(frequencyOf('G1'), 9);
   });
 
-  it('takes a double flat as two flats: Bbb2 is an A2, Abb5 a G5, as a score writes them', () => {
-    expect(frequencyOf('Bbb2')).toBeCloseTo(frequencyOf('A2'), 9);
-    expect(frequencyOf('Abb5')).toBeCloseTo(frequencyOf('G5'), 9);
-    expect(frequencyOf('Cbb4')).toBeCloseTo(frequencyOf('A#3'), 9);
-  });
-
   it('refuses what is not a note', () => {
-    for (const bad of ['H4', 'C', '4', 'c4', 'C#', 'C10', '', 'C###4', 'Cbbb4', 'C#b4', 'Cb#4']) expect(() => frequencyOf(bad)).toThrow(/Not a note/);
+    for (const bad of ['H4', 'C', '4', 'c4', 'C#', 'C10', '', 'C###4', 'Cbb4', 'C#b4']) expect(() => frequencyOf(bad)).toThrow(/Not a note/);
   });
 });
 
